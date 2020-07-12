@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <assert.h>
 #include <stdlib.h>
 #include <sys/eventfd.h>
@@ -56,7 +57,7 @@ static void *thread_wrapper_fn(void *thread)
 	return NULL;
 }
 
-struct thread *thread_start(void (*fn)(void *arg), void *arg)
+struct thread *thread_start(void (*fn)(void *arg), void *arg, char *name)
 {
 	struct thread *thread = calloc(1, sizeof(*thread));
 	if (!thread)
@@ -71,6 +72,8 @@ struct thread *thread_start(void (*fn)(void *arg), void *arg)
 
 	if (pthread_create(&thread->pthread, NULL, thread_wrapper_fn, thread))
 		perror_exit("pthread_create");
+
+	pthread_setname_np(thread->pthread, name);
 
 	return thread;
 }

@@ -1,19 +1,14 @@
-#include <net/if.h>
-#include <sys/resource.h>
 #include <poll.h>
 
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>
 #include <bpf/xsk.h>
 #include <unistd.h>
-#include <signal.h>
 
 #include "ishoal.h"
 #include "bpf_kern.skel.h"
 
 static struct bpf_kern *obj;
-static char *iface;
-static int ifindex;
 
 static int num_xsk;
 
@@ -35,7 +30,7 @@ static void clear_map(void)
 	}
 }
 
-static void disp_thread_fn(void *arg)
+static void disp_thread(void *arg)
 {
 	while (!thread_should_stop()) {
 		printf("switch_mac = %s\n", mac_str(obj->bss->switch_mac));
@@ -46,30 +41,8 @@ static void disp_thread_fn(void *arg)
 	}
 }
 
-static void sig_handler(int sig_num)
+void bpf_load_thread(void *arg)
 {
-	thread_all_stop();
-
-}
-
-int main(int argc, char *argv[])
-{
-	if (argc != 2) {
-		fprintf(stderr, "Usage: %s [interface]\n", argv[0]);
-		exit(1);
-	}
-
-	iface = argv[1];
-	ifindex = if_nametoindex(iface);
-	if (!ifindex) {
-		perror(iface);
-		exit(1);
-	};
-
-	struct rlimit unlimited = { RLIM_INFINITY, RLIM_INFINITY };
-	if (setrlimit(RLIMIT_MEMLOCK, &unlimited))
-		perror_exit("setrlimit(RLIMIT_MEMLOCK)");
-
 	obj = bpf_kern__open_and_load();
 	if (!obj)
 		exit(1);
@@ -107,14 +80,5 @@ int main(int argc, char *argv[])
 
 	atexit(clear_map);
 
-	thread_start(disp_thread_fn, NULL);
-
-	signal(SIGINT, sig_handler);
-
-	while (!thread_should_stop()) {
-		struct pollfd fds[1] = {{thread_stop_eventfd(current), POLLIN}};
-		poll(fds, 1, -1);
-	}
-
-	thread_join_rest();
+	thread_start(disp_thread, NULL, "display");
 }

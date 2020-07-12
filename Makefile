@@ -5,7 +5,7 @@ CLANG ?= clang
 
 BPFTOOL ?= bpftool
 
-sources = bpf_user.c ifinfo.c netutil.c thread.c util.c xsk.c
+sources = bpf_user.c ifinfo.c main.c netutil.c thread.c util.c xsk.c
 
 all: ishoal
 

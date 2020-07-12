@@ -111,7 +111,7 @@ static void rx(struct xsk_socket_info *xsk)
 	xsk_ring_cons__release(&xsk->rx, rcvd);
 }
 
-void poller_thread_fn(void *arg)
+static void xsk_rx_thread(void *arg)
 {
 	while (!thread_should_stop()) {
 		uint64_t change_val;
@@ -159,7 +159,7 @@ struct xsk_socket *xsk_configure_socket(char *iface, int queue,
 		if (xsks_change_eventfd < 0)
 			perror_exit("eventfd");
 
-		thread_start(poller_thread_fn, NULL);
+		thread_start(xsk_rx_thread, NULL, "xsk_rx");
 	}
 
 	struct xsk_socket_info *xsk = calloc(1, sizeof(*xsk));
