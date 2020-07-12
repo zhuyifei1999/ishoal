@@ -113,7 +113,7 @@ static void rx(struct xsk_socket_info *xsk)
 
 static void xsk_rx_thread(void *arg)
 {
-	while (!thread_should_stop()) {
+	while (!thread_should_stop(current)) {
 		uint64_t change_val;
 		(void)!read(xsks_change_eventfd, &change_val, sizeof(change_val));
 

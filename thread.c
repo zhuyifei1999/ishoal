@@ -88,9 +88,9 @@ void thread_stop(struct thread *thread)
 		perror_exit("write(eventfd)");
 }
 
-bool thread_should_stop(void)
+bool thread_should_stop(struct thread *thread)
 {
-	return current->should_stop;
+	return thread->should_stop;
 }
 
 int thread_stop_eventfd(struct thread *thread)
@@ -98,9 +98,9 @@ int thread_stop_eventfd(struct thread *thread)
 	return thread->stop_eventfd;
 }
 
-bool thread_is_main(void)
+bool thread_is_main(struct thread *thread)
 {
-	return current == &main_thread;
+	return thread == &main_thread;
 }
 
 void thread_join(struct thread *thread)

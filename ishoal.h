@@ -15,10 +15,12 @@
 #define IS_ERR(val) (PTR_ERR(val) >= -MAX_ERRNO)
 #define IS_ERR_OR_NULL(val) (IS_ERR(val) || !(val))
 
+extern char *progname;
 extern char *iface;
 extern int ifindex;
 
 void bpf_load_thread(void *arg);
+void python_thread(void *arg);
 
 __attribute__ ((format(printf, 1, 2), noreturn))
 void fprintf_exit(char *fmt, ...);
@@ -46,9 +48,9 @@ extern __thread struct thread *current;
 
 struct thread *thread_start(void (*fn)(void *arg), void *arg, char *name);
 void thread_stop(struct thread *thread);
-bool thread_should_stop(void);
+bool thread_should_stop(struct thread *thread);
 int thread_stop_eventfd(struct thread *thread);
-bool thread_is_main(void);
+bool thread_is_main(struct thread *thread);
 void thread_join(struct thread *thread);
 void thread_release(struct thread *thread);
 void thread_all_stop(void);

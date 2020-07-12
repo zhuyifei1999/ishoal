@@ -32,7 +32,7 @@ static void clear_map(void)
 
 static void disp_thread(void *arg)
 {
-	while (!thread_should_stop()) {
+	while (!thread_should_stop(current)) {
 		printf("switch_mac = %s\n", mac_str(obj->bss->switch_mac));
 		printf("switch_ip = %s\n", ip_str(obj->bss->switch_ip));
 

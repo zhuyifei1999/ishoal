@@ -1,4 +1,6 @@
 *.o
 *.d
 *.skel.h
+ishoal_native
+ishoal_py
 ishoal
