@@ -1,5 +1,6 @@
 #include <net/if.h>
 #include <sys/resource.h>
+#include <poll.h>
 
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>
@@ -39,14 +40,16 @@ static void disp_thread_fn(void *arg)
 	while (!thread_should_stop()) {
 		printf("switch_mac = %s\n", mac_str(obj->bss->switch_mac));
 		printf("switch_ip = %s\n", ip_str(obj->bss->switch_ip));
-		sleep(1);
+
+		struct pollfd fds[1] = {{thread_stop_eventfd(current), POLLIN}};
+		poll(fds, 1, 1000);
 	}
 }
 
 static void sig_handler(int sig_num)
 {
-	thread_all_stop_join();
-	exit(0);
+	thread_all_stop();
+
 }
 
 int main(int argc, char *argv[])
@@ -95,8 +98,7 @@ int main(int argc, char *argv[])
 		}
 
 		int fd = xsk_socket__fd(xsk);
-		int key;
-		key = i;
+		int key = i;
 		if (bpf_map_update_elem(bpf_map__fd(obj->maps.xsks_map), &key, &fd, 0))
 			perror_exit("bpf_map_update_elem");
 
@@ -109,7 +111,10 @@ int main(int argc, char *argv[])
 
 	signal(SIGINT, sig_handler);
 
-	while (true)
-		pause();
+	while (!thread_should_stop()) {
+		struct pollfd fds[1] = {{thread_stop_eventfd(current), POLLIN}};
+		poll(fds, 1, -1);
+	}
 
+	thread_join_rest();
 }

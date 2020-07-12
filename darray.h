@@ -5,7 +5,7 @@
 
 #include "ishoal.h"
 
-/* Synamically resizeable array via realloc, thread unsafe on resize */
+/* Dynamically resizeable array via realloc, thread unsafe on resize */
 #define DARRAY(type) { size_t nmemb; typeof (type) *arr; }
 
 #define darray_nmemb(darray) ( (darray).nmemb )

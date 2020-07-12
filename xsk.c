@@ -1,5 +1,7 @@
 #include <assert.h>
 #include <poll.h>
+#include <pthread.h>
+#include <sys/eventfd.h>
 #include <sys/mman.h>
 #include <unistd.h>
 
@@ -29,7 +31,15 @@ struct xsk_socket_info {
 	void (*handler)(void *pkt, size_t length);
 };
 
+static int xsks_change_eventfd;
+pthread_mutex_t xsks_lock;
 static struct DARRAY(struct xsk_socket_info *) xsks;
+
+__attribute__((constructor))
+static void thread_init(void)
+{
+	pthread_mutex_init(&xsks_lock, NULL);
+}
 
 static void del_socket(void)
 {
@@ -64,7 +74,7 @@ static uint64_t xsk_umem_free_frames(struct xsk_socket_info *xsk)
 
 static void rx(struct xsk_socket_info *xsk)
 {
-	unsigned int rcvd, stock_frames, i;
+	unsigned int rcvd, nb_free, i;
 	uint32_t idx_rx = 0, idx_fq = 0;
 	int ret;
 
@@ -72,19 +82,19 @@ static void rx(struct xsk_socket_info *xsk)
 	if (!rcvd)
 		return;
 
-	stock_frames = xsk_prod_nb_free(&xsk->umem.fq, xsk_umem_free_frames(xsk));
+	nb_free = xsk_prod_nb_free(&xsk->umem.fq, xsk_umem_free_frames(xsk));
 
-	if (stock_frames) {
-		ret = xsk_ring_prod__reserve(&xsk->umem.fq, stock_frames, &idx_fq);
+	if (nb_free) {
+		ret = xsk_ring_prod__reserve(&xsk->umem.fq, nb_free, &idx_fq);
 
-		while (ret != stock_frames)
-			ret = xsk_ring_prod__reserve(&xsk->umem.fq, stock_frames, &idx_fq);
+		while (ret != nb_free)
+			ret = xsk_ring_prod__reserve(&xsk->umem.fq, nb_free, &idx_fq);
 
-		for (i = 0; i < stock_frames; i++)
+		for (i = 0; i < nb_free; i++)
 			*xsk_ring_prod__fill_addr(&xsk->umem.fq, idx_fq++) =
 				xsk_alloc_umem_frame(xsk);
 
-		xsk_ring_prod__submit(&xsk->umem.fq, stock_frames);
+		xsk_ring_prod__submit(&xsk->umem.fq, nb_free);
 	}
 
 	for (i = 0; i < rcvd; i++) {
@@ -103,40 +113,55 @@ static void rx(struct xsk_socket_info *xsk)
 
 void poller_thread_fn(void *arg)
 {
-	size_t last_size = 0;
-	struct DARRAY(struct pollfd) fds = {0};
-
 	while (!thread_should_stop()) {
-		int size = darray_nmemb(xsks);
+		uint64_t change_val;
+		(void)!read(xsks_change_eventfd, &change_val, sizeof(change_val));
 
-		if (size != last_size) {
-			last_size = size;
-			darray_resize(fds, size);
+		pthread_mutex_lock(&xsks_lock);
+		int nxsks = darray_nmemb(xsks);
+		int size = nxsks + 2;
+
+		struct pollfd fds[size];
+		struct xsk_socket_info *xsks_copy[nxsks];
+
+		memcpy(xsks_copy, darray_head(xsks), nxsks * sizeof(*xsks_copy));
+
+		for (int i = 0; i < nxsks; i++) {
+			fds[i].fd = xsk_socket__fd(xsks_copy[i]->xsk);
+			fds[i].events = POLLIN;
 		}
 
-		for (int i = 0; i < size; i++) {
-			darray_idx(fds, i)->fd =
-				xsk_socket__fd((*darray_idx(xsks, i))->xsk);
-			darray_idx(fds, i)->events = POLLIN;
-		}
+		fds[nxsks].fd = thread_stop_eventfd(current);
+		fds[nxsks].events = POLLIN;
 
-		if (!size) {
-			usleep(500 * 1000);
-			continue;
-		}
+		fds[nxsks + 1].fd = xsks_change_eventfd;
+		fds[nxsks + 1].events = POLLIN;
+		pthread_mutex_unlock(&xsks_lock);
 
-		int res = poll(darray_head(fds), size, 500);
+		int res = poll(fds, size, -1);
 		if (res <= 0)
 			continue;
 
-		for (int i = 0; i < size; i++)
-			rx(*darray_idx(xsks, i));
+		for (int i = 0; i < nxsks; i++)
+			rx(xsks_copy[i]);
 	}
 }
 
 struct xsk_socket *xsk_configure_socket(char *iface, int queue,
 	void (*handler)(void *pkt, size_t length))
 {
+	static bool init_done;
+	if (!init_done) {
+		init_done = true;
+		atexit(del_socket);
+
+		xsks_change_eventfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+		if (xsks_change_eventfd < 0)
+			perror_exit("eventfd");
+
+		thread_start(poller_thread_fn, NULL);
+	}
+
 	struct xsk_socket_info *xsk = calloc(1, sizeof(*xsk));
 
 	size_t bufs_size = NUM_FRAMES * XSK_UMEM__DEFAULT_FRAME_SIZE;
@@ -182,16 +207,15 @@ struct xsk_socket *xsk_configure_socket(char *iface, int queue,
 		return NULL;
 	}
 
+	pthread_mutex_lock(&xsks_lock);
 	darray_inc(xsks);
 	*darray_tail(xsks) = xsk;
+	pthread_mutex_unlock(&xsks_lock);
 
-	static bool init_done;
-	if (!init_done) {
-		init_done = true;
-		atexit(del_socket);
-
-		thread_start(poller_thread_fn, NULL);
-	}
+	uint64_t event_data = 1;
+	if (write(xsks_change_eventfd, &event_data, sizeof(event_data)) !=
+	    sizeof(event_data))
+		perror_exit("write(eventfd)");
 
 	return xsk->xsk;
 }

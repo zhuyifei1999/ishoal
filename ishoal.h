@@ -42,8 +42,11 @@ extern __thread struct thread *current;
 struct thread *thread_start(void (*fn)(void *arg), void *arg);
 void thread_stop(struct thread *thread);
 bool thread_should_stop(void);
+int thread_stop_eventfd(struct thread *thread);
+bool thread_is_main(void);
 void thread_join(struct thread *thread);
 void thread_release(struct thread *thread);
-void thread_all_stop_join(void);
+void thread_all_stop(void);
+void thread_join_rest(void);
 
 #endif
