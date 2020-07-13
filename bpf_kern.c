@@ -35,10 +35,6 @@ struct {
 	__uint(max_entries, 1024);
 } conntrack_map SEC(".maps");
 
-struct remote_addr {
-	ipaddr_t ip;
-	uint16_t port;
-};
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__type(key, ipaddr_t);

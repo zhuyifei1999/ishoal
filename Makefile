@@ -25,7 +25,8 @@ clean:
 	rm -f *.o *.d *.skel.h ishoal_native ishoal_py ishoal
 
 %.d: %.c
-	$(CC) -M $(shell $(PYTHON_CONFIG) --includes) $(CFLAGS) $< | sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' > $@
+	$(CC) -M $(shell $(PYTHON_CONFIG) --includes) $(CFLAGS) $< | \
+		sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' > $@
 
 %_kern.o: %_kern.c
 	$(CLANG) -fno-common $(CFLAGS) -target bpf -emit-llvm -c $< -o - | \

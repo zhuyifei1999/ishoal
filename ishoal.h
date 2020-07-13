@@ -19,6 +19,12 @@ extern char *progname;
 extern char *iface;
 extern int ifindex;
 
+extern macaddr_t host_mac;
+extern macaddr_t gateway_mac;
+extern ipaddr_t switch_ip;
+extern ipaddr_t public_host_ip;
+extern ipaddr_t subnet_mask;
+
 void bpf_load_thread(void *arg);
 void python_thread(void *arg);
 
@@ -34,11 +40,7 @@ void hex_dump(void *ptr, size_t length);
 char *ip_str(ipaddr_t addr);
 char *mac_str(macaddr_t addr);
 
-void get_if_ipaddr(char *iface, ipaddr_t *addr);
-void get_if_netmask(char *iface, ipaddr_t *addr);
-void get_if_macaddr(char *iface, macaddr_t *addr);
-void get_if_gateway(char *iface, ipaddr_t *addr);
-void resolve_arp(char *iface, ipaddr_t ipaddr, macaddr_t *macaddr);
+void ifinfo_init(void);
 
 struct xsk_socket *xsk_configure_socket(char *iface, int queue,
 	void (*handler)(void *pkt, size_t length));

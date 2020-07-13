@@ -11,7 +11,13 @@
 
 #include "ishoal.h"
 
-void get_if_ipaddr(char *iface, ipaddr_t *addr)
+macaddr_t host_mac;
+macaddr_t gateway_mac;
+ipaddr_t switch_ip;
+ipaddr_t public_host_ip;
+ipaddr_t subnet_mask;
+
+static void get_if_ipaddr(char *iface, ipaddr_t *addr)
 {
 	struct ifreq ifr;
 
@@ -30,7 +36,7 @@ void get_if_ipaddr(char *iface, ipaddr_t *addr)
 	close(sock);
 }
 
-void get_if_netmask(char *iface, ipaddr_t *addr)
+static void get_if_netmask(char *iface, ipaddr_t *addr)
 {
 	struct ifreq ifr;
 
@@ -49,7 +55,7 @@ void get_if_netmask(char *iface, ipaddr_t *addr)
 	close(sock);
 }
 
-void get_if_macaddr(char *iface, macaddr_t *addr)
+static void get_if_macaddr(char *iface, macaddr_t *addr)
 {
 	struct ifreq ifr;
 
@@ -68,7 +74,7 @@ void get_if_macaddr(char *iface, macaddr_t *addr)
 	close(sock);
 }
 
-void get_if_gateway(char *iface, ipaddr_t *addr)
+static void get_if_gateway(char *iface, ipaddr_t *addr)
 {
 	bool found = false;
 	char *buf = read_whole_file("/proc/net/route");
@@ -105,7 +111,7 @@ void get_if_gateway(char *iface, ipaddr_t *addr)
 }
 
 
-void resolve_arp(char *iface, ipaddr_t ipaddr, macaddr_t *macaddr)
+static void resolve_arp(char *iface, ipaddr_t ipaddr, macaddr_t *macaddr)
 {
 	bool found = false;
 	char *buf = read_whole_file("/proc/net/arp");
@@ -153,4 +159,15 @@ void resolve_arp(char *iface, ipaddr_t ipaddr, macaddr_t *macaddr)
 
 	if (!found)
 		fprintf_exit("Unable to resolve ARP for %s\n", ip_str(ipaddr));
+}
+
+void ifinfo_init(void)
+{
+	get_if_ipaddr(iface, &public_host_ip);
+	get_if_netmask(iface, &subnet_mask);
+	get_if_macaddr(iface, &host_mac);
+
+	ipaddr_t gateway_ip;
+	get_if_gateway(iface, &gateway_ip);
+	resolve_arp(iface, gateway_ip, &gateway_mac);
 }

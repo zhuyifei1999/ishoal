@@ -1,9 +1,9 @@
 #include <poll.h>
+#include <unistd.h>
 
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>
 #include <bpf/xsk.h>
-#include <unistd.h>
 
 #include "ishoal.h"
 #include "bpf_kern.skel.h"
@@ -49,13 +49,10 @@ void bpf_load_thread(void *arg)
 
 	atexit(close_obj);
 
-	get_if_ipaddr(iface, &obj->bss->public_host_ip);
-	get_if_netmask(iface, &obj->bss->subnet_mask);
-	get_if_macaddr(iface, &obj->bss->host_mac);
-
-	ipaddr_t gateway_ip;
-	get_if_gateway(iface, &gateway_ip);
-	resolve_arp(iface, gateway_ip, &obj->bss->gateway_mac);
+	obj->bss->public_host_ip = public_host_ip;
+	obj->bss->subnet_mask = subnet_mask;
+	memcpy(&obj->bss->host_mac, &host_mac, sizeof(macaddr_t));
+	memcpy(&obj->bss->gateway_mac, &gateway_mac, sizeof(macaddr_t));
 
 	if (bpf_set_link_xdp_fd(ifindex, bpf_program__fd(obj->progs.xdp_prog), 0) < 0)
 		perror_exit("bpf_set_link_xdp_fd");

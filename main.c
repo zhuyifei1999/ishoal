@@ -36,6 +36,8 @@ int main(int argc, char *argv[])
 		exit(1);
 	};
 
+	ifinfo_init();
+
 	struct rlimit unlimited = { RLIM_INFINITY, RLIM_INFINITY };
 	if (setrlimit(RLIMIT_MEMLOCK, &unlimited))
 		perror_exit("setrlimit(RLIMIT_MEMLOCK)");
