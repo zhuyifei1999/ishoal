@@ -30,15 +30,15 @@ static void clear_map(void)
 	}
 }
 
-static void disp_thread(void *arg)
+void bpf_set_remote_addr(ipaddr_t local_ip, struct remote_addr *remote_addr)
 {
-	while (!thread_should_stop(current)) {
-		printf("switch_mac = %s\n", mac_str(obj->bss->switch_mac));
-		printf("switch_ip = %s\n", ip_str(obj->bss->switch_ip));
+	if (bpf_map_update_elem(bpf_map__fd(obj->maps.remote_addrs), &local_ip, remote_addr, BPF_ANY))
+		perror_exit("bpf_map_update_elem");
+}
 
-		struct pollfd fds[1] = {{thread_stop_eventfd(current), POLLIN}};
-		poll(fds, 1, 1000);
-	}
+void bpf_delete_remote_addr(ipaddr_t local_ip)
+{
+	bpf_map_delete_elem(bpf_map__fd(obj->maps.remote_addrs), &local_ip);
 }
 
 void bpf_load_thread(void *arg)
@@ -78,6 +78,4 @@ void bpf_load_thread(void *arg)
 	}
 
 	atexit(clear_map);
-
-	// thread_start(disp_thread, NULL, "display");
 }

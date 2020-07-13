@@ -2,6 +2,7 @@
 #include <net/if.h>
 #include <netinet/ip.h>
 #include <poll.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,6 +12,7 @@
 #include <miniupnpc/upnpcommands.h>
 
 #include "ishoal.h"
+#include "list.h"
 
 uint16_t vpn_port;
 
@@ -24,6 +26,21 @@ static size_t upnp_numdevices;
 static struct UPNPUrls *upnp_urls;
 static struct IGDdatas *upnp_datas;
 static char (*upnp_lanaddrs)[64];
+
+struct remote_switch {
+	struct list_head list;
+	ipaddr_t local;
+	struct remote_addr remote;
+};
+
+pthread_mutex_t remotes_lock;
+static LIST_HEAD(remotes);
+
+__attribute__((constructor))
+static void remote_init(void)
+{
+	pthread_mutex_init(&remotes_lock, NULL);
+}
 
 static void upnp_clear()
 {
@@ -135,5 +152,71 @@ void start_endpoint(void)
 	vpn_port = ntohs(addr.sin_port);
 	assert(vpn_port);
 
-	// thread_start(upnp_thread, NULL, "upnp");
+	thread_start(upnp_thread, NULL, "upnp");
+}
+
+void set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip, uint16_t remote_port)
+{
+	if (local_ip == public_host_ip)
+		return;
+
+	struct remote_switch *remote;
+	pthread_mutex_lock(&remotes_lock);
+	list_for_each_entry(remote, &remotes, list) {
+		if (remote->local == local_ip) {
+			remote->remote.ip = remote_ip;
+			remote->remote.port = remote_port;
+
+			pthread_mutex_unlock(&remotes_lock);
+			return;
+		}
+	}
+
+	remote = calloc(1, sizeof(*remote));
+	if (!remote)
+		perror_exit("calloc");
+	remote->local = local_ip;
+	remote->remote.ip = remote_ip;
+	remote->remote.port = remote_port;
+
+	list_add(&remote->list, &remotes);
+	pthread_mutex_unlock(&remotes_lock);
+
+	bpf_set_remote_addr(local_ip, &remote->remote);
+}
+
+void delete_remote_addr(ipaddr_t local_ip)
+{
+	if (local_ip == public_host_ip)
+		return;
+
+	struct remote_switch *remote;
+	pthread_mutex_lock(&remotes_lock);
+	list_for_each_entry(remote, &remotes, list) {
+		if (remote->local == local_ip) {
+			list_del(&remote->list);
+
+			pthread_mutex_unlock(&remotes_lock);
+			return;
+		}
+	}
+	pthread_mutex_unlock(&remotes_lock);
+
+	bpf_delete_remote_addr(local_ip);
+}
+
+void broadcast_all_remotes(void *buf, size_t len)
+{
+	struct remote_switch *remote;
+	pthread_mutex_lock(&remotes_lock);
+	list_for_each_entry(remote, &remotes, list) {
+		struct sockaddr_in addr = {
+			.sin_family = AF_INET,
+			.sin_port = htons(remote->remote.port),
+			.sin_addr = { remote->remote.ip },
+		};
+		sendto(endpoint_fd, buf, len, 0,
+		       (struct sockaddr *)&addr, sizeof(addr));
+	}
+	pthread_mutex_unlock(&remotes_lock);
 }

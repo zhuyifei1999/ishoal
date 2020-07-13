@@ -26,7 +26,6 @@ static void get_if_ipaddr(char *iface, ipaddr_t *addr)
 		perror_exit("socket(AF_INET, SOCK_DGRAM, 0)");
 
 	ifr.ifr_addr.sa_family = AF_INET;
-
 	strncpy(ifr.ifr_name, iface, IFNAMSIZ-1);
 
 	if (ioctl(sock, SIOCGIFADDR, &ifr))
@@ -45,7 +44,6 @@ static void get_if_netmask(char *iface, ipaddr_t *addr)
 		perror_exit("socket(AF_INET, SOCK_DGRAM, 0)");
 
 	ifr.ifr_addr.sa_family = AF_INET;
-
 	strncpy(ifr.ifr_name, iface, IFNAMSIZ-1);
 
 	if (ioctl(sock, SIOCGIFNETMASK, &ifr))
@@ -64,7 +62,6 @@ static void get_if_macaddr(char *iface, macaddr_t *addr)
 		perror_exit("socket(AF_INET, SOCK_DGRAM, 0)");
 
 	ifr.ifr_addr.sa_family = AF_INET;
-
 	strncpy(ifr.ifr_name, iface, IFNAMSIZ-1);
 
 	if (ioctl(sock, SIOCGIFHWADDR, &ifr))

@@ -34,30 +34,43 @@ ishoalc_sleep(PyObject *self, PyObject *args)
 }
 
 static PyObject *
+ishoalc_get_switch_ip(PyObject *self, PyObject *args)
+{
+    // TODO: Block on it
+    return PyUnicode_FromString(ip_str(switch_ip));
+}
+
+static PyObject *
+ishoalc_get_vpn_port(PyObject *self, PyObject *args)
+{
+    return PyLong_FromLong(vpn_port);
+}
+
+static PyObject *
 ishoalc_set_remote_addr(PyObject *self, PyObject *args)
 {
-    const char *str_vpn_addr;
-    const char *str_remote_addr;
+    const char *str_local_ip;
+    const char *str_remote_ip;
     uint16_t remote_port;
 
-    ipaddr_t vpn_addr;
-    ipaddr_t remote_addr;
+    ipaddr_t local_ip;
+    ipaddr_t remote_ip;
 
     if (!PyArg_ParseTuple(args, "ssH:set_remote_addr",
-                          &str_vpn_addr,
-                          &str_remote_addr,
+                          &str_local_ip,
+                          &str_remote_ip,
                           &remote_port))
         return NULL;
 
-    if (inet_pton(AF_INET, str_vpn_addr, &vpn_addr) != 1) {
+    if (inet_pton(AF_INET, str_local_ip, &local_ip) != 1) {
         PyErr_Format(PyExc_ValueError,
-                     "\"%s\" is not an IPv4 address", str_vpn_addr);
+                     "\"%s\" is not an IPv4 address", str_local_ip);
         return NULL;
     }
 
-    if (inet_pton(AF_INET, str_remote_addr, &remote_addr) != 1) {
+    if (inet_pton(AF_INET, str_remote_ip, &remote_ip) != 1) {
         PyErr_Format(PyExc_ValueError,
-                     "\"%s\" is not an IPv4 address", str_remote_addr);
+                     "\"%s\" is not an IPv4 address", str_remote_ip);
         return NULL;
     }
 
@@ -67,17 +80,17 @@ ishoalc_set_remote_addr(PyObject *self, PyObject *args)
 static PyObject *
 ishoalc_delete_remote_addr(PyObject *self, PyObject *args)
 {
-    const char *str_vpn_addr;
+    const char *str_local_ip;
 
-    ipaddr_t vpn_addr;
+    ipaddr_t local_ip;
 
     if (!PyArg_ParseTuple(args, "s:delete_remote_addr",
-                          &str_vpn_addr))
+                          &str_local_ip))
         return NULL;
 
-    if (inet_pton(AF_INET, str_vpn_addr, &vpn_addr) != 1) {
+    if (inet_pton(AF_INET, str_local_ip, &local_ip) != 1) {
         PyErr_Format(PyExc_ValueError,
-                     "\"%s\" is not an IPv4 address", str_vpn_addr);
+                     "\"%s\" is not an IPv4 address", str_local_ip);
         return NULL;
     }
 
@@ -87,6 +100,7 @@ ishoalc_delete_remote_addr(PyObject *self, PyObject *args)
 static PyMethodDef IshoalcMethods[] = {
     {"should_stop", ishoalc_should_stop, METH_NOARGS, NULL},
     {"sleep", ishoalc_sleep, METH_VARARGS, NULL},
+    {"get_vpn_port", ishoalc_get_vpn_port, METH_NOARGS, NULL},
     {"set_remote_addr", ishoalc_set_remote_addr, METH_VARARGS, NULL},
     {"delete_remote_addr", ishoalc_delete_remote_addr, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL}
