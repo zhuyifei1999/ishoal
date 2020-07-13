@@ -33,7 +33,7 @@ struct remote_switch {
 	struct remote_addr remote;
 };
 
-pthread_mutex_t remotes_lock;
+static pthread_mutex_t remotes_lock;
 static LIST_HEAD(remotes);
 
 __attribute__((constructor))

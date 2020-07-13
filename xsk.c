@@ -10,6 +10,10 @@
 #include "ishoal.h"
 #include "darray.h"
 
+/* This file is massively copied from Kernel samples/bpf/xdpsock_user.c
+ * And lots of trial and error. Not much idea how it works.
+ */
+
 #define NUM_FRAMES 256
 
 struct xsk_umem_info {
@@ -78,8 +82,8 @@ static void rx(struct xsk_socket_info *xsk)
 static void xsk_rx_thread(void *arg)
 {
 	while (!thread_should_stop(current)) {
-		uint64_t change_val;
-		(void)!read(xsks_change_eventfd, &change_val, sizeof(change_val));
+		uint64_t event_data;
+		(void)!read(xsks_change_eventfd, &event_data, sizeof(event_data));
 
 		pthread_mutex_lock(&xsks_lock);
 		int nxsks = darray_nmemb(xsks);
@@ -133,8 +137,8 @@ struct xsk_socket *xsk_configure_socket(char *iface, int queue,
 	xsk->handler = handler;
 
 	xsk->umem.buffer = mmap(NULL, bufs_size,
-			  PROT_READ | PROT_WRITE,
-			  MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+				PROT_READ | PROT_WRITE,
+				MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	if (xsk->umem.buffer == MAP_FAILED)
 		perror_exit("mmap");
 
@@ -150,8 +154,7 @@ struct xsk_socket *xsk_configure_socket(char *iface, int queue,
 	uint32_t idx;
 
 	if (xsk_ring_prod__reserve(&xsk->umem.fq,
-				   NUM_FRAMES, &idx) !=
-					NUM_FRAMES)
+				   NUM_FRAMES, &idx) != NUM_FRAMES)
 		perror_exit("xsk_ring_prod__reserve");
 	for (int i = 0; i < NUM_FRAMES; i++)
 		*xsk_ring_prod__fill_addr(&xsk->umem.fq, idx++) =

@@ -13,7 +13,7 @@
 
 macaddr_t host_mac;
 macaddr_t gateway_mac;
-ipaddr_t switch_ip;
+
 ipaddr_t public_host_ip;
 ipaddr_t subnet_mask;
 

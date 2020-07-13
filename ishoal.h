@@ -19,8 +19,10 @@ extern char *progname;
 extern char *iface;
 extern int ifindex;
 
+extern macaddr_t switch_mac;
 extern macaddr_t host_mac;
 extern macaddr_t gateway_mac;
+
 extern ipaddr_t switch_ip;
 extern ipaddr_t public_host_ip;
 extern ipaddr_t subnet_mask;
@@ -68,5 +70,7 @@ void broadcast_all_remotes(void *buf, size_t len);
 
 void bpf_set_remote_addr(ipaddr_t local_ip, struct remote_addr *remote_addr);
 void bpf_delete_remote_addr(ipaddr_t local_ip);
+
+void on_switch_change(void (*fn)(void));
 
 #endif

@@ -122,7 +122,8 @@ static void ipv4_mk_pheader(struct iphdr *iph, struct iph_pseudo *iphp)
 	iphp->l4_len = iph->tot_len - sizeof(struct iphdr);
 }
 
-static void recompute_l4_csum_fast(struct xdp_md *ctx, struct iphdr *iph, struct iph_pseudo *iphp_orig)
+static void recompute_l4_csum_fast(struct xdp_md *ctx, struct iphdr *iph,
+				   struct iph_pseudo *iphp_orig)
 {
 	struct iph_pseudo iphp_new;
 	ipv4_mk_pheader(iph, &iphp_new);
@@ -247,8 +248,8 @@ int xdp_prog(struct xdp_md *ctx)
 				struct conntrack_entry conntrack_entry = {
 					.ktime_ns = bpf_ktime_get_ns(),
 				};
-				// bpf_map_update_elem(&conntrack_map, &(struct conntrack_key){ 0 }, &(struct conntrack_entry){ 0 }, BPF_ANY);
-				bpf_map_update_elem(&conntrack_map, &conntrack_key, &conntrack_entry, BPF_ANY);
+				bpf_map_update_elem(&conntrack_map, &conntrack_key,
+						    &conntrack_entry, BPF_ANY);
 
 				iph->saddr = public_host_ip;
 				recompute_iph_csum(iph);
@@ -260,11 +261,13 @@ int xdp_prog(struct xdp_md *ctx)
 				return XDP_TX;
 			}
 
-			struct remote_addr *remote_addr = bpf_map_lookup_elem(&remote_addrs, &iph->daddr);
+			struct remote_addr *remote_addr =
+				bpf_map_lookup_elem(&remote_addrs, &iph->daddr);
 			if (!remote_addr)
 				return XDP_PASS;
 
-			if (bpf_xdp_adjust_head(ctx, 0 - (int)(sizeof(struct iphdr) + sizeof(struct udphdr))))
+			if (bpf_xdp_adjust_head(ctx, 0 - (int)(sizeof(struct iphdr) +
+						sizeof(struct udphdr))))
 				return XDP_DROP;
 
 			data_start = (void *)(long)ctx->data;
@@ -311,8 +314,10 @@ int xdp_prog(struct xdp_md *ctx)
 		}
 
 		if (iph->daddr == public_host_ip) {
-			if (iph->protocol == IPPROTO_UDP && dst_port == bpf_htons(vpn_port)) {
-				if (bpf_xdp_adjust_head(ctx, sizeof(struct iphdr) + sizeof(struct udphdr)))
+			if (iph->protocol == IPPROTO_UDP &&
+			    dst_port == bpf_htons(vpn_port)) {
+				if (bpf_xdp_adjust_head(ctx, sizeof(struct iphdr) +
+							sizeof(struct udphdr)))
 					return XDP_DROP;
 
 				data_start = (void *)(long)ctx->data;
@@ -329,7 +334,8 @@ int xdp_prog(struct xdp_md *ctx)
 				if (data > data_end)
 					return XDP_DROP;
 
-				if (iph->daddr != switch_ip)
+				if (iph->daddr != switch_ip && iph->daddr !=
+				    ((switch_ip & subnet_mask) | ~subnet_mask))
 					return XDP_DROP;
 
 				memcpy(&eth->h_dest, &switch_mac, sizeof(macaddr_t));
@@ -352,7 +358,8 @@ int xdp_prog(struct xdp_md *ctx)
 					.daddr = iph->saddr,
 					.dport = src_port,
 				};
-				struct conntrack_entry *conntrack_entry = bpf_map_lookup_elem(&conntrack_map, &conntrack_key);
+				struct conntrack_entry *conntrack_entry =
+					bpf_map_lookup_elem(&conntrack_map, &conntrack_key);
 				if (!conntrack_entry)
 					return XDP_PASS;
 				// 5 minutes expiry

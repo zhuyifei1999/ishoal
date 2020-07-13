@@ -3,8 +3,12 @@ LDFLAGS ?= $(CFLAGS) -lbpf -lpthread -lminiupnpc
 
 PYTHON ?= python3
 PYTHON_CONFIG ?= $(PYTHON)-config
-PYTHON_CFLAGS = $(shell $(PYTHON_CONFIG) --cflags) $(CFLAGS)
-PYTHON_LDFLAGS = $(shell $(PYTHON_CONFIG) --ldflags) $(LDFLAGS)
+PYTHON_CFLAGS = $(shell $(PYTHON_CONFIG) --cflags)
+PYTHON_LDFLAGS = $(shell $(PYTHON_CONFIG) --ldflags)
+
+DIALOG_CONFIG ?= dialog-config
+DIALOG_CFLAGS = $(shell $(DIALOG_CONFIG) --cflags)
+DIALOG_LDFLAGS = $(shell $(DIALOG_CONFIG) --ldflags)
 
 LLC ?= llc
 CLANG ?= clang
@@ -36,13 +40,13 @@ clean:
 	$(BPFTOOL) gen skeleton $< > $@ || rm -f $@
 
 python.o: python.c
-	$(CC) $(PYTHON_CFLAGS) -c $< -o $@
+	$(CC) $(PYTHON_CFLAGS) $(CFLAGS) -c $< -o $@
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 ishoal_native: $(sources:.c=.o)
-	$(CC) $(PYTHON_LDFLAGS) $^ -o $@
+	$(CC) $(PYTHON_LDFLAGS) $(LDFLAGS) $^ -o $@
 
 ishoal_py: py_dist/**
 	$(PYTHON) -m zipapp py_dist -o $@

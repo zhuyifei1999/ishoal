@@ -22,7 +22,7 @@ static struct thread main_thread;
 
 __thread struct thread *current;
 
-pthread_mutex_t threads_lock;
+static pthread_mutex_t threads_lock;
 static LIST_HEAD(threads);
 
 __attribute__((constructor))
