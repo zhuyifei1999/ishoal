@@ -43,6 +43,9 @@ static void disp_thread(void *arg)
 
 void bpf_load_thread(void *arg)
 {
+	bpf_set_link_xdp_fd(ifindex, -1, 0);
+	return;
+
 	obj = bpf_kern__open_and_load();
 	if (!obj)
 		exit(1);
@@ -53,6 +56,8 @@ void bpf_load_thread(void *arg)
 	obj->bss->subnet_mask = subnet_mask;
 	memcpy(&obj->bss->host_mac, &host_mac, sizeof(macaddr_t));
 	memcpy(&obj->bss->gateway_mac, &gateway_mac, sizeof(macaddr_t));
+
+	obj->bss->vpn_port = vpn_port;
 
 	if (bpf_set_link_xdp_fd(ifindex, bpf_program__fd(obj->progs.xdp_prog), 0) < 0)
 		perror_exit("bpf_set_link_xdp_fd");

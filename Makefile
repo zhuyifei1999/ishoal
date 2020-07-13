@@ -1,5 +1,5 @@
 CFLAGS ?= -O2 -pipe -g
-LDFLAGS ?= $(CFLAGS) -lbpf -lpthread
+LDFLAGS ?= $(CFLAGS) -lbpf -lpthread -lminiupnpc
 
 PYTHON ?= python3
 PYTHON_CONFIG ?= $(PYTHON)-config
@@ -11,7 +11,7 @@ CLANG ?= clang
 
 BPFTOOL ?= bpftool
 
-sources = bpf_user.c ifinfo.c main.c netutil.c python.c thread.c util.c xsk.c
+sources = bpf_user.c ifinfo.c main.c netutil.c python.c remote.c thread.c util.c xsk.c
 
 all: ishoal
 

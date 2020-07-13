@@ -25,6 +25,9 @@ extern ipaddr_t switch_ip;
 extern ipaddr_t public_host_ip;
 extern ipaddr_t subnet_mask;
 
+extern uint16_t vpn_port;
+
+
 void bpf_load_thread(void *arg);
 void python_thread(void *arg);
 
@@ -41,6 +44,7 @@ char *ip_str(ipaddr_t addr);
 char *mac_str(macaddr_t addr);
 
 void ifinfo_init(void);
+void start_endpoint(void);
 
 struct xsk_socket *xsk_configure_socket(char *iface, int queue,
 	void (*handler)(void *pkt, size_t length));
