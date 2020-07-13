@@ -43,9 +43,6 @@ static void disp_thread(void *arg)
 
 void bpf_load_thread(void *arg)
 {
-	bpf_set_link_xdp_fd(ifindex, -1, 0);
-	return;
-
 	obj = bpf_kern__open_and_load();
 	if (!obj)
 		exit(1);
@@ -82,5 +79,5 @@ void bpf_load_thread(void *arg)
 
 	atexit(clear_map);
 
-	thread_start(disp_thread, NULL, "display");
+	// thread_start(disp_thread, NULL, "display");
 }

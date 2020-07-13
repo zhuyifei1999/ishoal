@@ -28,7 +28,7 @@ ishoalc_sleep(PyObject *self, PyObject *args)
         return NULL;
 
     struct pollfd fds[1] = {{thread_stop_eventfd(python_main_thread), POLLIN}};
-    poll(fds, 1, -1);
+    poll(fds, 1, millis);
 
     Py_RETURN_NONE;
 }

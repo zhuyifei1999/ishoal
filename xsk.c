@@ -11,7 +11,6 @@
 #include "darray.h"
 
 #define NUM_FRAMES 256
-#define INVALID_UMEM_FRAME UINT64_MAX
 
 struct xsk_umem_info {
 	struct xsk_ring_prod fq;
@@ -24,9 +23,6 @@ struct xsk_socket_info {
 	struct xsk_ring_cons rx;
 	struct xsk_umem_info umem;
 	struct xsk_socket *xsk;
-
-	uint64_t umem_frame_addr[NUM_FRAMES];
-	uint32_t umem_frame_free;
 
 	void (*handler)(void *pkt, size_t length);
 };
@@ -49,32 +45,9 @@ static void del_socket(void)
 	}
 }
 
-static uint64_t xsk_alloc_umem_frame(struct xsk_socket_info *xsk)
-{
-	uint64_t frame;
-	if (xsk->umem_frame_free == 0)
-		return INVALID_UMEM_FRAME;
-
-	frame = xsk->umem_frame_addr[--xsk->umem_frame_free];
-	xsk->umem_frame_addr[xsk->umem_frame_free] = INVALID_UMEM_FRAME;
-	return frame;
-}
-
-static void xsk_free_umem_frame(struct xsk_socket_info *xsk, uint64_t frame)
-{
-	assert(xsk->umem_frame_free < NUM_FRAMES);
-
-	xsk->umem_frame_addr[xsk->umem_frame_free++] = frame;
-}
-
-static uint64_t xsk_umem_free_frames(struct xsk_socket_info *xsk)
-{
-	return xsk->umem_frame_free;
-}
-
 static void rx(struct xsk_socket_info *xsk)
 {
-	unsigned int rcvd, nb_free, i;
+	unsigned int rcvd, i;
 	uint32_t idx_rx = 0, idx_fq = 0;
 	int ret;
 
@@ -82,32 +55,23 @@ static void rx(struct xsk_socket_info *xsk)
 	if (!rcvd)
 		return;
 
-	nb_free = xsk_prod_nb_free(&xsk->umem.fq, xsk_umem_free_frames(xsk));
-
-	if (nb_free) {
-		ret = xsk_ring_prod__reserve(&xsk->umem.fq, nb_free, &idx_fq);
-
-		while (ret != nb_free)
-			ret = xsk_ring_prod__reserve(&xsk->umem.fq, nb_free, &idx_fq);
-
-		for (i = 0; i < nb_free; i++)
-			*xsk_ring_prod__fill_addr(&xsk->umem.fq, idx_fq++) =
-				xsk_alloc_umem_frame(xsk);
-
-		xsk_ring_prod__submit(&xsk->umem.fq, nb_free);
-	}
+	ret = xsk_ring_prod__reserve(&xsk->umem.fq, rcvd, &idx_fq);
+	while (ret != rcvd)
+		ret = xsk_ring_prod__reserve(&xsk->umem.fq, rcvd, &idx_fq);
 
 	for (i = 0; i < rcvd; i++) {
 		uint64_t addr = xsk_ring_cons__rx_desc(&xsk->rx, idx_rx)->addr;
 		uint32_t len = xsk_ring_cons__rx_desc(&xsk->rx, idx_rx++)->len;
+		uint64_t orig = xsk_umem__extract_addr(addr);
 
 		addr = xsk_umem__add_offset_to_addr(addr);
 		char *pkt = xsk_umem__get_data(xsk->umem.buffer, addr);
 		xsk->handler(pkt, len);
 
-		xsk_free_umem_frame(xsk, addr);
+		*xsk_ring_prod__fill_addr(&xsk->umem.fq, idx_fq++) = orig;
 	}
 
+	xsk_ring_prod__submit(&xsk->umem.fq, rcvd);
 	xsk_ring_cons__release(&xsk->rx, rcvd);
 }
 
@@ -174,34 +138,33 @@ struct xsk_socket *xsk_configure_socket(char *iface, int queue,
 	if (xsk->umem.buffer == MAP_FAILED)
 		perror_exit("mmap");
 
+	struct xsk_umem_config umem_cfg = {
+		.fill_size = NUM_FRAMES * 2,
+		.comp_size = NUM_FRAMES * 2,
+		.frame_size = XSK_UMEM__DEFAULT_FRAME_SIZE,
+	};
 	if (xsk_umem__create(&xsk->umem.umem, xsk->umem.buffer, bufs_size,
-	    &xsk->umem.fq, &xsk->umem.cq, NULL))
+	    &xsk->umem.fq, &xsk->umem.cq, &umem_cfg))
 		perror_exit("xsk_umem__create");
 
 	uint32_t idx;
 
-	for (int i = 0; i < NUM_FRAMES; i++)
-		xsk->umem_frame_addr[i] = i * XSK_UMEM__DEFAULT_FRAME_SIZE;
-
-	xsk->umem_frame_free = NUM_FRAMES;
-
 	if (xsk_ring_prod__reserve(&xsk->umem.fq,
-				   XSK_RING_PROD__DEFAULT_NUM_DESCS, &idx) !=
-					XSK_RING_PROD__DEFAULT_NUM_DESCS)
+				   NUM_FRAMES, &idx) !=
+					NUM_FRAMES)
 		perror_exit("xsk_ring_prod__reserve");
-	for (int i = 0; i < XSK_RING_PROD__DEFAULT_NUM_DESCS; i++)
+	for (int i = 0; i < NUM_FRAMES; i++)
 		*xsk_ring_prod__fill_addr(&xsk->umem.fq, idx++) =
-			xsk_alloc_umem_frame(xsk);
-	xsk_ring_prod__submit(&xsk->umem.fq, XSK_RING_PROD__DEFAULT_NUM_DESCS);
+			i * XSK_UMEM__DEFAULT_FRAME_SIZE;
+	xsk_ring_prod__submit(&xsk->umem.fq, NUM_FRAMES);
 
-	struct xsk_socket_config cfg = {
-		.rx_size = XSK_RING_CONS__DEFAULT_NUM_DESCS,
-		.tx_size = XSK_RING_PROD__DEFAULT_NUM_DESCS,
+	struct xsk_socket_config xsk_cfg = {
+		.rx_size = NUM_FRAMES,
+		.tx_size = NUM_FRAMES,
 		.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD,
 	};
-
 	if (xsk_socket__create(&xsk->xsk, iface, queue, xsk->umem.umem,
-			       &xsk->rx, NULL, &cfg)) {
+			       &xsk->rx, NULL, &xsk_cfg)) {
 		xsk_umem__delete(xsk->umem.umem);
 		free(xsk);
 		return NULL;

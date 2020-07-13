@@ -48,4 +48,4 @@ ishoal_py: py_dist/**
 	$(PYTHON) -m zipapp py_dist -o $@
 
 ishoal: ishoal_native ishoal_py
-	cat ishoal_native ishoal_py > ishoal
+	cat $^ > $@ && chmod a+x $@ || rm -f $@

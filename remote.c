@@ -135,5 +135,5 @@ void start_endpoint(void)
 	vpn_port = ntohs(addr.sin_port);
 	assert(vpn_port);
 
-	thread_start(upnp_thread, NULL, "upnp");
+	// thread_start(upnp_thread, NULL, "upnp");
 }
