@@ -48,7 +48,7 @@ static int on_switch_chg_threadfn_eventfd = -1;
 __attribute__((constructor))
 static void ishoalc_switch_chg_init(void)
 {
-	pthread_mutex_init(&wait_switch_chg_eventfd_lock, NULL);
+    pthread_mutex_init(&wait_switch_chg_eventfd_lock, NULL);
     pthread_mutex_init(&on_switch_chg_threadfn_lock, NULL);
 }
 
@@ -95,7 +95,7 @@ ishoalc_wait_for_switch(PyObject *self, PyObject *args)
             int saved_errno = errno;
             pthread_mutex_unlock(&wait_switch_chg_eventfd_lock);
             errno = saved_errno;
-            perror_exit("eventfd");
+            return PyErr_SetFromErrno(PyExc_OSError);
         }
     }
     pthread_mutex_unlock(&wait_switch_chg_eventfd_lock);
@@ -150,7 +150,7 @@ ishoalc_on_switch_chg_threadfn(PyObject *self, PyObject *args)
         int saved_errno = errno;
         pthread_mutex_unlock(&on_switch_chg_threadfn_lock);
         errno = saved_errno;
-        perror_exit("eventfd");
+        return PyErr_SetFromErrno(PyExc_OSError);
     }
     pthread_mutex_unlock(&on_switch_chg_threadfn_lock);
 
