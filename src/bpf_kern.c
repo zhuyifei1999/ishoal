@@ -18,15 +18,23 @@
 
 #include "bpf_kern.h"
 
+#define SECOND_NS 1000000000ULL
+
+// It would be NAT Type B otherwise
+#define NAT_TYPE_A
+
 struct conntrack_key {
 	uint8_t  protocol;
 	uint16_t sport;
+#ifndef NAT_TYPE_A
 	ipaddr_t daddr;
 	uint16_t dport;
+#endif
 } __attribute__((packed));
 struct conntrack_entry {
+	ipaddr_t saddr;
 	uint64_t ktime_ns;
-};
+} __attribute__((packed));
 
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
@@ -62,7 +70,7 @@ struct arp_ipv4_payload {
 	ipaddr_t	ar_sip;
 	macaddr_t	ar_tha;
 	ipaddr_t	ar_tip;
-};
+} __attribute__((packed));
 
 macaddr_t switch_mac;
 macaddr_t host_mac;
@@ -157,6 +165,22 @@ static void recompute_l4_csum_fast(struct xdp_md *ctx, struct iphdr *iph,
 		*csum_field = 0xffff;
 }
 
+static bool mac_eq(macaddr_t *a, macaddr_t *b)
+{
+	// return !memcmp(a, b, sizeof(macaddr_t))
+	return ((*a)[0] == (*b)[0] &&
+		(*a)[1] == (*b)[1] &&
+		(*a)[2] == (*b)[2] &&
+		(*a)[3] == (*b)[3] &&
+		(*a)[4] == (*b)[4] &&
+		(*a)[5] == (*b)[5]);
+}
+
+static bool same_subnet(ipaddr_t a, ipaddr_t b)
+{
+	return (a & subnet_mask) == (b & subnet_mask);
+}
+
 SEC("xdp")
 int xdp_prog(struct xdp_md *ctx)
 {
@@ -213,8 +237,9 @@ int xdp_prog(struct xdp_md *ctx)
 		} else // TODO: ICMP?
 			return XDP_PASS;
 
-		if (iph->saddr == switch_ip) {
+		if (mac_eq(&switch_mac, &eth->h_source)) {
 			if (eth_is_broadcast) {
+				/* VPN broadcast route */
 				// source: tools/lib/bpf/xsk.c
 				int ret, index = ctx->rx_queue_index;
 
@@ -232,8 +257,10 @@ int xdp_prog(struct xdp_md *ctx)
 				return XDP_PASS;
 			}
 
-			if ((iph->daddr & subnet_mask) != (switch_ip & subnet_mask)) {
-				/* We are acting as a fake gateway */
+			if (fake_gateway_ip &&
+			    same_subnet(iph->saddr, fake_gateway_ip) &&
+			    !same_subnet(iph->daddr, fake_gateway_ip)) {
+				/* NAT route */
 				if (iph->ttl <= 1)
 					return XDP_PASS;
 
@@ -242,10 +269,13 @@ int xdp_prog(struct xdp_md *ctx)
 				struct conntrack_key conntrack_key = {
 					.protocol = iph->protocol,
 					.sport = src_port,
+#ifndef NAT_TYPE_A
 					.daddr = iph->daddr,
 					.dport = dst_port,
+#endif
 				};
 				struct conntrack_entry conntrack_entry = {
+					.saddr = iph->saddr,
 					.ktime_ns = bpf_ktime_get_ns(),
 				};
 				bpf_map_update_elem(&conntrack_map, &conntrack_key,
@@ -266,6 +296,7 @@ int xdp_prog(struct xdp_md *ctx)
 			if (!remote_addr)
 				return XDP_PASS;
 
+			/* VPN route */
 			if (bpf_xdp_adjust_head(ctx, 0 - (int)(sizeof(struct iphdr) +
 						sizeof(struct udphdr))))
 				return XDP_DROP;
@@ -316,6 +347,7 @@ int xdp_prog(struct xdp_md *ctx)
 		if (iph->daddr == public_host_ip) {
 			if (iph->protocol == IPPROTO_UDP &&
 			    dst_port == bpf_htons(vpn_port)) {
+				/* VPN route */
 				if (bpf_xdp_adjust_head(ctx, sizeof(struct iphdr) +
 							sizeof(struct udphdr)))
 					return XDP_DROP;
@@ -345,8 +377,9 @@ int xdp_prog(struct xdp_md *ctx)
 				return XDP_TX;
 			}
 
-			if ((iph->saddr & subnet_mask) != (switch_ip & subnet_mask)) {
-				/* We are acting as a fake gateway, return route */
+			if (fake_gateway_ip &&
+			    !same_subnet(iph->saddr, fake_gateway_ip)) {
+				/* NAT return route */
 				if (iph->ttl <= 1)
 					return XDP_PASS;
 
@@ -355,21 +388,24 @@ int xdp_prog(struct xdp_md *ctx)
 				struct conntrack_key conntrack_key = {
 					.protocol = iph->protocol,
 					.sport = dst_port,
+#ifndef NAT_TYPE_A
 					.daddr = iph->saddr,
 					.dport = src_port,
+#endif
 				};
 				struct conntrack_entry *conntrack_entry =
 					bpf_map_lookup_elem(&conntrack_map, &conntrack_key);
 				if (!conntrack_entry)
 					return XDP_PASS;
 				// 5 minutes expiry
-				if (conntrack_entry->ktime_ns - bpf_ktime_get_ns() > 5 * 60 * 1e9) {
+				if (bpf_ktime_get_ns() - conntrack_entry->ktime_ns
+				    > 5 * 60 * SECOND_NS) {
 					bpf_map_delete_elem(&conntrack_map, &conntrack_key);
 					return XDP_PASS;
 				}
 				conntrack_entry->ktime_ns = bpf_ktime_get_ns();
 
-				iph->daddr = switch_ip;
+				iph->daddr = conntrack_entry->saddr;
 				recompute_iph_csum(iph);
 				recompute_l4_csum_fast(ctx, iph, &iphp_orig);
 
@@ -387,10 +423,10 @@ int xdp_prog(struct xdp_md *ctx)
 		if (data > data_end)
 			return XDP_DROP;
 
-		if (arph->ar_pro != ETH_P_IP ||
+		if (arph->ar_pro != bpf_htons(ETH_P_IP) ||
 		    arph->ar_hln != 6 ||
 		    arph->ar_pln != 4 ||
-		    arph->ar_op != ARPOP_REQUEST)
+		    arph->ar_op != bpf_htons(ARPOP_REQUEST))
 			return XDP_PASS;
 
 		struct arp_ipv4_payload *arppl = data;
@@ -411,7 +447,7 @@ int xdp_prog(struct xdp_md *ctx)
 		arppl->ar_tip = arppl->ar_sip;
 		arppl->ar_sip = tmp_ip;
 
-		arph->ar_op = ARPOP_REPLY;
+		arph->ar_op = bpf_htons(ARPOP_REPLY);
 
 		memcpy(&eth->h_dest, &eth->h_source, sizeof(macaddr_t));
 		memcpy(&eth->h_source, &host_mac, sizeof(macaddr_t));
