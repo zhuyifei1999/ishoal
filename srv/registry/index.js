@@ -13,7 +13,7 @@ io.on('connection', function(socket) {
     console.log('[' + new Date() + '] Disconnected: ' + socket.id);
   });
 
-  let publicIP = socket.request.connection.remoteAddress;
+  let publicIP = socket.request.headers['x-forwarded-for'];
 
   // for some reason, sigh...
   if (publicIP.startsWith('::ffff:'))

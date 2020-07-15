@@ -1,0 +1,14 @@
+# /etc/systemd/system/ishoal-registry.service
+[Unit]
+Description=iShoal registry
+Documentation=https://ishoal.ink
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+ExecStart=/usr/bin/node /srv/ishoal/srv/registry/index.js
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
