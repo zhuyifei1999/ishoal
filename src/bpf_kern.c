@@ -239,6 +239,12 @@ int xdp_prog(struct xdp_md *ctx)
 
 		if (mac_eq(&switch_mac, &eth->h_source)) {
 			if (eth_is_broadcast) {
+				if (iph->protocol == IPPROTO_UDP &&
+				    dst_port == bpf_htons(67) &&
+				    dst_port == bpf_htons(68))
+					// DHCP
+					return XDP_PASS;
+
 				/* VPN broadcast route */
 				// source: tools/lib/bpf/xsk.c
 				int ret, index = ctx->rx_queue_index;
@@ -366,8 +372,18 @@ int xdp_prog(struct xdp_md *ctx)
 				if (data > data_end)
 					return XDP_DROP;
 
-				if (iph->daddr != switch_ip && iph->daddr !=
-				    ((switch_ip & subnet_mask) | ~subnet_mask))
+				if (iph->ihl != 5 || iph->version != 4)
+					return XDP_DROP;
+
+				ipaddr_t subnet_broadcast =
+					((switch_ip & subnet_mask) | ~subnet_mask);
+				if (iph->daddr != switch_ip &&
+				    iph->daddr != subnet_broadcast &&
+				    iph->daddr != 0xFFFFFFFFUL &&
+				    (bpf_htonl(iph->daddr) & 0xF0000000UL) != 0xE0000000UL)
+					return XDP_DROP;
+
+				if (!bpf_map_lookup_elem(&remote_addrs, &iph->saddr))
 					return XDP_DROP;
 
 				memcpy(&eth->h_dest, &switch_mac, sizeof(macaddr_t));

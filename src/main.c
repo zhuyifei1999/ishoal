@@ -39,6 +39,7 @@ int main(int argc, char *argv[])
 		perror_exit("setrlimit(RLIMIT_MEMLOCK)");
 
 	signal(SIGINT, sig_handler);
+	signal(SIGTERM, sig_handler);
 
 	thread_start(bpf_load_thread, NULL, "bpf");
 	thread_start(python_thread, NULL, "python");

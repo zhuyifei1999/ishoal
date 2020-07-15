@@ -1,0 +1,12 @@
+{
+  "private": true,
+  "main": "index.js",
+  "license": "MIT",
+  "devDependencies": {
+    "eslint": "^7.4.0",
+    "eslint-config-google": "^0.14.0"
+  },
+  "dependencies": {
+    "socket.io": "^2.3.0"
+  }
+}

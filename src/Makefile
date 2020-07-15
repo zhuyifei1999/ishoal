@@ -27,6 +27,7 @@ bpf_user.d: bpf_kern.skel.h
 
 clean:
 	rm -f *.o *.d *.skel.h ishoal_native ishoal_py ishoal
+	rm -rf py_dist_build
 
 %.d: %.c
 	$(CC) -M $(shell $(PYTHON_CONFIG) --includes) $(CFLAGS) $< | \
@@ -48,8 +49,15 @@ python.o: python.c
 ishoal_native: $(sources:.c=.o)
 	$(CC) $(PYTHON_LDFLAGS) $(LDFLAGS) $^ -o $@
 
-ishoal_py: py_dist/**
-	$(PYTHON) -m zipapp py_dist -o $@
+py_dist_build: py_dist py_dist/** py-requirements.txt
+	mkdir -p py_dist_build && \
+	cp -a py_dist/* py_dist_build && \
+	$(PYTHON) -m pip install -r py-requirements.txt --target py_dist_build && \
+	rm -rf py_dist_build/*.dist-info || \
+	rm -rf py_dist_build
+
+ishoal_py: py_dist_build
+	$(PYTHON) -m zipapp py_dist_build -o $@
 
 ishoal: ishoal_native ishoal_py
 	cat $^ > $@ && chmod a+x $@ || rm -f $@

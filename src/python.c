@@ -12,6 +12,13 @@
 static struct thread *python_main_thread;
 
 static PyObject *
+ishoalc_thread_all_stop(PyObject *self, PyObject *args)
+{
+    thread_all_stop();
+    Py_RETURN_NONE;
+}
+
+static PyObject *
 ishoalc_should_stop(PyObject *self, PyObject *args)
 {
     PyObject *res = thread_should_stop(python_main_thread) ? Py_True : Py_False;
@@ -228,6 +235,8 @@ ishoalc_set_remote_addr(PyObject *self, PyObject *args)
         return NULL;
     }
 
+    set_remote_addr(local_ip, remote_ip, remote_port);
+
     Py_RETURN_NONE;
 }
 
@@ -248,10 +257,13 @@ ishoalc_delete_remote_addr(PyObject *self, PyObject *args)
         return NULL;
     }
 
+    delete_remote_addr(local_ip);
+
     Py_RETURN_NONE;
 }
 
 static PyMethodDef IshoalcMethods[] = {
+    {"thread_all_stop", ishoalc_thread_all_stop, METH_NOARGS, NULL},
     {"should_stop", ishoalc_should_stop, METH_NOARGS, NULL},
     {"sleep", ishoalc_sleep, METH_VARARGS, NULL},
     {"wait_for_switch", ishoalc_wait_for_switch, METH_NOARGS, NULL},
@@ -305,6 +317,9 @@ void python_thread(void *arg)
         goto out;
 
 out:
+    if (PyErr_Occurred())
+        PyErr_Print();
+
     Py_XDECREF(mainmod);
     Py_XDECREF(selfpath);
 
