@@ -97,7 +97,7 @@ def on_delete_remote_addr(local_ip):
     ishoalc.delete_remote_addr(local_ip)
 
 
-sio.connect('http://ishoal.ink/')
+sio.connect('https://ishoal.ink/')
 
 
 ishoalc.wait_for_switch()
