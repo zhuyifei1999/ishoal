@@ -15,7 +15,7 @@ macaddr_t host_mac;
 macaddr_t gateway_mac;
 
 ipaddr_t public_host_ip;
-ipaddr_t subnet_mask;
+ipaddr_t real_subnet_mask;
 
 static void get_if_ipaddr(char *iface, ipaddr_t *addr)
 {
@@ -74,7 +74,7 @@ static void get_if_macaddr(char *iface, macaddr_t *addr)
 static void get_if_gateway(char *iface, ipaddr_t *addr)
 {
 	bool found = false;
-	char *buf = read_whole_file("/proc/net/route");
+	char *buf = read_whole_file("/proc/net/route", NULL);
 
 	char *line = strtok(buf, "\n");
 	while ((line = strtok(NULL, "\n"))) {
@@ -111,7 +111,7 @@ static void get_if_gateway(char *iface, ipaddr_t *addr)
 static void resolve_arp(char *iface, ipaddr_t ipaddr, macaddr_t *macaddr)
 {
 	bool found = false;
-	char *buf = read_whole_file("/proc/net/arp");
+	char *buf = read_whole_file("/proc/net/arp", NULL);
 
 	char *line = strtok(buf, "\n");
 	while ((line = strtok(NULL, "\n"))) {
@@ -161,7 +161,7 @@ static void resolve_arp(char *iface, ipaddr_t ipaddr, macaddr_t *macaddr)
 void ifinfo_init(void)
 {
 	get_if_ipaddr(iface, &public_host_ip);
-	get_if_netmask(iface, &subnet_mask);
+	get_if_netmask(iface, &real_subnet_mask);
 	get_if_macaddr(iface, &host_mac);
 
 	ipaddr_t gateway_ip;

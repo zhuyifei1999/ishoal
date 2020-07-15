@@ -33,6 +33,7 @@ int main(int argc, char *argv[])
 
 	ifinfo_init();
 	start_endpoint();
+	load_conf();
 
 	struct rlimit unlimited = { RLIM_INFINITY, RLIM_INFINITY };
 	if (setrlimit(RLIMIT_MEMLOCK, &unlimited))

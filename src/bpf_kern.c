@@ -380,7 +380,7 @@ int xdp_prog(struct xdp_md *ctx)
 				if (iph->daddr != switch_ip &&
 				    iph->daddr != subnet_broadcast &&
 				    iph->daddr != 0xFFFFFFFFUL &&
-				    (bpf_htonl(iph->daddr) & 0xF0000000UL) != 0xE0000000UL)
+				    (bpf_ntohl(iph->daddr) & 0xF0000000UL) != 0xE0000000UL)
 					return XDP_DROP;
 
 				if (!bpf_map_lookup_elem(&remote_addrs, &iph->saddr))

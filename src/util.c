@@ -21,13 +21,11 @@ void perror_exit(char *msg)
 	exit(1);
 }
 
-char *read_whole_file(char *path)
+char *read_whole_file(char *path, size_t *nbytes)
 {
 	FILE *f = fopen(path, "r");
-	if (!f) {
-		perror(path);
-		exit(1);
-	}
+	if (!f)
+		perror_exit(path);
 
 	char *buf = NULL;
 	size_t buf_size = 0;
@@ -58,6 +56,9 @@ char *read_whole_file(char *path)
 
 	buf[read_size] = 0;
 	fclose(f);
+
+	if (nbytes)
+		*nbytes = read_size;
 
 	return buf;
 }

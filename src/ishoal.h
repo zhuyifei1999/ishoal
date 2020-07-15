@@ -25,7 +25,8 @@ extern macaddr_t gateway_mac;
 
 extern ipaddr_t switch_ip;
 extern ipaddr_t public_host_ip;
-extern ipaddr_t subnet_mask;
+extern ipaddr_t real_subnet_mask;
+extern ipaddr_t fake_gateway_ip;
 
 extern uint16_t vpn_port;
 
@@ -38,7 +39,7 @@ void fprintf_exit(char *fmt, ...);
 __attribute__ ((noreturn))
 void perror_exit(char *msg);
 
-char *read_whole_file(char *path);
+char *read_whole_file(char *path, size_t *nbytes);
 
 void hex_dump(void *ptr, size_t length);
 
@@ -47,6 +48,9 @@ char *mac_str(macaddr_t addr);
 
 void ifinfo_init(void);
 void start_endpoint(void);
+
+void load_conf(void);
+void save_conf(void);
 
 struct xsk_socket *xsk_configure_socket(char *iface, int queue,
 	void (*handler)(void *pkt, size_t length));

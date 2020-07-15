@@ -1,3 +1,4 @@
+#include <arpa/inet.h>
 #include <poll.h>
 #include <pthread.h>
 #include <unistd.h>
@@ -14,6 +15,8 @@ static struct bpf_kern *obj;
 
 macaddr_t switch_mac;
 ipaddr_t switch_ip;
+
+ipaddr_t fake_gateway_ip;
 
 static int num_xsk;
 
@@ -72,6 +75,55 @@ void on_switch_change(void (*fn)(void)) {
 	pthread_mutex_unlock(&on_switch_chg_handlers_lock);
 }
 
+static void __on_switch_change(void)
+{
+	struct on_switch_chg_handler *handler;
+	pthread_mutex_lock(&on_switch_chg_handlers_lock);
+	list_for_each_entry(handler, &on_switch_chg_handlers, list) {
+		handler->fn();
+	}
+	pthread_mutex_unlock(&on_switch_chg_handlers_lock);
+}
+
+void bpf_set_switch_ip(ipaddr_t *addr)
+{
+	if (switch_ip == *addr)
+		return;
+
+	switch_ip = *addr;
+	obj->bss->switch_ip = *addr;
+	__on_switch_change();
+}
+
+void bpf_set_switch_mac(macaddr_t *addr)
+{
+	if (!memcmp(&switch_mac, addr, sizeof(macaddr_t)))
+		return;
+
+	memcpy(&switch_mac, addr, sizeof(macaddr_t));
+	memcpy(&obj->bss->switch_mac, addr, sizeof(macaddr_t));
+	__on_switch_change();
+}
+
+static void update_subnet_mask(void)
+{
+	if (fake_gateway_ip)
+		obj->bss->subnet_mask = htonl(0xFFFFFF00);
+	else
+		obj->bss->subnet_mask = real_subnet_mask;
+}
+
+
+void bpf_fake_gateway_ip(ipaddr_t *addr)
+{
+	if (fake_gateway_ip == *addr)
+		return;
+
+	fake_gateway_ip = *addr;
+	obj->bss->fake_gateway_ip = *addr;
+
+	update_subnet_mask();
+}
 
 static void on_xsk_pkt(void *ptr, size_t length)
 {
@@ -80,12 +132,7 @@ static void on_xsk_pkt(void *ptr, size_t length)
 		switch_ip = obj->bss->switch_ip;
 		memcpy(&switch_mac, &obj->bss->switch_mac, sizeof(macaddr_t));
 
-		struct on_switch_chg_handler *handler;
-		pthread_mutex_lock(&on_switch_chg_handlers_lock);
-		list_for_each_entry(handler, &on_switch_chg_handlers, list) {
-			handler->fn();
-		}
-		pthread_mutex_unlock(&on_switch_chg_handlers_lock);
+		__on_switch_change();
 	}
 	if (length <= sizeof(struct ethhdr))
 		return;
@@ -109,9 +156,11 @@ void bpf_load_thread(void *arg)
 	memcpy(&obj->bss->switch_mac, &switch_mac, sizeof(macaddr_t));
 
 	obj->bss->public_host_ip = public_host_ip;
-	obj->bss->subnet_mask = subnet_mask;
 	memcpy(&obj->bss->host_mac, &host_mac, sizeof(macaddr_t));
 	memcpy(&obj->bss->gateway_mac, &gateway_mac, sizeof(macaddr_t));
+
+	obj->bss->fake_gateway_ip = fake_gateway_ip;
+	update_subnet_mask();
 
 	obj->bss->vpn_port = vpn_port;
 
