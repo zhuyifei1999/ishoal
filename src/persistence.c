@@ -74,7 +74,7 @@ void save_conf(void)
 		.fake_gateway_ip = fake_gateway_ip,
 	};
 
-	memcpy(&conf.switch_mac, &switch_mac, sizeof(macaddr_t));
+	memcpy(conf.switch_mac, switch_mac, sizeof(macaddr_t));
 
 	FILE *f = fopen(CONF_PATH, "w");
 	if (!f)
@@ -105,7 +105,7 @@ void load_conf(void)
 			return;
 
 		struct ishoal_conf_v1 *conf = buf;
-		memcpy(&switch_mac, &conf->switch_mac, sizeof(macaddr_t));
+		memcpy(switch_mac, conf->switch_mac, sizeof(macaddr_t));
 		switch_ip = conf->switch_ip;
 		fake_gateway_ip = conf->fake_gateway_ip;
 	}

@@ -227,7 +227,7 @@ static void switch_information_dialog(void)
 
 	ipaddr_t new_switch_ip = switch_ip;
 	macaddr_t new_switch_mac;
-	memcpy(&new_switch_mac, &switch_mac, sizeof(macaddr_t));
+	memcpy(new_switch_mac, switch_mac, sizeof(macaddr_t));
 
 	dialog_vars.nocancel = false;
 	dialog_vars.begin_set = false;

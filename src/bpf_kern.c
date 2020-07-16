@@ -232,7 +232,7 @@ int xdp_prog(struct xdp_md *ctx)
 			if (dst_port == bpf_htons(49152) &&
 			    eth_is_broadcast && !switch_ip) {
 				switch_ip = iph->saddr;
-				memcpy(&switch_mac, &eth->h_source, sizeof(macaddr_t));
+				memcpy(switch_mac, eth->h_source, sizeof(macaddr_t));
 			}
 		} else // TODO: ICMP?
 			return XDP_PASS;
@@ -291,8 +291,8 @@ int xdp_prog(struct xdp_md *ctx)
 				recompute_iph_csum(iph);
 				recompute_l4_csum_fast(ctx, iph, &iphp_orig);
 
-				memcpy(&eth->h_dest, &gateway_mac, sizeof(macaddr_t));
-				memcpy(&eth->h_source, &host_mac, sizeof(macaddr_t));
+				memcpy(eth->h_dest, gateway_mac, sizeof(macaddr_t));
+				memcpy(eth->h_source, host_mac, sizeof(macaddr_t));
 
 				return XDP_TX;
 			}
@@ -343,8 +343,8 @@ int xdp_prog(struct xdp_md *ctx)
 
 			recompute_iph_csum(iph);
 
-			memcpy(&eth->h_dest, &gateway_mac, sizeof(macaddr_t));
-			memcpy(&eth->h_source, &host_mac, sizeof(macaddr_t));
+			memcpy(eth->h_dest, gateway_mac, sizeof(macaddr_t));
+			memcpy(eth->h_source, host_mac, sizeof(macaddr_t));
 			eth->h_proto = bpf_htons(ETH_P_IP);
 
 			return XDP_TX;
@@ -386,8 +386,8 @@ int xdp_prog(struct xdp_md *ctx)
 				if (!bpf_map_lookup_elem(&remote_addrs, &iph->saddr))
 					return XDP_DROP;
 
-				memcpy(&eth->h_dest, &switch_mac, sizeof(macaddr_t));
-				memcpy(&eth->h_source, &host_mac, sizeof(macaddr_t));
+				memcpy(eth->h_dest, switch_mac, sizeof(macaddr_t));
+				memcpy(eth->h_source, host_mac, sizeof(macaddr_t));
 				eth->h_proto = bpf_htons(ETH_P_IP);
 
 				return XDP_TX;
@@ -425,8 +425,8 @@ int xdp_prog(struct xdp_md *ctx)
 				recompute_iph_csum(iph);
 				recompute_l4_csum_fast(ctx, iph, &iphp_orig);
 
-				memcpy(&eth->h_dest, &switch_mac, sizeof(macaddr_t));
-				memcpy(&eth->h_source, &host_mac, sizeof(macaddr_t));
+				memcpy(eth->h_dest, switch_mac, sizeof(macaddr_t));
+				memcpy(eth->h_source, host_mac, sizeof(macaddr_t));
 
 				return XDP_TX;
 			}
@@ -456,8 +456,8 @@ int xdp_prog(struct xdp_md *ctx)
 
 		ipaddr_t tmp_ip;
 
-		memcpy(&arppl->ar_tha, &arppl->ar_sha, sizeof(macaddr_t));
-		memcpy(&arppl->ar_sha, &host_mac, sizeof(macaddr_t));
+		memcpy(arppl->ar_tha, arppl->ar_sha, sizeof(macaddr_t));
+		memcpy(arppl->ar_sha, host_mac, sizeof(macaddr_t));
 
 		tmp_ip = arppl->ar_tip;
 		arppl->ar_tip = arppl->ar_sip;
@@ -465,8 +465,8 @@ int xdp_prog(struct xdp_md *ctx)
 
 		arph->ar_op = bpf_htons(ARPOP_REPLY);
 
-		memcpy(&eth->h_dest, &eth->h_source, sizeof(macaddr_t));
-		memcpy(&eth->h_source, &host_mac, sizeof(macaddr_t));
+		memcpy(eth->h_dest, eth->h_source, sizeof(macaddr_t));
+		memcpy(eth->h_source, host_mac, sizeof(macaddr_t));
 
 		return XDP_TX;
 	} else

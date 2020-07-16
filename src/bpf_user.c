@@ -97,11 +97,11 @@ void bpf_set_switch_ip(ipaddr_t addr)
 
 void bpf_set_switch_mac(macaddr_t addr)
 {
-	if (!memcmp(&switch_mac, addr, sizeof(macaddr_t)))
+	if (!memcmp(switch_mac, addr, sizeof(macaddr_t)))
 		return;
 
-	memcpy(&switch_mac, addr, sizeof(macaddr_t));
-	memcpy(&obj->bss->switch_mac, addr, sizeof(macaddr_t));
+	memcpy(switch_mac, addr, sizeof(macaddr_t));
+	memcpy(obj->bss->switch_mac, addr, sizeof(macaddr_t));
 	__on_switch_change();
 }
 
@@ -129,9 +129,9 @@ static void on_xsk_pkt(void *ptr, size_t length)
 	tui_on_xsk_pkt();
 
 	if (obj->bss->switch_ip != switch_ip ||
-	    memcmp(&obj->bss->switch_mac, &switch_mac, sizeof(macaddr_t))) {
+	    memcmp(obj->bss->switch_mac, switch_mac, sizeof(macaddr_t))) {
 		switch_ip = obj->bss->switch_ip;
-		memcpy(&switch_mac, &obj->bss->switch_mac, sizeof(macaddr_t));
+		memcpy(switch_mac, obj->bss->switch_mac, sizeof(macaddr_t));
 
 		__on_switch_change();
 	}
@@ -154,11 +154,11 @@ void bpf_load_thread(void *arg)
 	atexit(close_obj);
 
 	obj->bss->switch_ip = switch_ip;
-	memcpy(&obj->bss->switch_mac, &switch_mac, sizeof(macaddr_t));
+	memcpy(obj->bss->switch_mac, switch_mac, sizeof(macaddr_t));
 
 	obj->bss->public_host_ip = public_host_ip;
-	memcpy(&obj->bss->host_mac, &host_mac, sizeof(macaddr_t));
-	memcpy(&obj->bss->gateway_mac, &gateway_mac, sizeof(macaddr_t));
+	memcpy(obj->bss->host_mac, host_mac, sizeof(macaddr_t));
+	memcpy(obj->bss->gateway_mac, gateway_mac, sizeof(macaddr_t));
 
 	obj->bss->fake_gateway_ip = fake_gateway_ip;
 	update_subnet_mask();
