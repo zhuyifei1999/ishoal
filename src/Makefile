@@ -8,7 +8,7 @@ PYTHON_LDFLAGS = $(shell $(PYTHON_CONFIG) --ldflags)
 
 DIALOG_CONFIG ?= dialog-config
 DIALOG_CFLAGS = $(shell $(DIALOG_CONFIG) --cflags)
-DIALOG_LDFLAGS = $(shell $(DIALOG_CONFIG) --ldflags)
+DIALOG_LDFLAGS = $(shell $(DIALOG_CONFIG) --libs)
 
 LLC ?= llc
 CLANG ?= clang
@@ -16,7 +16,7 @@ CLANG ?= clang
 BPFTOOL ?= bpftool
 
 sources = bpf_user.c ifinfo.c main.c netutil.c persistence.c python.c \
-	remote.c thread.c util.c xsk.c
+	remote.c thread.c tui.c util.c xsk.c
 
 all: ishoal
 
@@ -44,11 +44,14 @@ clean:
 python.o: python.c
 	$(CC) $(PYTHON_CFLAGS) $(CFLAGS) -c $< -o $@
 
+tui.o: tui.c
+	$(CC) $(DIALOG_CFLAGS) $(CFLAGS) -c $< -o $@
+
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 ishoal_native: $(sources:.c=.o)
-	$(CC) $(PYTHON_LDFLAGS) $(LDFLAGS) $^ -o $@
+	$(CC) $^ $(PYTHON_LDFLAGS) $(DIALOG_LDFLAGS) $(LDFLAGS) -o $@
 
 py_dist_build: py_dist py_dist/** py-requirements.txt
 	mkdir -p py_dist_build && \

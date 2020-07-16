@@ -1,4 +1,6 @@
+#define _GNU_SOURCE
 #include <assert.h>
+#include <fcntl.h>
 #include <net/if.h>
 #include <netinet/ip.h>
 #include <poll.h>
@@ -7,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 
 #include <miniupnpc/miniupnpc.h>
 #include <miniupnpc/upnpcommands.h>
@@ -36,6 +39,9 @@ struct remote_switch {
 static pthread_mutex_t remotes_lock;
 static LIST_HEAD(remotes);
 
+int remotes_fd;
+static FILE *remotes_log;
+
 __attribute__((constructor))
 static void remote_init(void)
 {
@@ -58,6 +64,7 @@ static void upnp_clear()
 
 static void upnp_thread(void *args)
 {
+	return;
 	int error;
 	upnp_devlist = upnpDiscover(2000, iface, NULL,
 			       UPNP_LOCAL_PORT_ANY, 0, 2, &error);
@@ -124,6 +131,16 @@ static void upnp_thread(void *args)
 
 void start_endpoint(void)
 {
+	remotes_fd = open(".", O_TMPFILE | O_RDWR, S_IRUSR | S_IWUSR);
+	if (remotes_fd < 0)
+		perror_exit("open(O_TMPFILE)");
+
+	remotes_log = fdopen(remotes_fd, "a");
+	if (!remotes_log)
+		perror_exit("fdopen");
+
+	setvbuf(remotes_log, NULL, _IONBF, 0);
+
 	endpoint_fd = socket(AF_INET, SOCK_DGRAM, 0);
 	if (endpoint_fd < 0)
 		perror_exit("socket(AF_INET, SOCK_DGRAM, 0)");
@@ -145,12 +162,13 @@ void start_endpoint(void)
 	if (bind(endpoint_fd, (struct sockaddr *)&addr, addrlen) < 0)
 		perror_exit("bind");
 
-
 	if (getsockname(endpoint_fd, (struct sockaddr *)&addr, &addrlen) == -1)
 		perror_exit("bind");
 
 	vpn_port = ntohs(addr.sin_port);
 	assert(vpn_port);
+
+	fprintf(remotes_log, "Endpoint UDP port: %d\n", vpn_port);
 
 	thread_start(upnp_thread, NULL, "upnp");
 }
@@ -182,6 +200,8 @@ void set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip, uint16_t remote_port
 	list_add(&remote->list, &remotes);
 	pthread_mutex_unlock(&remotes_lock);
 
+	fprintf(remotes_log, "+ Remote IP %s\n", ip_str(local_ip));
+
 	bpf_set_remote_addr(local_ip, &remote->remote);
 }
 
@@ -201,6 +221,8 @@ void delete_remote_addr(ipaddr_t local_ip)
 		}
 	}
 	pthread_mutex_unlock(&remotes_lock);
+
+	fprintf(remotes_log, "- Remote IP %s\n", ip_str(local_ip));
 
 	bpf_delete_remote_addr(local_ip);
 }

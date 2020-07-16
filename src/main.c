@@ -43,7 +43,8 @@ int main(int argc, char *argv[])
 	signal(SIGTERM, sig_handler);
 
 	thread_start(bpf_load_thread, NULL, "bpf");
-	thread_start(python_thread, NULL, "python");
+	// thread_start(python_thread, NULL, "python");
+	thread_start(tui_thread, NULL, "tui");
 
 	while (!thread_should_stop(current)) {
 		struct pollfd fds[1] = {{thread_stop_eventfd(current), POLLIN}};

@@ -85,17 +85,17 @@ static void __on_switch_change(void)
 	pthread_mutex_unlock(&on_switch_chg_handlers_lock);
 }
 
-void bpf_set_switch_ip(ipaddr_t *addr)
+void bpf_set_switch_ip(ipaddr_t addr)
 {
-	if (switch_ip == *addr)
+	if (switch_ip == addr)
 		return;
 
-	switch_ip = *addr;
-	obj->bss->switch_ip = *addr;
+	switch_ip = addr;
+	obj->bss->switch_ip = addr;
 	__on_switch_change();
 }
 
-void bpf_set_switch_mac(macaddr_t *addr)
+void bpf_set_switch_mac(macaddr_t addr)
 {
 	if (!memcmp(&switch_mac, addr, sizeof(macaddr_t)))
 		return;
@@ -113,20 +113,21 @@ static void update_subnet_mask(void)
 		obj->bss->subnet_mask = real_subnet_mask;
 }
 
-
-void bpf_fake_gateway_ip(ipaddr_t *addr)
+void bpf_set_fake_gateway_ip(ipaddr_t addr)
 {
-	if (fake_gateway_ip == *addr)
+	if (fake_gateway_ip == addr)
 		return;
 
-	fake_gateway_ip = *addr;
-	obj->bss->fake_gateway_ip = *addr;
+	fake_gateway_ip = addr;
+	obj->bss->fake_gateway_ip = addr;
 
 	update_subnet_mask();
 }
 
 static void on_xsk_pkt(void *ptr, size_t length)
 {
+	tui_on_xsk_pkt();
+
 	if (obj->bss->switch_ip != switch_ip ||
 	    memcmp(&obj->bss->switch_mac, &switch_mac, sizeof(macaddr_t))) {
 		switch_ip = obj->bss->switch_ip;

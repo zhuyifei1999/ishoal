@@ -22,6 +22,8 @@ io.on('connection', function(socket) {
   if (!IPV4_REGEXP.test(publicIP))
     throw new Error(`Unexpected IP ${publicIP}`);
 
+  let localIPOld = undefined;
+
   let initialized = false;
   socket.on('pulse', function(switchIP, vpnPort) {
     if (typeof switchIP !== 'string' || typeof vpnPort !== 'number')
@@ -49,7 +51,14 @@ io.on('connection', function(socket) {
           socket.broadcast.emit('delete_remote_addr', localIP);
         }
       }
+    } else if (localIPOld && localIPOld !== switchIP) {
+      if (allSwitches.has(localIPOld)) {
+        allSwitches.delete(localIPOld);
+        socket.broadcast.emit('delete_remote_addr', localIPOld);
+      }
     }
+
+    localIPOld = switchIP;
 
     let shouldBroadcast = true;
     if (allSwitches.has(switchIP)) {

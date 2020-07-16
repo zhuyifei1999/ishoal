@@ -109,6 +109,13 @@ void thread_join(struct thread *thread)
 	pthread_join(thread->pthread, NULL);
 }
 
+/* Use only if really necessary */
+void thread_kill(struct thread *thread)
+{
+	assert(thread != current);
+	pthread_cancel(thread->pthread);
+}
+
 void thread_release(struct thread *thread)
 {
 	assert(thread->exited);

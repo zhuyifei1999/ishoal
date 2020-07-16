@@ -30,7 +30,9 @@ extern ipaddr_t fake_gateway_ip;
 
 extern uint16_t vpn_port;
 
+extern int remotes_fd;
 
+void tui_thread(void *arg);
 void bpf_load_thread(void *arg);
 void python_thread(void *arg);
 
@@ -52,6 +54,12 @@ void start_endpoint(void);
 void load_conf(void);
 void save_conf(void);
 
+void bpf_set_switch_ip(ipaddr_t addr);
+void bpf_set_switch_mac(macaddr_t addr);
+void bpf_set_fake_gateway_ip(ipaddr_t addr);
+
+void tui_on_xsk_pkt(void);
+
 struct xsk_socket *xsk_configure_socket(char *iface, int queue,
 	void (*handler)(void *pkt, size_t length));
 
@@ -64,6 +72,7 @@ bool thread_should_stop(struct thread *thread);
 int thread_stop_eventfd(struct thread *thread);
 bool thread_is_main(struct thread *thread);
 void thread_join(struct thread *thread);
+void thread_kill(struct thread *thread);
 void thread_release(struct thread *thread);
 void thread_all_stop(void);
 void thread_join_rest(void);
