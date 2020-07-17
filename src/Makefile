@@ -15,8 +15,8 @@ CLANG ?= clang
 
 BPFTOOL ?= bpftool
 
-sources = bpf_user.c ifinfo.c main.c netutil.c persistence.c python.c \
-	remote.c thread.c tui.c util.c xsk.c
+SRC = $(filter-out bpf_kern.c, $(wildcard *.c))
+OBJ = $(patsubst %.c, %.o, $(SRC))
 
 all: ishoal
 
@@ -50,7 +50,7 @@ tui.o: tui.c
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-ishoal_native: $(sources:.c=.o)
+ishoal_native: $(OBJ)
 	$(CC) $^ $(PYTHON_LDFLAGS) $(DIALOG_LDFLAGS) $(LDFLAGS) -o $@
 
 py_dist_build: py_dist py_dist/** py-requirements.txt

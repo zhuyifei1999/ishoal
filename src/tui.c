@@ -3,12 +3,20 @@
 #include <errno.h>
 #include <linux/limits.h>
 #include <poll.h>
+#include <pthread.h>
 #include <setjmp.h>
 #include <sys/wait.h>
 
 #include "ishoal.h"
 
 static struct thread *tui_thread_ptr;
+
+static pthread_mutex_t tui_reaper_lock;
+__attribute__((constructor))
+static void tui_reaper_init(void)
+{
+	pthread_mutex_init(&tui_reaper_lock, NULL);
+}
 
 static void tui_reset(void)
 {
@@ -31,7 +39,9 @@ static void tui_reaper_thread(void *arg)
 		poll(fds, 1, -1);
 	}
 
+	pthread_mutex_lock(&tui_reaper_lock);
 	thread_kill(tui_thread_ptr);
+	pthread_mutex_unlock(&tui_reaper_lock);
 	tui_reset();
 }
 
@@ -120,7 +130,7 @@ static void detect_switch_online(void)
 
 	dialog_vars.begin_set = false;
 	dialog_msgbox("Setup", "\nDetecting status of local Switch ...", 5, 40, 0);
-	usleep(2 * 1000000);
+	usleep(2500000);
 }
 
 static void detect_local_switch(void)
@@ -171,6 +181,8 @@ static void detect_local_switch(void)
 			 ip_str(switch_ip), mac_str(switch_mac));
 		dialog_msgbox("Setup", buf, 9, 40, 1);
 	}
+
+	save_conf();
 }
 
 static void switch_gw_dialog(void)
@@ -218,6 +230,8 @@ invalid_ip:
 
 out:
 	bpf_set_fake_gateway_ip(new_gateway_ip);
+
+	save_conf();
 }
 
 static void switch_information_dialog(void)
@@ -312,6 +326,8 @@ invalid_ip:
 
 	bpf_set_switch_ip(new_switch_ip);
 	bpf_set_switch_mac(new_switch_mac);
+
+	save_conf();
 }
 
 void tui_thread(void *arg)
@@ -438,5 +454,11 @@ void tui_thread(void *arg)
 
 out:
 	tui_reset();
+
+	pthread_mutex_lock(&tui_reaper_lock);
 	thread_all_stop();
+	pthread_mutex_unlock(&tui_reaper_lock);
+
+	while (true)
+		pause();
 }
