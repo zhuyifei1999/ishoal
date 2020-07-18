@@ -15,6 +15,8 @@
 #define IS_ERR(val) (PTR_ERR(val) >= -MAX_ERRNO)
 #define IS_ERR_OR_NULL(val) (IS_ERR(val) || !(val))
 
+extern int exitcode;
+
 extern char *progname;
 extern char *iface;
 extern int ifindex;

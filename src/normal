@@ -1,0 +1,796 @@
+bpf_kern.c:	uint32_t check = (uint32_t)iph->check;
+bpf_kern.c:	iph->check = (uint16_t)(check + (check >= 0xFFFF));
+bpf_kern.c:	return --iph->ttl;
+bpf_kern.c:	iph->check = 0;
+bpf_kern.c:	iph->check = csum;
+bpf_kern.c:	iphp->saddr = iph->saddr;
+bpf_kern.c:	iphp->daddr = iph->daddr;
+bpf_kern.c:	iphp->reserved = 0;
+bpf_kern.c:	iphp->protocol = iph->protocol;
+bpf_kern.c:	iphp->l4_len = iph->tot_len - sizeof(struct iphdr);
+bpf_kern.c:	if (iph->protocol == IPPROTO_TCP) {
+bpf_kern.c:		csum_field = &tcph->check;
+bpf_kern.c:	} else if (iph->protocol == IPPROTO_UDP) {
+bpf_kern.c:		csum_field = &udph->check;
+bpf_kern.c:	void *data_end = (void *)(long)ctx->data_end;
+bpf_kern.c:	void *data_start = (void *)(long)ctx->data;
+bpf_kern.c:	void *data_end = (void *)(long)ctx->data_end;
+bpf_kern.c:	bool eth_is_broadcast = (eth->h_dest[0] &
+bpf_kern.c:				 eth->h_dest[1] &
+bpf_kern.c:				 eth->h_dest[2] &
+bpf_kern.c:				 eth->h_dest[3] &
+bpf_kern.c:				 eth->h_dest[4] &
+bpf_kern.c:				 eth->h_dest[5]) == 0xff;
+bpf_kern.c:	if (eth->h_proto == bpf_htons(ETH_P_IP)) {
+bpf_kern.c:		if (iph->protocol == IPPROTO_TCP) {
+bpf_kern.c:			src_port = tcph->source;
+bpf_kern.c:			dst_port = tcph->dest;
+bpf_kern.c:		} else if (iph->protocol == IPPROTO_UDP) {
+bpf_kern.c:			src_port = udph->source;
+bpf_kern.c:			dst_port = udph->dest;
+bpf_kern.c:				switch_ip = iph->saddr;
+bpf_kern.c:				memcpy(&switch_mac, &eth->h_source, sizeof(macaddr_t));
+bpf_kern.c:		if (mac_eq(&switch_mac, &eth->h_source)) {
+bpf_kern.c:				if (iph->protocol == IPPROTO_UDP &&
+bpf_kern.c:				int ret, index = ctx->rx_queue_index;
+bpf_kern.c:				// Fallback for pre-5.3 kernels, not supporting default
+bpf_kern.c:			    same_subnet(iph->saddr, fake_gateway_ip) &&
+bpf_kern.c:			    !same_subnet(iph->daddr, fake_gateway_ip)) {
+bpf_kern.c:				if (iph->ttl <= 1)
+bpf_kern.c:					.protocol = iph->protocol,
+bpf_kern.c:					.daddr = iph->daddr,
+bpf_kern.c:					.saddr = iph->saddr,
+bpf_kern.c:				iph->saddr = public_host_ip;
+bpf_kern.c:				memcpy(&eth->h_dest, &gateway_mac, sizeof(macaddr_t));
+bpf_kern.c:				memcpy(&eth->h_source, &host_mac, sizeof(macaddr_t));
+bpf_kern.c:				bpf_map_lookup_elem(&remote_addrs, &iph->daddr);
+bpf_kern.c:			if (bpf_xdp_adjust_head(ctx, 0 - (int)(sizeof(struct iphdr) +
+bpf_kern.c:			data_start = (void *)(long)ctx->data;
+bpf_kern.c:			data_end = (void *)(long)ctx->data_end;
+bpf_kern.c:			udph->source = bpf_htons(vpn_port);
+bpf_kern.c:			udph->dest = bpf_htons(remote_addr->port);
+bpf_kern.c:			udph->len = bpf_htons((char *)data_end - (char *)udph);
+bpf_kern.c:			iph->ihl = 5;
+bpf_kern.c:			iph->version = 4;
+bpf_kern.c:			iph->tos = 0;
+bpf_kern.c:			iph->tot_len = bpf_htons((char *)data_end - (char *)iph);
+bpf_kern.c:			iph->id = 0;
+bpf_kern.c:			iph->frag_off = 0;
+bpf_kern.c:			iph->ttl = 64;
+bpf_kern.c:			iph->protocol = IPPROTO_UDP;
+bpf_kern.c:			iph->saddr = public_host_ip;
+bpf_kern.c:			iph->daddr = remote_addr->ip;
+bpf_kern.c:			memcpy(&eth->h_dest, &gateway_mac, sizeof(macaddr_t));
+bpf_kern.c:			memcpy(&eth->h_source, &host_mac, sizeof(macaddr_t));
+bpf_kern.c:			eth->h_proto = bpf_htons(ETH_P_IP);
+bpf_kern.c:		if (iph->daddr == public_host_ip) {
+bpf_kern.c:			if (iph->protocol == IPPROTO_UDP &&
+bpf_kern.c:				data_start = (void *)(long)ctx->data;
+bpf_kern.c:				data_end = (void *)(long)ctx->data_end;
+bpf_kern.c:				if (iph->ihl != 5 || iph->version != 4)
+bpf_kern.c:				if (iph->daddr != switch_ip &&
+bpf_kern.c:				    iph->daddr != subnet_broadcast &&
+bpf_kern.c:				    iph->daddr != 0xFFFFFFFFUL &&
+bpf_kern.c:				    (bpf_ntohl(iph->daddr) & 0xF0000000UL) != 0xE0000000UL)
+bpf_kern.c:				if (!bpf_map_lookup_elem(&remote_addrs, &iph->saddr))
+bpf_kern.c:				memcpy(&eth->h_dest, &switch_mac, sizeof(macaddr_t));
+bpf_kern.c:				memcpy(&eth->h_source, &host_mac, sizeof(macaddr_t));
+bpf_kern.c:				eth->h_proto = bpf_htons(ETH_P_IP);
+bpf_kern.c:			    !same_subnet(iph->saddr, fake_gateway_ip)) {
+bpf_kern.c:				if (iph->ttl <= 1)
+bpf_kern.c:					.protocol = iph->protocol,
+bpf_kern.c:					.daddr = iph->saddr,
+bpf_kern.c:				if (bpf_ktime_get_ns() - conntrack_entry->ktime_ns
+bpf_kern.c:				conntrack_entry->ktime_ns = bpf_ktime_get_ns();
+bpf_kern.c:				iph->daddr = conntrack_entry->saddr;
+bpf_kern.c:				memcpy(&eth->h_dest, &switch_mac, sizeof(macaddr_t));
+bpf_kern.c:				memcpy(&eth->h_source, &host_mac, sizeof(macaddr_t));
+bpf_kern.c:	} else if (eth->h_proto == bpf_htons(ETH_P_ARP)) {
+bpf_kern.c:		if (arph->ar_pro != bpf_htons(ETH_P_IP) ||
+bpf_kern.c:		    arph->ar_hln != 6 ||
+bpf_kern.c:		    arph->ar_pln != 4 ||
+bpf_kern.c:		    arph->ar_op != bpf_htons(ARPOP_REQUEST))
+bpf_kern.c:		if (arppl->ar_tip != fake_gateway_ip &&
+bpf_kern.c:		    !bpf_map_lookup_elem(&remote_addrs, &arppl->ar_tip))
+bpf_kern.c:		memcpy(&arppl->ar_tha, &arppl->ar_sha, sizeof(macaddr_t));
+bpf_kern.c:		memcpy(&arppl->ar_sha, &host_mac, sizeof(macaddr_t));
+bpf_kern.c:		tmp_ip = arppl->ar_tip;
+bpf_kern.c:		arppl->ar_tip = arppl->ar_sip;
+bpf_kern.c:		arppl->ar_sip = tmp_ip;
+bpf_kern.c:		arph->ar_op = bpf_htons(ARPOP_REPLY);
+bpf_kern.c:		memcpy(&eth->h_dest, &eth->h_source, sizeof(macaddr_t));
+bpf_kern.c:		memcpy(&eth->h_source, &host_mac, sizeof(macaddr_t));
+bpf_user.c:	bpf_set_link_xdp_fd(ifindex, -1, 0);
+bpf_user.c:		bpf_map_delete_elem(bpf_map__fd(obj->maps.xsks_map), &key);
+bpf_user.c:	if (bpf_map_update_elem(bpf_map__fd(obj->maps.remote_addrs), &local_ip,
+bpf_user.c:	bpf_map_delete_elem(bpf_map__fd(obj->maps.remote_addrs), &local_ip);
+bpf_user.c:	handler->fn = fn;
+bpf_user.c:	list_add(&handler->list, &on_switch_chg_handlers);
+bpf_user.c:		handler->fn();
+bpf_user.c:	obj->bss->switch_ip = *addr;
+bpf_user.c:	memcpy(&obj->bss->switch_mac, addr, sizeof(macaddr_t));
+bpf_user.c:		obj->bss->subnet_mask = htonl(0xFFFFFF00);
+bpf_user.c:		obj->bss->subnet_mask = real_subnet_mask;
+bpf_user.c:	obj->bss->fake_gateway_ip = *addr;
+bpf_user.c:	if (obj->bss->switch_ip != switch_ip ||
+bpf_user.c:	    memcmp(&obj->bss->switch_mac, &switch_mac, sizeof(macaddr_t))) {
+bpf_user.c:		switch_ip = obj->bss->switch_ip;
+bpf_user.c:		memcpy(&switch_mac, &obj->bss->switch_mac, sizeof(macaddr_t));
+bpf_user.c:	length -= sizeof(struct ethhdr);
+bpf_user.c:	obj->bss->switch_ip = switch_ip;
+bpf_user.c:	memcpy(&obj->bss->switch_mac, &switch_mac, sizeof(macaddr_t));
+bpf_user.c:	obj->bss->public_host_ip = public_host_ip;
+bpf_user.c:	memcpy(&obj->bss->host_mac, &host_mac, sizeof(macaddr_t));
+bpf_user.c:	memcpy(&obj->bss->gateway_mac, &gateway_mac, sizeof(macaddr_t));
+bpf_user.c:	obj->bss->fake_gateway_ip = fake_gateway_ip;
+bpf_user.c:	obj->bss->vpn_port = vpn_port;
+bpf_user.c:	if (bpf_set_link_xdp_fd(ifindex, bpf_program__fd(obj->progs.xdp_prog), 0) < 0)
+bpf_user.c:		if (bpf_map_update_elem(bpf_map__fd(obj->maps.xsks_map), &key, &fd, 0))
+ifinfo.c:	strncpy(ifr.ifr_name, iface, IFNAMSIZ-1);
+ifinfo.c:	*addr = ((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr.s_addr;
+ifinfo.c:	strncpy(ifr.ifr_name, iface, IFNAMSIZ-1);
+ifinfo.c:	*addr = ((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr.s_addr;
+ifinfo.c:	strncpy(ifr.ifr_name, iface, IFNAMSIZ-1);
+main.c:		poll(fds, 1, -1);
+python.c:static int wait_switch_chg_eventfd = -1;
+python.c:static int on_switch_chg_threadfn_eventfd = -1;
+python.c:        poll(fds, 2, -1);
+python.c:        wait_switch_chg_eventfd = -1;
+python.c:        int res = poll(fds, 2, -1);
+python.c:    on_switch_chg_threadfn_eventfd = -1;
+python.c:    PyModuleDef_HEAD_INIT, "ishoalc", NULL, -1, IshoalcMethods,
+remote.c:			urls->controlURL,
+remote.c:			data->first.servicetype,
+remote.c:	for (struct UPNPDev *device = upnp_devlist; device; device = device->pNext)
+remote.c:			urls->controlURL,
+remote.c:			data->first.servicetype,
+remote.c:				urls->controlURL,
+remote.c:				data->first.servicetype,
+remote.c:				urls->controlURL,
+remote.c:				data->first.servicetype,
+remote.c:	strncpy(ifr.ifr_name, iface, IFNAMSIZ-1);
+remote.c:	if (getsockname(endpoint_fd, (struct sockaddr *)&addr, &addrlen) == -1)
+remote.c:		if (remote->local == local_ip) {
+remote.c:			remote->remote.ip = remote_ip;
+remote.c:			remote->remote.port = remote_port;
+remote.c:	remote->local = local_ip;
+remote.c:	remote->remote.ip = remote_ip;
+remote.c:	remote->remote.port = remote_port;
+remote.c:	list_add(&remote->list, &remotes);
+remote.c:	bpf_set_remote_addr(local_ip, &remote->remote);
+remote.c:		if (remote->local == local_ip) {
+remote.c:			list_del(&remote->list);
+remote.c:	fprintf(remotes_log, "- Remote IP %s\n", ip_str(local_ip));
+remote.c:			.sin_port = htons(remote->remote.port),
+remote.c:			.sin_addr = { remote->remote.ip },
+thread.c:	current->stop_eventfd = eventfd(0, EFD_CLOEXEC);
+thread.c:	if (current->stop_eventfd < 0)
+thread.c:	list_add(&current->list, &threads);
+thread.c:	list_add(&current->list, &threads);
+thread.c:	current->fn(current->arg);
+thread.c:	list_del(&current->list);
+thread.c:	current->exited = true;
+thread.c:	thread->fn = fn;
+thread.c:	thread->arg = arg;
+thread.c:	thread->stop_eventfd = eventfd(0, EFD_CLOEXEC);
+thread.c:	if (thread->stop_eventfd < 0)
+thread.c:	if (pthread_create(&thread->pthread, NULL, thread_wrapper_fn, thread))
+thread.c:	pthread_setname_np(thread->pthread, name);
+thread.c:	thread->should_stop = true;
+thread.c:	if (write(thread->stop_eventfd, &event_data, sizeof(event_data)) !=
+thread.c:	return thread->should_stop;
+thread.c:	return thread->stop_eventfd;
+thread.c:	pthread_join(thread->pthread, NULL);
+thread.c:	pthread_cancel(thread->pthread);
+thread.c:	assert(thread->exited);
+thread.c:	close(thread->stop_eventfd);
+util.c:	while (length-- > 0) {
+xsk.c:		xsk_socket__delete((*darray_idx(xsks, i))->xsk);
+xsk.c:		xsk_umem__delete((*darray_idx(xsks, i))->umem.umem);
+xsk.c:	rcvd = xsk_ring_cons__peek(&xsk->rx, 64, &idx_rx);
+xsk.c:	ret = xsk_ring_prod__reserve(&xsk->umem.fq, rcvd, &idx_fq);
+xsk.c:		ret = xsk_ring_prod__reserve(&xsk->umem.fq, rcvd, &idx_fq);
+xsk.c:		uint64_t addr = xsk_ring_cons__rx_desc(&xsk->rx, idx_rx)->addr;
+xsk.c:		uint32_t len = xsk_ring_cons__rx_desc(&xsk->rx, idx_rx++)->len;
+xsk.c:		char *pkt = xsk_umem__get_data(xsk->umem.buffer, addr);
+xsk.c:		xsk->handler(pkt, len);
+xsk.c:		*xsk_ring_prod__fill_addr(&xsk->umem.fq, idx_fq++) = orig;
+xsk.c:	xsk_ring_prod__submit(&xsk->umem.fq, rcvd);
+xsk.c:	xsk_ring_cons__release(&xsk->rx, rcvd);
+xsk.c:			fds[i].fd = xsk_socket__fd(xsks_copy[i]->xsk);
+xsk.c:		int res = poll(fds, size, -1);
+xsk.c:	xsk->handler = handler;
+xsk.c:	xsk->umem.buffer = mmap(NULL, bufs_size,
+xsk.c:				MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+xsk.c:	if (xsk->umem.buffer == MAP_FAILED)
+xsk.c:	if (xsk_umem__create(&xsk->umem.umem, xsk->umem.buffer, bufs_size,
+xsk.c:	    &xsk->umem.fq, &xsk->umem.cq, &umem_cfg))
+xsk.c:	if (xsk_ring_prod__reserve(&xsk->umem.fq,
+xsk.c:		*xsk_ring_prod__fill_addr(&xsk->umem.fq, idx++) =
+xsk.c:	xsk_ring_prod__submit(&xsk->umem.fq, NUM_FRAMES);
+xsk.c:	if (xsk_socket__create(&xsk->xsk, iface, queue, xsk->umem.umem,
+xsk.c:			       &xsk->rx, NULL, &xsk_cfg)) {
+xsk.c:		xsk_umem__delete(xsk->umem.umem);
+xsk.c:	return xsk->xsk;
+darray.h:#define darray_dec(darray) darray_resize(darray, darray_nmemb(darray) - 1)
+darray.h:#define darray_tail(darray) darray_idx(darray, darray_nmemb(darray) - 1)
+ishoal.h:	((type *)(__mptr - offsetof(type, member))); })
+ishoal.h:#define IS_ERR(val) (PTR_ERR(val) >= -MAX_ERRNO)
+list.h:	list->next = list;
+list.h:	list->prev = list;
+list.h:	next->prev = lst;
+list.h:	lst->next = next;
+list.h:	lst->prev = prev;
+list.h:	prev->next = lst;
+list.h:	__list_add(lst, head, head->next);
+list.h:	next->prev = prev;
+list.h:	prev->next = next;
+list.h:	__list_del(entry->prev, entry->next);
+list.h:	lst->next = old->next;
+list.h:	lst->next->prev = lst;
+list.h:	lst->prev = old->prev;
+list.h:	lst->prev->next = lst;
+list.h:	return list->prev == head;
+list.h:	return list->next == head;
+list.h:	return head->next == head;
+list.h:	list_entry((ptr)->next, type, member)
+list.h:	list_entry((ptr)->prev, type, member)
+list.h:	struct list_head *pos__ = head__->next; \
+list.h:	list_entry((pos)->member.next, typeof(*(pos)), member)
+list.h:	list_entry((pos)->member.prev, typeof(*(pos)), member)
+list.h:	for (pos = (head)->next; pos != (head); pos = pos->next)
+list.h:	for (pos = pos->next; pos != (head); pos = pos->next)
+list.h:	for (pos = (head)->prev; pos != (head); pos = pos->prev)
+list.h:	for (pos = (head)->next, n = pos->next; pos != (head); \
+list.h:		pos = n, n = pos->next)
+list.h:	for (pos = (head)->prev, n = pos->prev; \
+list.h:	     pos = n, n = pos->prev)
+list.h:	     &pos->member != (head);					\
+list.h:	     &pos->member != (head); 					\
+list.h:	     &pos->member != (head);					\
+list.h:	     &pos->member != (head);					\
+list.h:	for (; &pos->member != (head);					\
+list.h:	for (; &pos->member != (head);					\
+list.h:	     &pos->member != (head); 					\
+Makefile:CFLAGS ?= -O2 -pipe -g
+Makefile:LDFLAGS ?= $(CFLAGS) -lbpf -lpthread -lminiupnpc
+Makefile:PYTHON_CONFIG ?= $(PYTHON)-config
+Makefile:PYTHON_CFLAGS = $(shell $(PYTHON_CONFIG) --cflags)
+Makefile:PYTHON_LDFLAGS = $(shell $(PYTHON_CONFIG) --ldflags)
+Makefile:DIALOG_CONFIG ?= dialog-config
+Makefile:DIALOG_CFLAGS = $(shell $(DIALOG_CONFIG) --cflags)
+Makefile:DIALOG_LDFLAGS = $(shell $(DIALOG_CONFIG) --libs)
+Makefile:	rm -f *.o *.d *.skel.h ishoal_native ishoal_py ishoal
+Makefile:	rm -rf py_dist_build
+Makefile:	$(CC) -M $(shell $(PYTHON_CONFIG) --includes) $(CFLAGS) $< | \
+Makefile:	$(CLANG) -fno-common $(CFLAGS) -target bpf -emit-llvm -c $< -o - | \
+Makefile:		llc -march=bpf -mcpu=v2 -filetype=obj -o $@
+Makefile:	$(BPFTOOL) gen skeleton $< > $@ || rm -f $@
+Makefile:	$(CC) $(PYTHON_CFLAGS) $(CFLAGS) -c $< -o $@
+Makefile:	$(CC) $(DIALOG_CFLAGS) $(CFLAGS) -c $< -o $@
+Makefile:	$(CC) $(CFLAGS) -c $< -o $@
+Makefile:	$(CC) $^ $(PYTHON_LDFLAGS) $(DIALOG_LDFLAGS) $(LDFLAGS) -o $@
+Makefile:py_dist_build: py_dist py_dist/** py-requirements.txt
+Makefile:	mkdir -p py_dist_build && \
+Makefile:	cp -a py_dist/* py_dist_build && \
+Makefile:	$(PYTHON) -m pip install -r py-requirements.txt --target py_dist_build && \
+Makefile:	rm -rf py_dist_build/*.dist-info || \
+Makefile:	rm -rf py_dist_build
+Makefile:	$(PYTHON) -m zipapp py_dist_build -o $@
+Makefile:	cat $^ > $@ && chmod a+x $@ || rm -f $@
+py-requirements.txt:python-socketio
+py_dist/ishoal.py:                    if not name or name.startswith('Thread-'):
+py_dist/ishoal.py:    r'^(?!0)(?!.*\.$)((1?\d?\d|25[0-5]|2[0-4]\d)(\.|$)){4}$')
+py_dist/ishoal.py:# if we ishoalc.sleep(-1) then signal handler will never execute
+tui.c:		poll(fds, 1, -1);
+tui.c:	// dlg_del_window(dialog_state.all_windows->normal);
+tui.c:		"2", "Re-detect Switch",
+tui.c:	// dialog --begin 16 2 --tailboxbg '/tmp/remote-switch-log.txt' 8 76 \
+tui.c:	//   --and-widget --title "$VDIALOG_TITLE" --begin 3 10 --cancel-label "Quit" --menu "Please select an option:" 11 60 8 \
+tui.c:	//   "2" "Re-detect Switch" \
+persistence.c:	if (dir[len - 1] == '/')
+persistence.c:		dir[len - 1] = 0;
+persistence.c:		memcpy(&switch_mac, &conf->switch_mac, sizeof(macaddr_t));
+persistence.c:		switch_ip = conf->switch_ip;
+persistence.c:		fake_gateway_ip = conf->fake_gateway_ip;
+xsk.d:xsk.o xsk.d : xsk.c /usr/include/stdc-predef.h /usr/include/assert.h \
+xsk.d: /usr/include/bits/wordsize.h /usr/include/bits/long-double.h \
+xsk.d: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h /usr/include/poll.h \
+xsk.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stddef.h \
+xsk.d: /usr/include/bits/types/struct_sched_param.h /usr/include/bits/cpu-set.h \
+xsk.d: /usr/include/bits/pthreadtypes.h /usr/include/bits/thread-shared-types.h \
+xsk.d: /usr/include/bits/pthreadtypes-arch.h /usr/include/bits/struct_mutex.h \
+xsk.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdint.h \
+xsk.d: /usr/include/stdint.h /usr/include/bits/libc-header-start.h \
+xsk.d: /usr/include/bits/wchar.h /usr/include/bits/stdint-intn.h \
+xsk.d: /usr/include/bits/stdint-uintn.h /usr/include/bits/eventfd.h \
+xsk.d: /usr/include/bits/mman-map-flags-generic.h \
+xsk.d: /usr/include/bits/mman-linux.h /usr/include/bits/mman-shared.h \
+xsk.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdarg.h \
+xsk.d: /usr/include/asm/types.h /usr/include/asm-generic/types.h \
+xsk.d: /usr/include/asm-generic/int-ll64.h /usr/include/asm/bitsperlong.h \
+xsk.d: /usr/include/asm-generic/bitsperlong.h /usr/include/linux/posix_types.h \
+xsk.d: /usr/include/asm/posix_types_64.h /usr/include/asm-generic/posix_types.h \
+xsk.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdbool.h \
+xsk.d: /usr/include/bits/byteswap.h /usr/include/bits/uintn-identity.h \
+xsk.d: /usr/include/bits/floatn-common.h /usr/include/alloca.h \
+xsk.d: /usr/include/bits/stdlib-bsearch.h /usr/include/bits/stdlib-float.h \
+util.d:util.o util.d : util.c /usr/include/stdc-predef.h \
+util.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdarg.h \
+util.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdbool.h \
+util.d: /usr/include/stdio.h /usr/include/bits/libc-header-start.h \
+util.d: /usr/include/bits/wordsize.h /usr/include/bits/long-double.h \
+util.d: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h \
+util.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stddef.h \
+util.d: /usr/include/bits/floatn-common.h /usr/include/sys/types.h \
+util.d: /usr/include/bits/stdint-intn.h /usr/include/endian.h \
+util.d: /usr/include/bits/byteswap.h /usr/include/bits/uintn-identity.h \
+util.d: /usr/include/bits/pthreadtypes.h /usr/include/bits/thread-shared-types.h \
+util.d: /usr/include/bits/pthreadtypes-arch.h /usr/include/bits/struct_mutex.h \
+util.d: /usr/include/bits/stdlib-bsearch.h /usr/include/bits/stdlib-float.h \
+util.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdint.h \
+util.d: /usr/include/bits/stdint-uintn.h /usr/include/linux/if_ether.h \
+util.d: /usr/include/asm-generic/types.h /usr/include/asm-generic/int-ll64.h \
+util.d: /usr/include/asm/bitsperlong.h /usr/include/asm-generic/bitsperlong.h \
+util.d: /usr/include/asm-generic/posix_types.h
+tui.d:tui.o tui.d : tui.c /usr/include/stdc-predef.h /usr/include/dialog.h \
+tui.d: /usr/include/bits/wordsize.h /usr/include/bits/long-double.h \
+tui.d: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h \
+tui.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stddef.h \
+tui.d: /usr/include/bits/stdint-intn.h /usr/include/endian.h \
+tui.d: /usr/include/bits/byteswap.h /usr/include/bits/uintn-identity.h \
+tui.d: /usr/include/bits/pthreadtypes.h /usr/include/bits/thread-shared-types.h \
+tui.d: /usr/include/bits/pthreadtypes-arch.h /usr/include/bits/struct_mutex.h \
+tui.d: /usr/include/bits/fcntl.h /usr/include/bits/fcntl-linux.h \
+tui.d: /usr/include/bits/libc-header-start.h /usr/include/bits/waitflags.h \
+tui.d: /usr/include/bits/floatn-common.h /usr/include/alloca.h \
+tui.d: /usr/include/bits/stdlib-bsearch.h /usr/include/bits/stdlib-float.h \
+tui.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdarg.h \
+tui.d: /usr/include/bits/signum.h /usr/include/bits/signum-generic.h \
+tui.d: /usr/include/bits/siginfo-arch.h /usr/include/bits/siginfo-consts.h \
+tui.d: /usr/include/bits/sigevent-consts.h /usr/include/bits/sigaction.h \
+tui.d: /usr/include/math.h /usr/include/bits/math-vector.h \
+tui.d: /usr/include/bits/libm-simd-decl-stubs.h \
+tui.d: /usr/include/bits/flt-eval-method.h /usr/include/bits/fp-logb.h \
+tui.d: /usr/include/bits/fp-fast.h \
+tui.d: /usr/include/bits/mathcalls-helper-functions.h \
+tui.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdint.h \
+tui.d: /usr/include/bits/stdint-uintn.h /usr/include/stdio.h \
+tui.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdbool.h \
+tui.d: /usr/include/asm/types.h /usr/include/asm-generic/types.h \
+tui.d: /usr/include/asm-generic/int-ll64.h /usr/include/asm/bitsperlong.h \
+tui.d: /usr/include/asm-generic/bitsperlong.h /usr/include/linux/posix_types.h \
+tui.d: /usr/include/asm/posix_types_64.h /usr/include/asm-generic/posix_types.h
+thread.d:thread.o thread.d : thread.c /usr/include/stdc-predef.h /usr/include/assert.h \
+thread.d: /usr/include/bits/wordsize.h /usr/include/bits/long-double.h \
+thread.d: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h \
+thread.d: /usr/include/stdlib.h /usr/include/bits/libc-header-start.h \
+thread.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stddef.h \
+thread.d: /usr/include/bits/floatn.h /usr/include/bits/floatn-common.h \
+thread.d: /usr/include/bits/types/timer_t.h /usr/include/bits/stdint-intn.h \
+thread.d: /usr/include/bits/uintn-identity.h /usr/include/sys/select.h \
+thread.d: /usr/include/bits/pthreadtypes.h /usr/include/bits/thread-shared-types.h \
+thread.d: /usr/include/bits/pthreadtypes-arch.h /usr/include/bits/struct_mutex.h \
+thread.d: /usr/include/bits/stdlib-bsearch.h /usr/include/bits/stdlib-float.h \
+thread.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdint.h \
+thread.d: /usr/include/bits/stdint-uintn.h /usr/include/bits/eventfd.h \
+thread.d: /usr/include/bits/types/struct_sched_param.h /usr/include/bits/cpu-set.h \
+thread.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdbool.h bpf_kern.h \
+thread.d: /usr/include/asm/types.h /usr/include/asm-generic/types.h \
+thread.d: /usr/include/asm-generic/int-ll64.h /usr/include/asm/bitsperlong.h \
+thread.d: /usr/include/asm-generic/bitsperlong.h /usr/include/linux/posix_types.h \
+thread.d: /usr/include/asm/posix_types_64.h /usr/include/asm-generic/posix_types.h \
+remote.d:remote.o remote.d : remote.c /usr/include/stdc-predef.h /usr/include/assert.h \
+remote.d: /usr/include/bits/wordsize.h /usr/include/bits/long-double.h \
+remote.d: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h \
+remote.d: /usr/include/bits/fcntl-linux.h /usr/include/bits/types/struct_iovec.h \
+remote.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stddef.h \
+remote.d: /usr/include/bits/stdint-intn.h /usr/include/endian.h \
+remote.d: /usr/include/bits/byteswap.h /usr/include/bits/uintn-identity.h \
+remote.d: /usr/include/bits/pthreadtypes.h /usr/include/bits/thread-shared-types.h \
+remote.d: /usr/include/bits/pthreadtypes-arch.h /usr/include/bits/struct_mutex.h \
+remote.d: /usr/include/asm-generic/socket.h /usr/include/linux/posix_types.h \
+remote.d: /usr/include/asm/posix_types_64.h /usr/include/asm-generic/posix_types.h \
+remote.d: /usr/include/asm/bitsperlong.h /usr/include/asm-generic/bitsperlong.h \
+remote.d: /usr/include/asm/sockios.h /usr/include/asm-generic/sockios.h \
+remote.d: /usr/include/bits/stdint-uintn.h /usr/include/bits/in.h \
+remote.d: /usr/include/bits/cpu-set.h /usr/include/time.h /usr/include/bits/time.h \
+remote.d: /usr/include/bits/libc-header-start.h \
+remote.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdarg.h \
+remote.d: /usr/include/bits/floatn-common.h /usr/include/alloca.h \
+remote.d: /usr/include/bits/stdlib-bsearch.h /usr/include/bits/stdlib-float.h \
+remote.d: /usr/include/asm-generic/types.h /usr/include/asm-generic/int-ll64.h \
+remote.d: /usr/include/bits/statx-generic.h \
+remote.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdbool.h bpf_kern.h \
+remote.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdint.h \
+python.d:python.o python.d : python.c /usr/include/stdc-predef.h /usr/include/arpa/inet.h \
+python.d: /usr/include/bits/wordsize.h /usr/include/bits/long-double.h \
+python.d: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h \
+python.d: /usr/include/netinet/in.h /usr/include/bits/stdint-uintn.h \
+python.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stddef.h \
+python.d: /usr/include/bits/stdint-intn.h /usr/include/endian.h \
+python.d: /usr/include/bits/byteswap.h /usr/include/bits/uintn-identity.h \
+python.d: /usr/include/bits/pthreadtypes.h /usr/include/bits/thread-shared-types.h \
+python.d: /usr/include/bits/pthreadtypes-arch.h /usr/include/bits/struct_mutex.h \
+python.d: /usr/include/asm-generic/socket.h /usr/include/linux/posix_types.h \
+python.d: /usr/include/asm/posix_types_64.h /usr/include/asm-generic/posix_types.h \
+python.d: /usr/include/asm/bitsperlong.h /usr/include/asm-generic/bitsperlong.h \
+python.d: /usr/include/asm/sockios.h /usr/include/asm-generic/sockios.h \
+python.d: /usr/include/bits/types/struct_sched_param.h /usr/include/bits/cpu-set.h \
+python.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdint.h \
+python.d: /usr/include/stdint.h /usr/include/bits/libc-header-start.h \
+python.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include-fixed/limits.h \
+python.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include-fixed/syslimits.h \
+python.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdarg.h \
+python.d: /usr/include/asm/errno.h /usr/include/asm-generic/errno.h \
+python.d: /usr/include/asm-generic/errno-base.h /usr/include/stdlib.h \
+python.d: /usr/include/bits/floatn.h /usr/include/bits/floatn-common.h \
+python.d: /usr/include/alloca.h /usr/include/bits/stdlib-bsearch.h \
+python.d: /usr/include/bits/stdlib-float.h /usr/include/bits/stdlib.h \
+python.d: /usr/include/math.h /usr/include/bits/math-vector.h \
+python.d: /usr/include/bits/libm-simd-decl-stubs.h \
+python.d: /usr/include/bits/flt-eval-method.h /usr/include/bits/fp-logb.h \
+python.d: /usr/include/bits/fp-fast.h \
+python.d: /usr/include/bits/mathcalls-helper-functions.h \
+python.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdbool.h bpf_kern.h \
+python.d: /usr/include/asm/types.h /usr/include/asm-generic/types.h \
+python.d: /usr/include/asm-generic/int-ll64.h
+persistence.d:persistence.o persistence.d : persistence.c /usr/include/stdc-predef.h \
+persistence.d: /usr/include/bits/wordsize.h /usr/include/bits/long-double.h \
+persistence.d: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h \
+persistence.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdbool.h \
+persistence.d: /usr/include/stdio.h /usr/include/bits/libc-header-start.h \
+persistence.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stddef.h \
+persistence.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdarg.h \
+persistence.d: /usr/include/bits/floatn-common.h /usr/include/sys/types.h \
+persistence.d: /usr/include/bits/stdint-intn.h /usr/include/endian.h \
+persistence.d: /usr/include/bits/byteswap.h /usr/include/bits/uintn-identity.h \
+persistence.d: /usr/include/bits/pthreadtypes.h /usr/include/bits/thread-shared-types.h \
+persistence.d: /usr/include/bits/pthreadtypes-arch.h /usr/include/bits/struct_mutex.h \
+persistence.d: /usr/include/bits/stdlib-bsearch.h /usr/include/bits/stdlib-float.h \
+persistence.d: bpf_kern.h /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdint.h \
+persistence.d: /usr/include/bits/stdint-uintn.h /usr/include/linux/if_ether.h \
+persistence.d: /usr/include/asm-generic/types.h /usr/include/asm-generic/int-ll64.h \
+persistence.d: /usr/include/asm/bitsperlong.h /usr/include/asm-generic/bitsperlong.h \
+persistence.d: /usr/include/asm-generic/posix_types.h
+netutil.d:netutil.o netutil.d : netutil.c /usr/include/stdc-predef.h /usr/include/arpa/inet.h \
+netutil.d: /usr/include/bits/wordsize.h /usr/include/bits/long-double.h \
+netutil.d: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h \
+netutil.d: /usr/include/netinet/in.h /usr/include/bits/stdint-uintn.h \
+netutil.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stddef.h \
+netutil.d: /usr/include/bits/stdint-intn.h /usr/include/endian.h \
+netutil.d: /usr/include/bits/byteswap.h /usr/include/bits/uintn-identity.h \
+netutil.d: /usr/include/bits/pthreadtypes.h /usr/include/bits/thread-shared-types.h \
+netutil.d: /usr/include/bits/pthreadtypes-arch.h /usr/include/bits/struct_mutex.h \
+netutil.d: /usr/include/asm-generic/socket.h /usr/include/linux/posix_types.h \
+netutil.d: /usr/include/asm/posix_types_64.h /usr/include/asm-generic/posix_types.h \
+netutil.d: /usr/include/asm/bitsperlong.h /usr/include/asm-generic/bitsperlong.h \
+netutil.d: /usr/include/asm/sockios.h /usr/include/asm-generic/sockios.h \
+netutil.d: /usr/include/bits/libc-header-start.h \
+netutil.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdarg.h \
+netutil.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdbool.h bpf_kern.h \
+netutil.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdint.h \
+netutil.d: /usr/include/asm/types.h /usr/include/asm-generic/types.h \
+netutil.d: /usr/include/asm-generic/int-ll64.h
+main.d:main.o main.d : main.c /usr/include/stdc-predef.h /usr/include/net/if.h \
+main.d: /usr/include/bits/wordsize.h /usr/include/bits/long-double.h \
+main.d: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h \
+main.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stddef.h \
+main.d: /usr/include/bits/stdint-intn.h /usr/include/endian.h \
+main.d: /usr/include/bits/byteswap.h /usr/include/bits/uintn-identity.h \
+main.d: /usr/include/bits/pthreadtypes.h /usr/include/bits/thread-shared-types.h \
+main.d: /usr/include/bits/pthreadtypes-arch.h /usr/include/bits/struct_mutex.h \
+main.d: /usr/include/asm/socket.h /usr/include/asm-generic/socket.h \
+main.d: /usr/include/asm-generic/posix_types.h /usr/include/asm/bitsperlong.h \
+main.d: /usr/include/asm-generic/bitsperlong.h /usr/include/asm/sockios.h \
+main.d: /usr/include/asm-generic/sockios.h \
+main.d: /usr/include/bits/signum.h /usr/include/bits/signum-generic.h \
+main.d: /usr/include/bits/siginfo-arch.h /usr/include/bits/siginfo-consts.h \
+main.d: /usr/include/bits/sigevent-consts.h /usr/include/bits/sigaction.h \
+main.d: /usr/include/stdio.h /usr/include/bits/libc-header-start.h \
+main.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdarg.h \
+main.d: /usr/include/bits/floatn-common.h /usr/include/alloca.h \
+main.d: /usr/include/bits/stdlib-bsearch.h /usr/include/bits/stdlib-float.h \
+main.d: ishoal.h /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdbool.h \
+main.d: bpf_kern.h /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdint.h \
+main.d: /usr/include/bits/stdint-uintn.h /usr/include/linux/if_ether.h \
+main.d: /usr/include/asm-generic/types.h /usr/include/asm-generic/int-ll64.h
+ifinfo.d:ifinfo.o ifinfo.d : ifinfo.c /usr/include/stdc-predef.h /usr/include/arpa/inet.h \
+ifinfo.d: /usr/include/bits/wordsize.h /usr/include/bits/long-double.h \
+ifinfo.d: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h \
+ifinfo.d: /usr/include/netinet/in.h /usr/include/bits/stdint-uintn.h \
+ifinfo.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stddef.h \
+ifinfo.d: /usr/include/bits/stdint-intn.h /usr/include/endian.h \
+ifinfo.d: /usr/include/bits/byteswap.h /usr/include/bits/uintn-identity.h \
+ifinfo.d: /usr/include/bits/pthreadtypes.h /usr/include/bits/thread-shared-types.h \
+ifinfo.d: /usr/include/bits/pthreadtypes-arch.h /usr/include/bits/struct_mutex.h \
+ifinfo.d: /usr/include/asm-generic/socket.h /usr/include/linux/posix_types.h \
+ifinfo.d: /usr/include/asm/posix_types_64.h /usr/include/asm-generic/posix_types.h \
+ifinfo.d: /usr/include/asm/bitsperlong.h /usr/include/asm-generic/bitsperlong.h \
+ifinfo.d: /usr/include/asm/sockios.h /usr/include/asm-generic/sockios.h \
+ifinfo.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdbool.h \
+ifinfo.d: /usr/include/stdio.h /usr/include/bits/libc-header-start.h \
+ifinfo.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdarg.h \
+ifinfo.d: /usr/include/bits/floatn-common.h /usr/include/alloca.h \
+ifinfo.d: /usr/include/bits/stdlib-bsearch.h /usr/include/bits/stdlib-float.h \
+ifinfo.d: /usr/include/asm-generic/ioctls.h /usr/include/linux/ioctl.h \
+ifinfo.d: /usr/include/asm/ioctl.h /usr/include/asm-generic/ioctl.h \
+ifinfo.d: /usr/include/bits/ioctl-types.h /usr/include/sys/ttydefaults.h \
+ifinfo.d: bpf_kern.h /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdint.h \
+ifinfo.d: /usr/include/asm/types.h /usr/include/asm-generic/types.h \
+ifinfo.d: /usr/include/asm-generic/int-ll64.h
+bpf_kern.skel.h:/* SPDX-License-Identifier: (LGPL-2.1 OR BSD-2-Clause) */
+bpf_kern.skel.h:	if (obj->skeleton)
+bpf_kern.skel.h:		bpf_object__destroy_skeleton(obj->skeleton);
+bpf_kern.skel.h:	if (bpf_object__open_skeleton(obj->skeleton, opts))
+bpf_kern.skel.h:	return bpf_object__load_skeleton(obj->skeleton);
+bpf_kern.skel.h:	return bpf_object__attach_skeleton(obj->skeleton);
+bpf_kern.skel.h:	return bpf_object__detach_skeleton(obj->skeleton);
+bpf_kern.skel.h:		return -1;
+bpf_kern.skel.h:	obj->skeleton = s;
+bpf_kern.skel.h:	s->sz = sizeof(*s);
+bpf_kern.skel.h:	s->name = "bpf_kern";
+bpf_kern.skel.h:	s->obj = &obj->obj;
+bpf_kern.skel.h:	s->map_cnt = 4;
+bpf_kern.skel.h:	s->map_skel_sz = sizeof(*s->maps);
+bpf_kern.skel.h:	s->maps = (typeof(s->maps))calloc(s->map_cnt, s->map_skel_sz);
+bpf_kern.skel.h:	if (!s->maps)
+bpf_kern.skel.h:	s->maps[0].name = "xsks_map";
+bpf_kern.skel.h:	s->maps[0].map = &obj->maps.xsks_map;
+bpf_kern.skel.h:	s->maps[1].name = "conntrack_map";
+bpf_kern.skel.h:	s->maps[1].map = &obj->maps.conntrack_map;
+bpf_kern.skel.h:	s->maps[2].name = "remote_addrs";
+bpf_kern.skel.h:	s->maps[2].map = &obj->maps.remote_addrs;
+bpf_kern.skel.h:	s->maps[3].name = "bpf_kern.bss";
+bpf_kern.skel.h:	s->maps[3].map = &obj->maps.bss;
+bpf_kern.skel.h:	s->maps[3].mmaped = (void **)&obj->bss;
+bpf_kern.skel.h:	s->prog_cnt = 1;
+bpf_kern.skel.h:	s->prog_skel_sz = sizeof(*s->progs);
+bpf_kern.skel.h:	s->progs = (typeof(s->progs))calloc(s->prog_cnt, s->prog_skel_sz);
+bpf_kern.skel.h:	if (!s->progs)
+bpf_kern.skel.h:	s->progs[0].name = "xdp_prog";
+bpf_kern.skel.h:	s->progs[0].prog = &obj->progs.xdp_prog;
+bpf_kern.skel.h:	s->progs[0].link = &obj->links.xdp_prog;
+bpf_kern.skel.h:	s->data_sz = 50296;
+bpf_kern.skel.h:	s->data = (void *)"\
+bpf_kern.skel.h:	return -1;
+bpf_user.d:bpf_user.o bpf_user.d : bpf_user.c /usr/include/stdc-predef.h \
+bpf_user.d: /usr/include/bits/long-double.h /usr/include/gnu/stubs.h \
+bpf_user.d: /usr/include/gnu/stubs-64.h /usr/include/netinet/in.h \
+bpf_user.d: /usr/include/bits/stdint-uintn.h /usr/include/bits/types.h \
+bpf_user.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stddef.h \
+bpf_user.d: /usr/include/bits/stdint-intn.h /usr/include/endian.h \
+bpf_user.d: /usr/include/bits/byteswap.h /usr/include/bits/uintn-identity.h \
+bpf_user.d: /usr/include/bits/pthreadtypes.h /usr/include/bits/thread-shared-types.h \
+bpf_user.d: /usr/include/bits/pthreadtypes-arch.h /usr/include/bits/struct_mutex.h \
+bpf_user.d: /usr/include/asm-generic/socket.h /usr/include/linux/posix_types.h \
+bpf_user.d: /usr/include/asm/posix_types_64.h /usr/include/asm-generic/posix_types.h \
+bpf_user.d: /usr/include/asm/bitsperlong.h /usr/include/asm-generic/bitsperlong.h \
+bpf_user.d: /usr/include/asm/sockios.h /usr/include/asm-generic/sockios.h \
+bpf_user.d: /usr/include/bits/types/struct_sched_param.h /usr/include/bits/cpu-set.h \
+bpf_user.d: /usr/include/asm/types.h /usr/include/asm-generic/types.h \
+bpf_user.d: /usr/include/asm-generic/int-ll64.h /usr/include/linux/bpf_common.h \
+bpf_user.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdbool.h \
+bpf_user.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdint.h \
+bpf_user.d: /usr/include/stdint.h /usr/include/bits/libc-header-start.h \
+bpf_user.d: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/include/stdarg.h \
+bpf_user.d: /usr/include/bits/floatn-common.h /usr/include/alloca.h \
+bpf_user.d: /usr/include/bits/stdlib-bsearch.h /usr/include/bits/stdlib-float.h \
+py_dist_build/ishoal.py:                    if not name or name.startswith('Thread-'):
+py_dist_build/ishoal.py:    r'^(?!0)(?!.*\.$)((1?\d?\d|25[0-5]|2[0-4]\d)(\.|$)){4}$')
+py_dist_build/ishoal.py:# if we ishoalc.sleep(-1) then signal handler will never execute
+Binary file py_dist_build/socketio/__pycache__/__init__.cpython-37.pyc matches
+Binary file py_dist_build/socketio/__pycache__/asgi.cpython-37.pyc matches
+Binary file py_dist_build/socketio/__pycache__/asyncio_aiopika_manager.cpython-37.pyc matches
+Binary file py_dist_build/socketio/__pycache__/asyncio_client.cpython-37.pyc matches
+Binary file py_dist_build/socketio/__pycache__/asyncio_manager.cpython-37.pyc matches
+Binary file py_dist_build/socketio/__pycache__/asyncio_namespace.cpython-37.pyc matches
+Binary file py_dist_build/socketio/__pycache__/asyncio_pubsub_manager.cpython-37.pyc matches
+Binary file py_dist_build/socketio/__pycache__/asyncio_redis_manager.cpython-37.pyc matches
+Binary file py_dist_build/socketio/__pycache__/asyncio_server.cpython-37.pyc matches
+Binary file py_dist_build/socketio/__pycache__/base_manager.cpython-37.pyc matches
+Binary file py_dist_build/socketio/__pycache__/client.cpython-37.pyc matches
+Binary file py_dist_build/socketio/__pycache__/exceptions.cpython-37.pyc matches
+Binary file py_dist_build/socketio/__pycache__/kafka_manager.cpython-37.pyc matches
+Binary file py_dist_build/socketio/__pycache__/kombu_manager.cpython-37.pyc matches
+Binary file py_dist_build/socketio/__pycache__/middleware.cpython-37.pyc matches
+Binary file py_dist_build/socketio/__pycache__/namespace.cpython-37.pyc matches
+Binary file py_dist_build/socketio/__pycache__/packet.cpython-37.pyc matches
+Binary file py_dist_build/socketio/__pycache__/pubsub_manager.cpython-37.pyc matches
+Binary file py_dist_build/socketio/__pycache__/redis_manager.cpython-37.pyc matches
+Binary file py_dist_build/socketio/__pycache__/server.cpython-37.pyc matches
+Binary file py_dist_build/socketio/__pycache__/tornado.cpython-37.pyc matches
+Binary file py_dist_build/socketio/__pycache__/zmq_manager.cpython-37.pyc matches
+py_dist_build/socketio/asyncio_aiopika_manager.py:    """Client manager that uses aio_pika for inter-process messaging under
+py_dist_build/socketio/asyncio_aiopika_manager.py:                                            arguments={'x-expires': 300000})
+py_dist_build/socketio/asyncio_client.py:    for websocket and long-polling transports.
+py_dist_build/socketio/asyncio_client.py:                                 adjusted by +/- 50%.
+py_dist_build/socketio/asyncio_client.py:            delay += self.randomization_factor * (2 * random.random() - 1)
+py_dist_build/socketio/asyncio_namespace.py:    """Base class for asyncio server-side class-based namespaces.
+py_dist_build/socketio/asyncio_namespace.py:    A class-based namespace is a class that contains all the event handlers
+py_dist_build/socketio/asyncio_namespace.py:    """Base class for asyncio client-side class-based namespaces.
+py_dist_build/socketio/asyncio_namespace.py:    A class-based namespace is a class that contains all the event handlers
+py_dist_build/socketio/asyncio_server.py:    for websocket and long-polling transports, compatible with the asyncio
+py_dist_build/socketio/asyncio_server.py:                           is stored in an in-memory structure, so the use of
+py_dist_build/socketio/base_manager.py:        """Put the client in the to-be-disconnected list.
+py_dist_build/socketio/base_manager.py:        Prevents uninitialized servers in write-only mode from failing.
+py_dist_build/socketio/client.py:    for websocket and long-polling transports.
+py_dist_build/socketio/client.py:                                 adjusted by +/- 50%.
+py_dist_build/socketio/client.py:            delay += self.randomization_factor * (2 * random.random() - 1)
+py_dist_build/socketio/kafka_manager.py:            raise RuntimeError('kafka-python package is not installed '
+py_dist_build/socketio/kafka_manager.py:                               '(Run "pip install kafka-python" in your '
+py_dist_build/socketio/kombu_manager.py:    """Client manager that uses kombu for inter-process messaging.
+py_dist_build/socketio/kombu_manager.py:        queue_name = 'flask-socketio.' + str(uuid.uuid4())
+py_dist_build/socketio/kombu_manager.py:        options = {'durable': False, 'queue_arguments': {'x-expires': 300000}}
+py_dist_build/socketio/namespace.py:    """Base class for server-side class-based namespaces.
+py_dist_build/socketio/namespace.py:    A class-based namespace is a class that contains all the event handlers
+py_dist_build/socketio/namespace.py:    """Base class for client-side class-based namespaces.
+py_dist_build/socketio/namespace.py:    A class-based namespace is a class that contains all the event handlers
+py_dist_build/socketio/packet.py:    # packet type: 1 byte, values 0-6
+py_dist_build/socketio/packet.py:    # '-': only if num_attachments != 0
+py_dist_build/socketio/packet.py:            encoded_packet += six.text_type(len(attachments)) + '-'
+py_dist_build/socketio/packet.py:        dash = ep.find('-')
+py_dist_build/socketio/packet.py:            if sep == -1:
+py_dist_build/socketio/packet.py:            if q != -1:
+py_dist_build/socketio/packet.py:            return {'_placeholder': True, 'num': len(attachments) - 1}
+py_dist_build/socketio/redis_manager.py:        channel = self.channel.encode('utf-8')
+py_dist_build/socketio/server.py:    for websocket and long-polling transports.
+py_dist_build/socketio/server.py:                           is stored in an in-memory structure, so the use of
+py_dist_build/socketio/zmq_manager.py:        sink_port = sink_url.split(':')[-1]
+Binary file py_dist_build/engineio/async_drivers/__pycache__/__init__.cpython-37.pyc matches
+Binary file py_dist_build/engineio/async_drivers/__pycache__/aiohttp.cpython-37.pyc matches
+Binary file py_dist_build/engineio/async_drivers/__pycache__/asgi.cpython-37.pyc matches
+Binary file py_dist_build/engineio/async_drivers/__pycache__/eventlet.cpython-37.pyc matches
+Binary file py_dist_build/engineio/async_drivers/__pycache__/gevent.cpython-37.pyc matches
+Binary file py_dist_build/engineio/async_drivers/__pycache__/gevent_uwsgi.cpython-37.pyc matches
+Binary file py_dist_build/engineio/async_drivers/__pycache__/sanic.cpython-37.pyc matches
+Binary file py_dist_build/engineio/async_drivers/__pycache__/threading.cpython-37.pyc matches
+Binary file py_dist_build/engineio/async_drivers/__pycache__/tornado.cpython-37.pyc matches
+py_dist_build/engineio/async_drivers/aiohttp.py:        if hdr_name == 'CONTENT-TYPE':
+py_dist_build/engineio/async_drivers/aiohttp.py:        elif hdr_name == 'CONTENT-LENGTH':
+py_dist_build/engineio/async_drivers/aiohttp.py:        key = 'HTTP_%s' % hdr_name.replace('-', '_')
+py_dist_build/engineio/async_drivers/asgi.py:                            'headers': [(b'Content-Type', static_file[
+py_dist_build/engineio/async_drivers/asgi.py:                                'content_type'].encode('utf-8'))]})
+py_dist_build/engineio/async_drivers/asgi.py:                    'headers': [(b'Content-Type', b'text/plain')]})
+py_dist_build/engineio/async_drivers/asgi.py:    raw_uri = scope['path'].encode('utf-8')
+py_dist_build/engineio/async_drivers/asgi.py:        'QUERY_STRING': scope.get('query_string', b'').decode('utf-8'),
+py_dist_build/engineio/async_drivers/asgi.py:        'RAW_URI': raw_uri.decode('utf-8'),
+py_dist_build/engineio/async_drivers/asgi.py:        hdr_name = hdr_name.upper().decode('utf-8')
+py_dist_build/engineio/async_drivers/asgi.py:        hdr_value = hdr_value.decode('utf-8')
+py_dist_build/engineio/async_drivers/asgi.py:        if hdr_name == 'CONTENT-TYPE':
+py_dist_build/engineio/async_drivers/asgi.py:        elif hdr_name == 'CONTENT-LENGTH':
+py_dist_build/engineio/async_drivers/asgi.py:        key = 'HTTP_%s' % hdr_name.replace('-', '_')
+py_dist_build/engineio/async_drivers/asgi.py:    headers = [(h[0].encode('utf-8'), h[1].encode('utf-8')) for h in headers]
+py_dist_build/engineio/async_drivers/gevent.py:            raise RuntimeError('You need to use the gevent-websocket server. '
+py_dist_build/engineio/async_drivers/gevent_uwsgi.py:            # uWSGI >= 2.1.x with support for api access across-greenlets
+py_dist_build/engineio/async_drivers/gevent_uwsgi.py:        """Transmits message either in binary or UTF-8 text mode,
+py_dist_build/engineio/async_drivers/gevent_uwsgi.py:            # already decoded - do nothing
+py_dist_build/engineio/async_drivers/gevent_uwsgi.py:        # only decode from utf-8 if message is not binary data
+py_dist_build/engineio/async_drivers/gevent_uwsgi.py:            return msg.decode('utf-8')
+py_dist_build/engineio/async_drivers/sanic.py:        if hdr_name == 'CONTENT-TYPE':
+py_dist_build/engineio/async_drivers/sanic.py:        elif hdr_name == 'CONTENT-LENGTH':
+py_dist_build/engineio/async_drivers/sanic.py:        key = 'HTTP_%s' % hdr_name.replace('-', '_')
+py_dist_build/engineio/async_drivers/sanic.py:        if h[0].lower() == 'content-type':
+py_dist_build/engineio/async_drivers/tornado.py:        if hdr_name == 'CONTENT-TYPE':
+py_dist_build/engineio/async_drivers/tornado.py:        elif hdr_name == 'CONTENT-LENGTH':
+py_dist_build/engineio/async_drivers/tornado.py:        key = 'HTTP_%s' % hdr_name.replace('-', '_')
+Binary file py_dist_build/engineio/__pycache__/__init__.cpython-37.pyc matches
+Binary file py_dist_build/engineio/__pycache__/asyncio_client.cpython-37.pyc matches
+Binary file py_dist_build/engineio/__pycache__/asyncio_server.cpython-37.pyc matches
+Binary file py_dist_build/engineio/__pycache__/asyncio_socket.cpython-37.pyc matches
+Binary file py_dist_build/engineio/__pycache__/client.cpython-37.pyc matches
+Binary file py_dist_build/engineio/__pycache__/exceptions.cpython-37.pyc matches
+Binary file py_dist_build/engineio/__pycache__/middleware.cpython-37.pyc matches
+Binary file py_dist_build/engineio/__pycache__/packet.cpython-37.pyc matches
+Binary file py_dist_build/engineio/__pycache__/payload.cpython-37.pyc matches
+Binary file py_dist_build/engineio/__pycache__/server.cpython-37.pyc matches
+Binary file py_dist_build/engineio/__pycache__/socket.cpython-37.pyc matches
+Binary file py_dist_build/engineio/__pycache__/static_files.cpython-37.pyc matches
+py_dist_build/engineio/asyncio_client.py:    for websocket and long-polling transports, compatible with the asyncio
+py_dist_build/engineio/asyncio_client.py:        """Establish a long-polling connection to the Engine.IO server."""
+py_dist_build/engineio/asyncio_client.py:            self.logger.error('aiohttp not installed -- cannot make HTTP '
+py_dist_build/engineio/asyncio_client.py:                p = p.encode('utf-8')
+py_dist_build/engineio/asyncio_client.py:                    if packets[-1] is None:
+py_dist_build/engineio/asyncio_client.py:                        packets = packets[:-1]
+py_dist_build/engineio/asyncio_client.py:                # empty packet list returned -> connection closed
+py_dist_build/engineio/asyncio_client.py:                    headers={'Content-Type': 'application/octet-stream'},
+py_dist_build/engineio/asyncio_server.py:    for websocket and long-polling transports, compatible with the asyncio
+py_dist_build/engineio/asyncio_server.py:                           non-blocking threads. To run handlers synchronously,
+py_dist_build/engineio/asyncio_server.py:                    r['headers'] += [('Content-Encoding', encoding)]
+py_dist_build/engineio/asyncio_server.py:                headers = [('Set-Cookie', self.cookie + '=' + sid)]
+py_dist_build/engineio/asyncio_socket.py:        This helps detect disconnections for long-polling clients.
+py_dist_build/engineio/asyncio_socket.py:        if time.time() - self.last_ping > self.server.ping_interval + \
+py_dist_build/engineio/asyncio_socket.py:            # CLOSE packet. This has the effect of updating half-open sockets
+py_dist_build/engineio/asyncio_socket.py:        """Handle a long-polling GET request from the client."""
+py_dist_build/engineio/asyncio_socket.py:        """Handle a long-polling POST request from the client."""
+py_dist_build/engineio/asyncio_socket.py:                    # empty packet list returned -> connection closed
+py_dist_build/engineio/asyncio_socket.py:                p = p.encode('utf-8')
+py_dist_build/engineio/asyncio_socket.py:                self.server.logger.info('Receive error -- socket is closed')
+py_dist_build/engineio/client.py:    for websocket and long-polling transports.
+py_dist_build/engineio/client.py:        """Establish a long-polling connection to the Engine.IO server."""
+py_dist_build/engineio/client.py:            self.logger.error('requests package is not installed -- cannot '
+py_dist_build/engineio/client.py:            self.logger.warning('websocket-client package not installed, only '
+py_dist_build/engineio/client.py:        # get the cookies from the long-polling connection so that they can
+py_dist_build/engineio/client.py:                p = p.encode('utf-8')
+py_dist_build/engineio/client.py:                    if packets[-1] is None:
+py_dist_build/engineio/client.py:                        packets = packets[:-1]
+py_dist_build/engineio/client.py:                # empty packet list returned -> connection closed
+py_dist_build/engineio/client.py:                    headers={'Content-Type': 'application/octet-stream'},
+py_dist_build/engineio/middleware.py:                        [('Content-Type', static_file['content_type'])])
+py_dist_build/engineio/middleware.py:        start_response("404 Not Found", [('Content-Type', 'text/plain')])
+py_dist_build/engineio/packet.py:                encoded_packet += base64.b64encode(self.data).decode('utf-8')
+py_dist_build/engineio/packet.py:            encoded_packet = encoded_packet.encode('utf-8')
+py_dist_build/engineio/packet.py:            encoded_packet = encoded_packet.encode('utf-8')
+py_dist_build/engineio/packet.py:        if self.packet_type == 98:  # 'b' --> binary base64 encoded packet
+py_dist_build/engineio/packet.py:            self.packet_type -= 48
+py_dist_build/engineio/packet.py:            self.packet_type -= 48
+py_dist_build/engineio/packet.py:                        encoded_packet[1:].decode('utf-8'))
+py_dist_build/engineio/packet.py:                        # github.com/miguelgrinberg/python-engineio/issues/75
+py_dist_build/engineio/packet.py:                    self.data = encoded_packet[1:].decode('utf-8')
+py_dist_build/engineio/payload.py:                encoded_payload += str(packet_len).encode('utf-8') + b':' + \
+py_dist_build/engineio/payload.py:            encoded_payload = encoded_payload.decode('utf-8')
+py_dist_build/engineio/server.py:    for websocket and long-polling transports.
+py_dist_build/engineio/server.py:                           non-blocking threads. To run handlers synchronously,
+py_dist_build/engineio/server.py:                    r['headers'] += [('Content-Encoding', encoding)]
+py_dist_build/engineio/server.py:                headers = [('Set-Cookie', self.cookie + '=' + sid)]
+py_dist_build/engineio/server.py:                headers += [('Content-Type', 'text/plain; charset=UTF-8')]
+py_dist_build/engineio/server.py:                headers += [('Content-Type', 'application/octet-stream')]
+py_dist_build/engineio/server.py:                    'headers': [('Content-Type', 'text/plain')],
+py_dist_build/engineio/server.py:                'headers': [('Content-Type', 'text/plain')],
+py_dist_build/engineio/server.py:                'headers': [('Content-Type', 'text/plain')],
+py_dist_build/engineio/server.py:                'headers': [('Content-Type', 'application/json')],
+py_dist_build/engineio/server.py:                'response': message.encode('utf-8')}
+py_dist_build/engineio/server.py:        """Return the cross-origin-resource-sharing headers."""
+py_dist_build/engineio/server.py:            headers = [('Access-Control-Allow-Origin', environ['HTTP_ORIGIN'])]
+py_dist_build/engineio/server.py:            headers += [('Access-Control-Allow-Methods', 'OPTIONS, GET, POST')]
+py_dist_build/engineio/server.py:            headers += [('Access-Control-Allow-Headers',
+py_dist_build/engineio/server.py:            headers += [('Access-Control-Allow-Credentials', 'true')]
+py_dist_build/engineio/socket.py:        This helps detect disconnections for long-polling clients.
+py_dist_build/engineio/socket.py:        if time.time() - self.last_ping > self.server.ping_interval + \
+py_dist_build/engineio/socket.py:            # CLOSE packet. This has the effect of updating half-open sockets
+py_dist_build/engineio/socket.py:        """Handle a long-polling GET request from the client."""
+py_dist_build/engineio/socket.py:        """Handle a long-polling POST request from the client."""
+py_dist_build/engineio/socket.py:                    # empty packet list returned -> connection closed
+py_dist_build/engineio/socket.py:                p = p.encode('utf-8')
+py_dist_build/engineio/socket.py:                self.server.logger.info('Receive error -- socket is closed')
+py_dist_build/engineio/static_files.py:            ext = f['filename'].rsplit('.')[-1]
+py_dist_build/engineio/static_files.py:                ext, 'application/octet-stream')
+Binary file py_dist_build/__pycache__/six.cpython-37.pyc matches
+py_dist_build/six.py:# Copyright (c) 2010-2020 Benjamin Peterson
+py_dist_build/six.py:        MAXSIZE = int((1 << 31) - 1)
+py_dist_build/six.py:            # 32-bit
+py_dist_build/six.py:            MAXSIZE = int((1 << 31) - 1)
+py_dist_build/six.py:            # 64-bit
+py_dist_build/six.py:            MAXSIZE = int((1 << 63) - 1)
+py_dist_build/six.py:        return s.encode("latin-1")
+py_dist_build/six.py:        """The new-style print function for Python 2.4 and 2.5."""
+py_dist_build/six.py:def ensure_binary(s, encoding='utf-8', errors='strict'):
+py_dist_build/six.py:      - `unicode` -> encoded to `str`
+py_dist_build/six.py:      - `str` -> `str`
+py_dist_build/six.py:      - `str` -> encoded to `bytes`
+py_dist_build/six.py:      - `bytes` -> `bytes`
+py_dist_build/six.py:def ensure_str(s, encoding='utf-8', errors='strict'):
+py_dist_build/six.py:      - `unicode` -> encoded to `str`
+py_dist_build/six.py:      - `str` -> `str`
+py_dist_build/six.py:      - `str` -> `str`
+py_dist_build/six.py:      - `bytes` -> decoded to `str`
+py_dist_build/six.py:def ensure_text(s, encoding='utf-8', errors='strict'):
+py_dist_build/six.py:      - `unicode` -> `unicode`
+py_dist_build/six.py:      - `str` -> `unicode`
+py_dist_build/six.py:      - `str` -> `str`
+py_dist_build/six.py:      - `bytes` -> decoded to `str`
+py_dist_build/six.py:        klass.__str__ = lambda self: self.__unicode__().encode('utf-8')
+Binary file ishoal_py matches
+Binary file ishoal matches
+Binary file bpf_user.o matches
+Binary file ifinfo.o matches
+Binary file main.o matches
+Binary file netutil.o matches
+Binary file persistence.o matches
+Binary file python.o matches
+Binary file remote.o matches
+Binary file thread.o matches
+Binary file util.o matches
+Binary file xsk.o matches
+Binary file tui.o matches
+Binary file ishoal_native matches

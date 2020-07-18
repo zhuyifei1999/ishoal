@@ -64,7 +64,6 @@ static void upnp_clear()
 
 static void upnp_thread(void *args)
 {
-	return;
 	int error;
 	upnp_devlist = upnpDiscover(2000, iface, NULL,
 			       UPNP_LOCAL_PORT_ANY, 0, 2, &error);
@@ -175,7 +174,7 @@ void start_endpoint(void)
 
 void set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip, uint16_t remote_port)
 {
-	if (local_ip == public_host_ip)
+	if (local_ip == switch_ip)
 		return;
 
 	struct remote_switch *remote;
@@ -184,12 +183,11 @@ void set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip, uint16_t remote_port
 		if (remote->local == local_ip) {
 			remote->remote.ip = remote_ip;
 			remote->remote.port = remote_port;
-
-			pthread_mutex_unlock(&remotes_lock);
-			return;
+			goto next;
 		}
 	}
 
+next:
 	remote = calloc(1, sizeof(*remote));
 	if (!remote)
 		perror_exit("calloc");
@@ -207,7 +205,7 @@ void set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip, uint16_t remote_port
 
 void delete_remote_addr(ipaddr_t local_ip)
 {
-	if (local_ip == public_host_ip)
+	if (local_ip == switch_ip)
 		return;
 
 	struct remote_switch *remote;
@@ -215,11 +213,13 @@ void delete_remote_addr(ipaddr_t local_ip)
 	list_for_each_entry(remote, &remotes, list) {
 		if (remote->local == local_ip) {
 			list_del(&remote->list);
-
-			pthread_mutex_unlock(&remotes_lock);
-			return;
+			goto found;
 		}
 	}
+	pthread_mutex_unlock(&remotes_lock);
+	return;
+
+found:
 	pthread_mutex_unlock(&remotes_lock);
 
 	fprintf(remotes_log, "- Remote IP %s\n", ip_str(local_ip));

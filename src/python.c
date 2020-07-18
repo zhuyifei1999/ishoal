@@ -317,8 +317,10 @@ void python_thread(void *arg)
         goto out;
 
 out:
-    if (PyErr_Occurred())
+    if (PyErr_Occurred()) {
         PyErr_Print();
+        exitcode = 1;
+    }
 
     Py_XDECREF(mainmod);
     Py_XDECREF(selfpath);

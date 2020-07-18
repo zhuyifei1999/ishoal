@@ -9,6 +9,8 @@
 
 #include "ishoal.h"
 
+int exitcode;
+
 char *progname;
 char *iface;
 int ifindex;
@@ -57,7 +59,7 @@ int main(int argc, char *argv[])
 	signal(SIGTERM, sig_handler);
 
 	thread_start(bpf_load_thread, NULL, "bpf");
-	// thread_start(python_thread, NULL, "python");
+	thread_start(python_thread, NULL, "python");
 	thread_start(tui_thread, NULL, "tui");
 
 	while (!thread_should_stop(current) && !stop_sig_received) {
@@ -70,4 +72,6 @@ int main(int argc, char *argv[])
 
 	thread_all_stop();
 	thread_join_rest();
+
+	return exitcode;
 }

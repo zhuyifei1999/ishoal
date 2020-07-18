@@ -1,0 +1,925 @@
+996900 execve("./ishoal", ["./ishoal", "enp0s31f6"], 0x7ffee9750e30 /* 16 vars */) = 0
+996900 brk(NULL)                        = 0x55cdd4448000
+996900 access("/etc/ld.so.preload", R_OK) = -1 ENOENT (No such file or directory)
+996900 openat(AT_FDCWD, "/etc/ld.so.cache", O_RDONLY|O_CLOEXEC) = 3
+996900 fstat(3, {st_mode=S_IFREG|0644, st_size=220613, ...}) = 0
+996900 mmap(NULL, 220613, PROT_READ, MAP_PRIVATE, 3, 0) = 0x7f2d7f60c000
+996900 close(3)                         = 0
+996900 openat(AT_FDCWD, "/usr/lib64/libpython3.7m.so.1.0", O_RDONLY|O_CLOEXEC) = 3
+996900 read(3, "\177ELF\2\1\1\0\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0`s\6\0\0\0\0\0"..., 832) = 832
+996900 fstat(3, {st_mode=S_IFREG|0555, st_size=13431312, ...}) = 0
+996900 mmap(NULL, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f2d7f60a000
+996900 mmap(NULL, 3213720, PROT_READ, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7f2d7f2f9000
+996900 mprotect(0x7f2d7f35a000, 2228224, PROT_NONE) = 0
+996900 mmap(0x7f2d7f35a000, 1564672, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x61000) = 0x7f2d7f35a000
+996900 mmap(0x7f2d7f4d8000, 659456, PROT_READ, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x1df000) = 0x7f2d7f4d8000
+996900 mmap(0x7f2d7f57a000, 454656, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x280000) = 0x7f2d7f57a000
+996900 mmap(0x7f2d7f5e9000, 133528, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) = 0x7f2d7f5e9000
+996900 close(3)                         = 0
+996900 openat(AT_FDCWD, "/lib64/libcrypt.so.1", O_RDONLY|O_CLOEXEC) = 3
+996900 read(3, "\177ELF\2\1\1\0\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0\240\21\0\0\0\0\0\0"..., 832) = 832
+996900 fstat(3, {st_mode=S_IFREG|0755, st_size=152840, ...}) = 0
+996900 mmap(NULL, 229920, PROT_READ, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7f2d7f2c0000
+996900 mmap(0x7f2d7f2c1000, 24576, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x1000) = 0x7f2d7f2c1000
+996900 mmap(0x7f2d7f2c7000, 8192, PROT_READ, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x7000) = 0x7f2d7f2c7000
+996900 mmap(0x7f2d7f2c9000, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x8000) = 0x7f2d7f2c9000
+996900 mmap(0x7f2d7f2cb000, 184864, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) = 0x7f2d7f2cb000
+996900 close(3)                         = 0
+996900 openat(AT_FDCWD, "/lib64/libpthread.so.0", O_RDONLY|O_CLOEXEC) = 3
+996900 read(3, "\177ELF\2\1\1\0\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0Pl\0\0\0\0\0\0"..., 832) = 832
+996900 fstat(3, {st_mode=S_IFREG|0755, st_size=1348408, ...}) = 0
+996900 mmap(NULL, 132208, PROT_READ, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7f2d7f29f000
+996900 mmap(0x7f2d7f2a5000, 65536, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x6000) = 0x7f2d7f2a5000
+996900 mmap(0x7f2d7f2b5000, 20480, PROT_READ, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x16000) = 0x7f2d7f2b5000
+996900 mmap(0x7f2d7f2ba000, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x1a000) = 0x7f2d7f2ba000
+996900 mmap(0x7f2d7f2bc000, 13424, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) = 0x7f2d7f2bc000
+996900 close(3)                         = 0
+996900 openat(AT_FDCWD, "/lib64/libdl.so.2", O_RDONLY|O_CLOEXEC) = 3
+996900 read(3, "\177ELF\2\1\1\0\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0000\21\0\0\0\0\0\0"..., 832) = 832
+996900 fstat(3, {st_mode=S_IFREG|0755, st_size=142904, ...}) = 0
+996900 mmap(NULL, 20752, PROT_READ, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7f2d7f299000
+996900 mmap(0x7f2d7f29a000, 8192, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x1000) = 0x7f2d7f29a000
+996900 mmap(0x7f2d7f29c000, 4096, PROT_READ, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x3000) = 0x7f2d7f29c000
+996900 mmap(0x7f2d7f29d000, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x3000) = 0x7f2d7f29d000
+996900 close(3)                         = 0
+996900 openat(AT_FDCWD, "/lib64/libutil.so.1", O_RDONLY|O_CLOEXEC) = 3
+996900 read(3, "\177ELF\2\1\1\0\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0\20\22\0\0\0\0\0\0"..., 832) = 832
+996900 fstat(3, {st_mode=S_IFREG|0755, st_size=41152, ...}) = 0
+996900 mmap(NULL, 16656, PROT_READ, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7f2d7f294000
+996900 mmap(0x7f2d7f295000, 4096, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x1000) = 0x7f2d7f295000
+996900 mmap(0x7f2d7f296000, 4096, PROT_READ, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x2000) = 0x7f2d7f296000
+996900 mmap(0x7f2d7f297000, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x2000) = 0x7f2d7f297000
+996900 close(3)                         = 0
+996900 openat(AT_FDCWD, "/lib64/libm.so.6", O_RDONLY|O_CLOEXEC) = 3
+996900 read(3, "\177ELF\2\1\1\3\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0\0\322\0\0\0\0\0\0"..., 832) = 832
+996900 fstat(3, {st_mode=S_IFREG|0755, st_size=4839712, ...}) = 0
+996900 mmap(NULL, 1257744, PROT_READ, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7f2d7f160000
+996900 mmap(0x7f2d7f16d000, 577536, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0xd000) = 0x7f2d7f16d000
+996900 mmap(0x7f2d7f1fa000, 622592, PROT_READ, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x9a000) = 0x7f2d7f1fa000
+996900 mmap(0x7f2d7f292000, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x131000) = 0x7f2d7f292000
+996900 close(3)                         = 0
+996900 openat(AT_FDCWD, "/usr/lib64/libdialog.so.15", O_RDONLY|O_CLOEXEC) = 3
+996900 read(3, "\177ELF\2\1\1\0\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0\300\223\0\0\0\0\0\0"..., 832) = 832
+996900 fstat(3, {st_mode=S_IFREG|0755, st_size=1134672, ...}) = 0
+996900 mmap(NULL, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f2d7f15e000
+996900 mmap(NULL, 241296, PROT_READ, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7f2d7f123000
+996900 mprotect(0x7f2d7f12b000, 192512, PROT_NONE) = 0
+996900 mmap(0x7f2d7f12b000, 155648, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x8000) = 0x7f2d7f12b000
+996900 mmap(0x7f2d7f151000, 32768, PROT_READ, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x2e000) = 0x7f2d7f151000
+996900 mmap(0x7f2d7f15a000, 16384, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x36000) = 0x7f2d7f15a000
+996900 close(3)                         = 0
+996900 openat(AT_FDCWD, "/lib64/libncursesw.so.6", O_RDONLY|O_CLOEXEC) = 3
+996900 read(3, "\177ELF\2\1\1\0\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0@\265\0\0\0\0\0\0"..., 832) = 832
+996900 fstat(3, {st_mode=S_IFREG|0755, st_size=2009072, ...}) = 0
+996900 mmap(NULL, 248888, PROT_READ, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7f2d7f0e6000
+996900 mprotect(0x7f2d7f0f0000, 200704, PROT_NONE) = 0
+996900 mmap(0x7f2d7f0f0000, 163840, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0xa000) = 0x7f2d7f0f0000
+996900 mmap(0x7f2d7f118000, 32768, PROT_READ, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x32000) = 0x7f2d7f118000
+996900 mmap(0x7f2d7f121000, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x3a000) = 0x7f2d7f121000
+996900 close(3)                         = 0
+996900 openat(AT_FDCWD, "/usr/lib64/libbpf.so.0", O_RDONLY|O_CLOEXEC) = 3
+996900 read(3, "\177ELF\2\1\1\0\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0@|\0\0\0\0\0\0"..., 832) = 832
+996900 fstat(3, {st_mode=S_IFREG|0755, st_size=1048912, ...}) = 0
+996900 mmap(NULL, 210656, PROT_READ, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7f2d7f0b2000
+996900 mprotect(0x7f2d7f0b9000, 176128, PROT_NONE) = 0
+996900 mmap(0x7f2d7f0b9000, 122880, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x7000) = 0x7f2d7f0b9000
+996900 mmap(0x7f2d7f0d7000, 49152, PROT_READ, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x25000) = 0x7f2d7f0d7000
+996900 mmap(0x7f2d7f0e4000, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x31000) = 0x7f2d7f0e4000
+996900 close(3)                         = 0
+996900 openat(AT_FDCWD, "/lib64/libc.so.6", O_RDONLY|O_CLOEXEC) = 3
+996900 read(3, "\177ELF\2\1\1\3\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0\340=\2\0\0\0\0\0"..., 832) = 832
+996900 fstat(3, {st_mode=S_IFREG|0755, st_size=12559576, ...}) = 0
+996900 mmap(NULL, 1811920, PROT_READ, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7f2d7eef7000
+996900 mmap(0x7f2d7ef19000, 1331200, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x22000) = 0x7f2d7ef19000
+996900 mmap(0x7f2d7f05e000, 303104, PROT_READ, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x167000) = 0x7f2d7f05e000
+996900 mmap(0x7f2d7f0a8000, 24576, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x1b0000) = 0x7f2d7f0a8000
+996900 mmap(0x7f2d7f0ae000, 13776, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) = 0x7f2d7f0ae000
+996900 close(3)                         = 0
+996900 openat(AT_FDCWD, "/lib64/libtinfow.so.6", O_RDONLY|O_CLOEXEC) = 3
+996900 read(3, "\177ELF\2\1\1\0\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0\0\375\0\0\0\0\0\0"..., 832) = 832
+996900 fstat(3, {st_mode=S_IFREG|0755, st_size=1297496, ...}) = 0
+996900 mmap(NULL, 254456, PROT_READ, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7f2d7eeb8000
+996900 mprotect(0x7f2d7eec7000, 172032, PROT_NONE) = 0
+996900 mmap(0x7f2d7eec7000, 102400, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0xf000) = 0x7f2d7eec7000
+996900 mmap(0x7f2d7eee0000, 65536, PROT_READ, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x28000) = 0x7f2d7eee0000
+996900 mmap(0x7f2d7eef1000, 20480, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x38000) = 0x7f2d7eef1000
+996900 mmap(0x7f2d7eef6000, 504, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) = 0x7f2d7eef6000
+996900 close(3)                         = 0
+996900 openat(AT_FDCWD, "/usr/lib64/libelf.so.1", O_RDONLY|O_CLOEXEC) = 3
+996900 read(3, "\177ELF\2\1\1\0\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0`3\0\0\0\0\0\0"..., 832) = 832
+996900 fstat(3, {st_mode=S_IFREG|0755, st_size=1146976, ...}) = 0
+996900 mmap(NULL, 106944, PROT_READ, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7f2d7ee9d000
+996900 mmap(0x7f2d7eea0000, 69632, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x3000) = 0x7f2d7eea0000
+996900 mmap(0x7f2d7eeb1000, 20480, PROT_READ, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x14000) = 0x7f2d7eeb1000
+996900 mmap(0x7f2d7eeb6000, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x18000) = 0x7f2d7eeb6000
+996900 close(3)                         = 0
+996900 mmap(NULL, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f2d7ee9b000
+996900 openat(AT_FDCWD, "/lib64/libz.so.1", O_RDONLY|O_CLOEXEC) = 3
+996900 read(3, "\177ELF\2\1\1\0\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0 3\0\0\0\0\0\0"..., 832) = 832
+996900 fstat(3, {st_mode=S_IFREG|0755, st_size=350064, ...}) = 0
+996900 mmap(NULL, 102800, PROT_READ, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7f2d7ee81000
+996900 mmap(0x7f2d7ee84000, 57344, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x3000) = 0x7f2d7ee84000
+996900 mmap(0x7f2d7ee92000, 28672, PROT_READ, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x11000) = 0x7f2d7ee92000
+996900 mmap(0x7f2d7ee99000, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x17000) = 0x7f2d7ee99000
+996900 close(3)                         = 0
+996900 mmap(NULL, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f2d7ee7f000
+996900 arch_prctl(ARCH_SET_FS, 0x7f2d7ee7fb80) = 0
+996900 mprotect(0x7f2d7f0a8000, 16384, PROT_READ) = 0
+996900 mprotect(0x7f2d7ee99000, 4096, PROT_READ) = 0
+996900 mprotect(0x7f2d7eeb6000, 4096, PROT_READ) = 0
+996900 mprotect(0x7f2d7f29d000, 4096, PROT_READ) = 0
+996900 mprotect(0x7f2d7eef1000, 16384, PROT_READ) = 0
+996900 mprotect(0x7f2d7f0e4000, 4096, PROT_READ) = 0
+996900 mprotect(0x7f2d7f121000, 4096, PROT_READ) = 0
+996900 mprotect(0x7f2d7f292000, 4096, PROT_READ) = 0
+996900 mprotect(0x7f2d7f15a000, 4096, PROT_READ) = 0
+996900 mprotect(0x7f2d7f297000, 4096, PROT_READ) = 0
+996900 mprotect(0x7f2d7f2ba000, 4096, PROT_READ) = 0
+996900 mprotect(0x7f2d7f2c9000, 4096, PROT_READ) = 0
+996900 mprotect(0x7f2d7f57a000, 12288, PROT_READ) = 0
+996900 mprotect(0x55cdd3872000, 4096, PROT_READ) = 0
+996900 mprotect(0x7f2d7f66b000, 4096, PROT_READ) = 0
+996900 munmap(0x7f2d7f60c000, 220613)   = 0
+996900 set_tid_address(0x7f2d7ee7fe50)  = 996900
+996900 set_robust_list(0x7f2d7ee7fe60, 24) = 0
+996900 rt_sigaction(SIGRTMIN, {sa_handler=0x7f2d7f2a5690, sa_mask=[], sa_flags=SA_RESTORER|SA_SIGINFO, sa_restorer=0x7f2d7f2b2200}, NULL, 8) = 0
+996900 rt_sigaction(SIGRT_1, {sa_handler=0x7f2d7f2a5730, sa_mask=[], sa_flags=SA_RESTORER|SA_RESTART|SA_SIGINFO, sa_restorer=0x7f2d7f2b2200}, NULL, 8) = 0
+996900 rt_sigprocmask(SIG_UNBLOCK, [RTMIN RT_1], NULL, 8) = 0
+996900 prlimit64(0, RLIMIT_STACK, NULL, {rlim_cur=8192*1024, rlim_max=RLIM64_INFINITY}) = 0
+996900 brk(NULL)                        = 0x55cdd4448000
+996900 brk(0x55cdd4469000)              = 0x55cdd4469000
+996900 eventfd2(0, EFD_CLOEXEC)         = 3
+996900 access("/proc/net", R_OK)        = 0
+996900 access("/proc/net/unix", R_OK)   = 0
+996900 socket(AF_UNIX, SOCK_DGRAM|SOCK_CLOEXEC, 0) = 4
+996900 ioctl(4, SIOCGIFINDEX, {ifr_name="enp0s31f6", }) = 0
+996900 close(4)                         = 0
+996900 socket(AF_INET, SOCK_DGRAM, IPPROTO_IP) = 4
+996900 ioctl(4, SIOCGIFADDR, {ifr_name="enp0s31f6", ifr_addr={sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("192.168.1.100")}}) = 0
+996900 close(4)                         = 0
+996900 socket(AF_INET, SOCK_DGRAM, IPPROTO_IP) = 4
+996900 ioctl(4, SIOCGIFNETMASK, {ifr_name="enp0s31f6", ifr_netmask={sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("255.255.255.0")}}) = 0
+996900 close(4)                         = 0
+996900 socket(AF_INET, SOCK_DGRAM, IPPROTO_IP) = 4
+996900 ioctl(4, SIOCGIFHWADDR, {ifr_name="enp0s31f6", ifr_hwaddr={sa_family=ARPHRD_ETHER, sa_data=e8:6a:64:cf:4c:9d}}) = 0
+996900 close(4)                         = 0
+996900 openat(AT_FDCWD, "/proc/net/route", O_RDONLY) = 4
+996900 fstat(4, {st_mode=S_IFREG|0444, st_size=0, ...}) = 0
+996900 read(4, "Iface\tDestination\tGateway \tFlags"..., 1024) = 768
+996900 read(4, "", 1024)                = 0
+996900 read(4, "", 1024)                = 0
+996900 close(4)                         = 0
+996900 openat(AT_FDCWD, "/proc/net/arp", O_RDONLY) = 4
+996900 fstat(4, {st_mode=S_IFREG|0444, st_size=0, ...}) = 0
+996900 read(4, "IP address       HW type     Fla"..., 1024) = 319
+996900 read(4, "", 1024)                = 0
+996900 read(4, "", 1024)                = 0
+996900 close(4)                         = 0
+996900 openat(AT_FDCWD, ".", O_RDWR|O_TMPFILE, 0600) = 4
+996900 fcntl(4, F_GETFL)                = 0x418002 (flags O_RDWR|O_LARGEFILE|O_TMPFILE)
+996900 fcntl(4, F_SETFL, O_RDWR|O_APPEND|O_LARGEFILE|O_TMPFILE) = 0
+996900 lseek(4, 0, SEEK_END)            = 0
+996900 socket(AF_INET, SOCK_DGRAM, IPPROTO_IP) = 5
+996900 setsockopt(5, SOL_SOCKET, SO_BINDTODEVICE, "enp0s31f6\0\0\0\0\0\0z\2\0\0\0\375\177\0\0\0\0\0\0\0\0\0\0"..., 40) = 0
+996900 bind(5, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("192.168.1.100")}, 16) = 0
+996900 getsockname(5, {sa_family=AF_INET, sin_port=htons(40740), sin_addr=inet_addr("192.168.1.100")}, [16]) = 0
+996900 write(4, "Endpoint UDP port: 40740\n", 25) = 25
+996900 eventfd2(0, EFD_CLOEXEC)         = 6
+996900 mmap(NULL, 8392704, PROT_NONE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK, -1, 0) = 0x7f2d7e67e000
+996900 mprotect(0x7f2d7e67f000, 8388608, PROT_READ|PROT_WRITE) = 0
+996900 clone(child_stack=0x7f2d7ee7dfb0, flags=CLONE_VM|CLONE_FS|CLONE_FILES|CLONE_SIGHAND|CLONE_THREAD|CLONE_SYSVSEM|CLONE_SETTLS|CLONE_PARENT_SETTID|CLONE_CHILD_CLEARTID, parent_tid=[996905], tls=0x7f2d7ee7e700, child_tidptr=0x7f2d7ee7e9d0) = 996905
+996905 set_robust_list(0x7f2d7ee7e9e0, 24) = 0
+996900 openat(AT_FDCWD, "/proc/self/task/996905/comm", O_RDWR <unfinished ...>
+996905 madvise(0x7f2d7e67e000, 8368128, MADV_DONTNEED <unfinished ...>
+996900 <... openat resumed>)            = 7
+996905 <... madvise resumed>)           = 0
+996900 write(7, "upnp", 4 <unfinished ...>
+996905 exit(0 <unfinished ...>
+996900 <... write resumed>)             = 4
+996905 <... exit resumed>)              = ?
+996900 close(7 <unfinished ...>
+996905 +++ exited with 0 +++
+996900 <... close resumed>)             = 0
+996900 access("/root/.config/ishoal.conf", R_OK) = 0
+996900 openat(AT_FDCWD, "/root/.config/ishoal.conf", O_RDONLY) = 7
+996900 fstat(7, {st_mode=S_IFREG|0644, st_size=18, ...}) = 0
+996900 read(7, "\1\0\0\0\21\21\21\21\21\21\1\2\3-\300\250\1\1", 4096) = 18
+996900 read(7, "", 4096)                = 0
+996900 close(7)                         = 0
+996900 prlimit64(0, RLIMIT_MEMLOCK, {rlim_cur=RLIM64_INFINITY, rlim_max=RLIM64_INFINITY}, NULL) = 0
+996900 rt_sigaction(SIGINT, {sa_handler=0x55cdd3861660, sa_mask=[INT], sa_flags=SA_RESTORER|SA_RESTART, sa_restorer=0x7f2d7ef2fb80}, {sa_handler=SIG_DFL, sa_mask=[], sa_flags=0}, 8) = 0
+996900 rt_sigaction(SIGTERM, {sa_handler=0x55cdd3861660, sa_mask=[TERM], sa_flags=SA_RESTORER|SA_RESTART, sa_restorer=0x7f2d7ef2fb80}, {sa_handler=SIG_DFL, sa_mask=[], sa_flags=0}, 8) = 0
+996900 eventfd2(0, EFD_CLOEXEC)         = 7
+996900 mmap(NULL, 8392704, PROT_NONE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK, -1, 0) = 0x7f2d7de7d000
+996900 mprotect(0x7f2d7de7e000, 8388608, PROT_READ|PROT_WRITE) = 0
+996900 clone(child_stack=0x7f2d7e67cfb0, flags=CLONE_VM|CLONE_FS|CLONE_FILES|CLONE_SIGHAND|CLONE_THREAD|CLONE_SYSVSEM|CLONE_SETTLS|CLONE_PARENT_SETTID|CLONE_CHILD_CLEARTID, parent_tid=[996906], tls=0x7f2d7e67d700, child_tidptr=0x7f2d7e67d9d0) = 996906
+996906 set_robust_list(0x7f2d7e67d9e0, 24 <unfinished ...>
+996900 openat(AT_FDCWD, "/proc/self/task/996906/comm", O_RDWR <unfinished ...>
+996906 <... set_robust_list resumed>)   = 0
+996906 mmap(NULL, 134217728, PROT_NONE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_NORESERVE, -1, 0 <unfinished ...>
+996900 <... openat resumed>)            = 8
+996906 <... mmap resumed>)              = 0x7f2d75e7d000
+996900 write(8, "bpf", 3 <unfinished ...>
+996906 munmap(0x7f2d75e7d000, 35139584 <unfinished ...>
+996900 <... write resumed>)             = 3
+996906 <... munmap resumed>)            = 0
+996900 close(8 <unfinished ...>
+996906 munmap(0x7f2d7c000000, 31969280 <unfinished ...>
+996900 <... close resumed>)             = 0
+996906 <... munmap resumed>)            = 0
+996900 eventfd2(0, EFD_CLOEXEC <unfinished ...>
+996906 mprotect(0x7f2d78000000, 135168, PROT_READ|PROT_WRITE <unfinished ...>
+996900 <... eventfd2 resumed>)          = 8
+996906 <... mprotect resumed>)          = 0
+996900 mmap(NULL, 8392704, PROT_NONE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK, -1, 0) = 0x7f2d7d67c000
+996906 uname( <unfinished ...>
+996900 mprotect(0x7f2d7d67d000, 8388608, PROT_READ|PROT_WRITE <unfinished ...>
+996906 <... uname resumed>{sysname="Linux", nodename="zhuyifei1999-ThinkPad-T480", ...}) = 0
+996900 <... mprotect resumed>)          = 0
+996900 clone(child_stack=0x7f2d7de7bfb0, flags=CLONE_VM|CLONE_FS|CLONE_FILES|CLONE_SIGHAND|CLONE_THREAD|CLONE_SYSVSEM|CLONE_SETTLS|CLONE_PARENT_SETTID|CLONE_CHILD_CLEARTID, parent_tid=[996907], tls=0x7f2d7de7c700, child_tidptr=0x7f2d7de7c9d0) = 996907
+996907 set_robust_list(0x7f2d7de7c9e0, 24 <unfinished ...>
+996906 mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0 <unfinished ...>
+996907 <... set_robust_list resumed>)   = 0
+996900 openat(AT_FDCWD, "/proc/self/task/996907/comm", O_RDWR <unfinished ...>
+996906 <... mmap resumed>)              = 0x7f2d7f66a000
+996907 mmap(NULL, 134217728, PROT_NONE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_NORESERVE, -1, 0 <unfinished ...>
+996900 <... openat resumed>)            = 9
+996907 <... mmap resumed>)              = 0x7f2d70000000
+996900 write(9, "tui", 3 <unfinished ...>
+996906 bpf(BPF_PROG_LOAD, {prog_type=BPF_PROG_TYPE_SOCKET_FILTER, insn_cnt=2, insns=0x7f2d7e67cd30, license="GPL", log_level=0, log_size=0, log_buf=NULL, kern_version=KERNEL_VERSION(0, 0, 0), prog_flags=0, prog_name="", prog_ifindex=0, expected_attach_type=BPF_CGROUP_INET_INGRESS, prog_btf_fd=0, func_info_rec_size=0, func_info=NULL, func_info_cnt=0, line_info_rec_size=0, line_info=NULL, line_info_cnt=0, attach_btf_id=0, attach_prog_fd=0}, 120 <unfinished ...>
+996907 munmap(0x7f2d74000000, 67108864 <unfinished ...>
+996900 <... write resumed>)             = 3
+996907 <... munmap resumed>)            = 0
+996900 close(9 <unfinished ...>
+996907 mprotect(0x7f2d70000000, 135168, PROT_READ|PROT_WRITE <unfinished ...>
+996900 <... close resumed>)             = 0
+996907 <... mprotect resumed>)          = 0
+996900 poll([{fd=3, events=POLLIN}], 1, -1 <unfinished ...>
+996907 openat(AT_FDCWD, "/usr/lib64/locale/locale-archive", O_RDONLY|O_CLOEXEC) = 9
+996907 fstat(9, {st_mode=S_IFREG|0644, st_size=12843152, ...}) = 0
+996907 mmap(NULL, 12843152, PROT_READ, MAP_PRIVATE, 9, 0) = 0x7f2d7ca3c000
+996907 close(9)                         = 0
+996907 openat(AT_FDCWD, "/root/.dialogrc", O_RDONLY) = -1 ENOENT (No such file or directory)
+996907 openat(AT_FDCWD, "/etc/dialogrc", O_RDONLY) = -1 ENOENT (No such file or directory)
+996907 ioctl(0, TCGETS, {B38400 opost isig icanon echo ...}) = 0
+996907 ioctl(1, TCGETS, {B38400 opost isig icanon echo ...}) = 0
+996907 ioctl(1, TCGETS, {B38400 opost isig icanon echo ...}) = 0
+996907 stat("/root/.terminfo", 0x7f2d700026f0) = -1 ENOENT (No such file or directory)
+996907 stat("/etc/terminfo", {st_mode=S_IFDIR|0755, st_size=14, ...}) = 0
+996907 stat("/usr/share/terminfo",  <unfinished ...>
+996906 <... bpf resumed>)               = 9
+996907 <... stat resumed>{st_mode=S_IFDIR|0755, st_size=132, ...}) = 0
+996906 close(9)                         = 0
+996907 access("/etc/terminfo/x/xterm-256color", R_OK <unfinished ...>
+996906 bpf(BPF_PROG_LOAD, {prog_type=BPF_PROG_TYPE_SOCKET_FILTER, insn_cnt=2, insns=0x7f2d7e67cc10, license="GPL", log_level=0, log_size=0, log_buf=NULL, kern_version=KERNEL_VERSION(0, 0, 0), prog_flags=0, prog_name="test", prog_ifindex=0, expected_attach_type=BPF_CGROUP_INET_INGRESS, prog_btf_fd=0, func_info_rec_size=0, func_info=NULL, func_info_cnt=0, line_info_rec_size=0, line_info=NULL, line_info_cnt=0, attach_btf_id=0, attach_prog_fd=0}, 120 <unfinished ...>
+996907 <... access resumed>)            = 0
+996907 openat(AT_FDCWD, "/etc/terminfo/x/xterm-256color", O_RDONLY) = 9
+996906 <... bpf resumed>)               = 10
+996907 fstat(9,  <unfinished ...>
+996906 close(10 <unfinished ...>
+996907 <... fstat resumed>{st_mode=S_IFREG|0644, st_size=3810, ...}) = 0
+996906 <... close resumed>)             = 0
+996907 read(9,  <unfinished ...>
+996906 bpf(BPF_MAP_CREATE, {map_type=BPF_MAP_TYPE_ARRAY, key_size=4, value_size=32, max_entries=1, map_flags=0, inner_map_fd=0, map_name="", map_ifindex=0, btf_fd=0, btf_key_type_id=0, btf_value_type_id=0, btf_vmlinux_value_type_id=0}, 120 <unfinished ...>
+996907 <... read resumed>"\36\2%\0&\0\17\0\235\0010\6xterm-256color|xterm"..., 32768) = 3810
+996906 <... bpf resumed>)               = 10
+996907 read(9,  <unfinished ...>
+996906 bpf(BPF_PROG_LOAD, {prog_type=BPF_PROG_TYPE_SOCKET_FILTER, insn_cnt=5, insns=0x7f2d7e67cb60, license="GPL", log_level=0, log_size=0, log_buf=NULL, kern_version=KERNEL_VERSION(0, 0, 0), prog_flags=0, prog_name="", prog_ifindex=0, expected_attach_type=BPF_CGROUP_INET_INGRESS, prog_btf_fd=0, func_info_rec_size=0, func_info=NULL, func_info_cnt=0, line_info_rec_size=0, line_info=NULL, line_info_cnt=0, attach_btf_id=0, attach_prog_fd=0}, 120 <unfinished ...>
+996907 <... read resumed>"", 28672)     = 0
+996907 close(9 <unfinished ...>
+996906 <... bpf resumed>)               = 11
+996907 <... close resumed>)             = 0
+996906 close(11 <unfinished ...>
+996907 ioctl(1, TCGETS <unfinished ...>
+996906 <... close resumed>)             = 0
+996907 <... ioctl resumed>, {B38400 opost isig icanon echo ...}) = 0
+996906 close(10 <unfinished ...>
+996907 ioctl(1, TCGETS <unfinished ...>
+996906 <... close resumed>)             = 0
+996907 <... ioctl resumed>, {B38400 opost isig icanon echo ...}) = 0
+996906 bpf(BPF_BTF_LOAD, {btf="\237\353\1\0\30\0\0\0\0\0\0\0000\0\0\0000\0\0\0\t\0\0\0\1\0\0\0\0\0\0\1"..., btf_log_buf=NULL, btf_size=81, btf_log_size=0, btf_log_level=0}, 120 <unfinished ...>
+996907 ioctl(1, TCGETS, {B38400 opost isig icanon echo ...}) = 0
+996906 <... bpf resumed>)               = 9
+996907 ioctl(1, TCGETS <unfinished ...>
+996906 close(9 <unfinished ...>
+996907 <... ioctl resumed>, {B38400 opost isig icanon echo ...}) = 0
+996906 <... close resumed>)             = 0
+996907 ioctl(1, TIOCGWINSZ <unfinished ...>
+996906 bpf(BPF_BTF_LOAD, {btf="\237\353\1\0\30\0\0\0\0\0\0\0000\0\0\0000\0\0\0\t\0\0\0\1\0\0\0\0\0\0\1"..., btf_log_buf=NULL, btf_size=81, btf_log_size=0, btf_log_level=0}, 120 <unfinished ...>
+996907 <... ioctl resumed>, {ws_row=50, ws_col=185, ws_xpixel=0, ws_ypixel=0}) = 0
+996906 <... bpf resumed>)               = 9
+996907 ioctl(1, TCGETS <unfinished ...>
+996906 close(9 <unfinished ...>
+996907 <... ioctl resumed>, {B38400 opost isig icanon echo ...}) = 0
+996906 <... close resumed>)             = 0
+996907 ioctl(1, TIOCGWINSZ <unfinished ...>
+996906 bpf(BPF_BTF_LOAD, {btf="\237\353\1\0\30\0\0\0\0\0\0\08\0\0\08\0\0\0\t\0\0\0\0\0\0\0\0\0\0\1"..., btf_log_buf=NULL, btf_size=89, btf_log_size=0, btf_log_level=0}, 120 <unfinished ...>
+996907 <... ioctl resumed>, {ws_row=50, ws_col=185, ws_xpixel=0, ws_ypixel=0}) = 0
+996906 <... bpf resumed>)               = 9
+996906 close(9)                         = 0
+996906 bpf(BPF_MAP_CREATE, {map_type=BPF_MAP_TYPE_ARRAY, key_size=4, value_size=4, max_entries=1, map_flags=BPF_F_MMAPABLE, inner_map_fd=0, map_name="", map_ifindex=0, btf_fd=0, btf_key_type_id=0, btf_value_type_id=0, btf_vmlinux_value_type_id=0}, 120) = 9
+996907 mprotect(0x7f2d70021000, 4096, PROT_READ|PROT_WRITE <unfinished ...>
+996906 close(9 <unfinished ...>
+996907 <... mprotect resumed>)          = 0
+996906 <... close resumed>)             = 0
+996907 mprotect(0x7f2d70022000, 4096, PROT_READ|PROT_WRITE <unfinished ...>
+996906 bpf(BPF_PROG_LOAD, {prog_type=BPF_PROG_TYPE_CGROUP_SOCK, insn_cnt=2, insns=0x7f2d7e67cc10, license="GPL", log_level=0, log_size=0, log_buf=NULL, kern_version=KERNEL_VERSION(0, 0, 0), prog_flags=0, prog_name="", prog_ifindex=0, expected_attach_type=BPF_CGROUP_INET_SOCK_CREATE, prog_btf_fd=0, func_info_rec_size=0, func_info=NULL, func_info_cnt=0, line_info_rec_size=0, line_info=NULL, line_info_cnt=0, attach_btf_id=0, attach_prog_fd=0}, 120 <unfinished ...>
+996907 <... mprotect resumed>)          = 0
+996907 mprotect(0x7f2d70023000, 4096, PROT_READ|PROT_WRITE) = 0
+996906 <... bpf resumed>)               = 9
+996907 mprotect(0x7f2d70024000, 8192, PROT_READ|PROT_WRITE <unfinished ...>
+996906 close(9 <unfinished ...>
+996907 <... mprotect resumed>)          = 0
+996907 mprotect(0x7f2d70026000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70027000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70028000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7002a000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7002b000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7002c000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7002d000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7002f000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70030000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70031000, 4096, PROT_READ|PROT_WRITE) = 0
+996906 <... close resumed>)             = 0
+996906 bpf(BPF_BTF_LOAD, {btf="\237\353\1\0\30\0\0\0\0\0\0\0004\5\0\0004\5\0\0\273\24\0\0\0\0\0\0\4\0\0\4"..., btf_log_buf=NULL, btf_size=6663, btf_log_size=0, btf_log_level=0}, 120) = 9
+996906 bpf(BPF_MAP_CREATE, {map_type=BPF_MAP_TYPE_XSKMAP, key_size=4, value_size=4, max_entries=64, map_flags=0, inner_map_fd=0, map_name="xsks_map", map_ifindex=0, btf_fd=9, btf_key_type_id=0, btf_value_type_id=0, btf_vmlinux_value_type_id=0}, 120) = 10
+996906 bpf(BPF_MAP_CREATE, {map_type=BPF_MAP_TYPE_LRU_HASH, key_size=3, value_size=12, max_entries=1024, map_flags=0, inner_map_fd=0, map_name="conntrack_map", map_ifindex=0, btf_fd=9, btf_key_type_id=15, btf_value_type_id=23, btf_vmlinux_value_type_id=0}, 120) = 11
+996906 bpf(BPF_MAP_CREATE, {map_type=BPF_MAP_TYPE_LRU_HASH, key_size=4, value_size=8, max_entries=256, map_flags=0, inner_map_fd=0, map_name="remote_addrs", map_ifindex=0, btf_fd=9, btf_key_type_id=24, btf_value_type_id=37, btf_vmlinux_value_type_id=0}, 120) = 12
+996906 bpf(BPF_MAP_CREATE, {map_type=BPF_MAP_TYPE_ARRAY, key_size=4, value_size=40, max_entries=1, map_flags=BPF_F_MMAPABLE, inner_map_fd=0, map_name="bpf_kern.bss", map_ifindex=0, btf_fd=9, btf_key_type_id=0, btf_value_type_id=59, btf_vmlinux_value_type_id=0}, 120) = 13
+996906 bpf(BPF_MAP_UPDATE_ELEM, {map_fd=13, key=0x7f2d7e67cb1c, value=0x7f2d7f66a000, flags=BPF_ANY}, 120) = 0
+996906 bpf(BPF_PROG_LOAD, {prog_type=BPF_PROG_TYPE_XDP, insn_cnt=816, insns=0x7f2d78002250, license="GPL", log_level=0, log_size=0, log_buf=NULL, kern_version=KERNEL_VERSION(5, 7, 8), prog_flags=0, prog_name="xdp_prog", prog_ifindex=0, expected_attach_type=BPF_CGROUP_INET_INGRESS, prog_btf_fd=9, func_info_rec_size=8, func_info=0x7f2d78000f20, func_info_cnt=1, line_info_rec_size=16, line_info=0x7f2d78007330, line_info_cnt=316, attach_btf_id=0, attach_prog_fd=0}, 120 <unfinished ...>
+996907 mprotect(0x7f2d70032000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70034000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70035000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70036000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70038000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70039000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7003a000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7003b000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7003d000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7003e000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7003f000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70040000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70042000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70043000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70044000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70045000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70047000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70048000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70049000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7004a000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7004b000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7004c000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7004d000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7004f000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70050000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70051000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70052000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70054000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70055000, 4096, PROT_READ|PROT_WRITE <unfinished ...>
+996906 <... bpf resumed>)               = 14
+996907 <... mprotect resumed>)          = 0
+996906 mmap(0x7f2d7f66a000, 4096, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_FIXED, 13, 0 <unfinished ...>
+996907 mprotect(0x7f2d70056000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70058000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70059000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7005a000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7005b000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7005d000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7005e000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7005f000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70060000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70062000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70063000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70064000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70066000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70067000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70068000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70069000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7006b000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7006c000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7006d000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7006e000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70070000, 4096, PROT_READ|PROT_WRITE) = 0
+996906 <... mmap resumed>)              = 0x7f2d7f66a000
+996907 mprotect(0x7f2d70071000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70072000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70073000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70075000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70076000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70077000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70079000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7007a000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7007b000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7007c000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7007e000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7007f000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70080000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70081000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70083000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70084000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70085000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70087000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70088000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70089000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7008b000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7008c000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7008d000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7008e000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70090000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70091000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70092000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70093000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70095000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70096000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70097000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d70099000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7009a000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7009b000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7009c000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7009e000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d7009f000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700a0000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700a1000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700a3000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700a4000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700a5000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700a7000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700a8000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700a9000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700aa000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700ac000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700ad000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700ae000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700af000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700b1000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700b2000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700b3000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700b4000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700b6000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700b7000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700b8000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700ba000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700bb000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700bc000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700bd000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700bf000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700c0000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700c1000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700c2000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700c4000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700c5000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700c6000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700c8000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 ioctl(1, TCGETS, {B38400 opost isig icanon echo ...}) = 0
+996907 ioctl(1, SNDCTL_TMR_STOP or TCSETSW, {B38400 opost isig -icanon echo ...}) = 0
+996907 ioctl(1, SNDCTL_TMR_STOP or TCSETSW, {B38400 opost isig -icanon -echo ...}) = 0
+996907 rt_sigaction(SIGTSTP, NULL, {sa_handler=SIG_DFL, sa_mask=[], sa_flags=0}, 8) = 0
+996906 socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE) = 15
+996906 setsockopt(15, SOL_NETLINK, NETLINK_EXT_ACK, [1], 4) = 0
+996906 bind(15, {sa_family=AF_NETLINK, nl_pid=0, nl_groups=00000000}, 12) = 0
+996906 getsockname(15, {sa_family=AF_NETLINK, nl_pid=996900, nl_groups=00000000}, [12]) = 0
+996906 sendto(15, {{len=44, type=RTM_SETLINK, flags=NLM_F_REQUEST|NLM_F_ACK, seq=1, pid=0}, {ifi_family=AF_UNSPEC, ifi_type=ARPHRD_NETROM, ifi_index=if_nametoindex("enp0s31f6"), ifi_flags=0, ifi_change=0}, {{nla_len=12, nla_type=NLA_F_NESTED|IFLA_XDP}, {{nla_len=8, nla_type=IFLA_XDP_FD}, 14}}}, 44, 0, NULL, 0) = 44
+996907 rt_sigaction(SIGTSTP, {sa_handler=0x7f2d7f105b20, sa_mask=[], sa_flags=SA_RESTORER|SA_RESTART, sa_restorer=0x7f2d7f2b2200}, NULL, 8) = 0
+996907 rt_sigaction(SIGINT, NULL, {sa_handler=0x55cdd3861660, sa_mask=[INT], sa_flags=SA_RESTORER|SA_RESTART, sa_restorer=0x7f2d7ef2fb80}, 8) = 0
+996907 rt_sigaction(SIGTERM, NULL, {sa_handler=0x55cdd3861660, sa_mask=[TERM], sa_flags=SA_RESTORER|SA_RESTART, sa_restorer=0x7f2d7ef2fb80}, 8) = 0
+996907 rt_sigaction(SIGWINCH, NULL, {sa_handler=SIG_DFL, sa_mask=[], sa_flags=0}, 8) = 0
+996907 rt_sigaction(SIGWINCH, {sa_handler=0x7f2d7f105a00, sa_mask=[], sa_flags=SA_RESTORER, sa_restorer=0x7f2d7f2b2200}, NULL, 8) = 0
+996907 ioctl(1, TCGETS, {B38400 opost isig -icanon -echo ...}) = 0
+996907 ioctl(1, TCGETS, {B38400 opost isig -icanon -echo ...}) = 0
+996907 rt_sigaction(SIGTSTP, {sa_handler=SIG_IGN, sa_mask=[], sa_flags=SA_RESTORER|SA_RESTART, sa_restorer=0x7f2d7f2b2200}, {sa_handler=0x7f2d7f105b20, sa_mask=[], sa_flags=SA_RESTORER|SA_RESTART, sa_restorer=0x7f2d7f2b2200}, 8) = 0
+996907 write(1, "\33[?1049h\33[22;0;0t\33[1;50r\33(B\33[m\33["..., 46) = 46
+996907 rt_sigaction(SIGTSTP, {sa_handler=0x7f2d7f105b20, sa_mask=[], sa_flags=SA_RESTORER|SA_RESTART, sa_restorer=0x7f2d7f2b2200}, NULL, 8) = 0
+996907 write(1, "\33", 1)               = 1
+996907 write(1, "[", 1)                 = 1
+996907 write(1, "?", 1)                 = 1
+996907 write(1, "1", 1)                 = 1
+996907 write(1, "0", 1)                 = 1
+996907 write(1, "4", 1)                 = 1
+996907 write(1, "9", 1)                 = 1
+996907 write(1, "l", 1)                 = 1
+996907 write(1, "\33", 1)               = 1
+996907 write(1, "[", 1)                 = 1
+996907 write(1, "2", 1)                 = 1
+996907 write(1, "3", 1)                 = 1
+996907 write(1, ";", 1)                 = 1
+996907 write(1, "0", 1)                 = 1
+996907 write(1, ";", 1)                 = 1
+996907 write(1, "0", 1)                 = 1
+996907 write(1, "t", 1)                 = 1
+996907 write(1, "\33", 1)               = 1
+996907 write(1, "[", 1)                 = 1
+996907 write(1, "H", 1)                 = 1
+996907 write(1, "\33", 1 <unfinished ...>
+996906 recvfrom(15,  <unfinished ...>
+996907 <... write resumed>)             = 1
+996906 <... recvfrom resumed>{{len=36, type=NLMSG_ERROR, flags=NLM_F_CAPPED, seq=1, pid=996900}, {error=0, msg={len=44, type=RTM_SETLINK, flags=NLM_F_REQUEST|NLM_F_ACK, seq=1, pid=0}}}, 4096, 0, NULL, NULL) = 36
+996907 write(1, "[", 1 <unfinished ...>
+996906 close(15 <unfinished ...>
+996907 <... write resumed>)             = 1
+996906 <... close resumed>)             = 0
+996907 write(1, "2", 1 <unfinished ...>
+996906 eventfd2(0, EFD_CLOEXEC|EFD_NONBLOCK <unfinished ...>
+996907 <... write resumed>)             = 1
+996906 <... eventfd2 resumed>)          = 15
+996907 write(1, "J", 1 <unfinished ...>
+996906 eventfd2(0, EFD_CLOEXEC <unfinished ...>
+996907 <... write resumed>)             = 1
+996906 <... eventfd2 resumed>)          = 16
+996907 ioctl(1, TCFLSH, TCIFLUSH <unfinished ...>
+996906 mmap(NULL, 8392704, PROT_NONE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK, -1, 0 <unfinished ...>
+996907 <... ioctl resumed>)             = 0
+996906 <... mmap resumed>)              = 0x7f2d7c23b000
+996907 write(1, "\33[?1h\33=", 7 <unfinished ...>
+996906 mprotect(0x7f2d7c23c000, 8388608, PROT_READ|PROT_WRITE <unfinished ...>
+996907 <... write resumed>)             = 7
+996907 mprotect(0x7f2d700c9000, 4096, PROT_READ|PROT_WRITE <unfinished ...>
+996906 <... mprotect resumed>)          = 0
+996907 <... mprotect resumed>)          = 0
+996906 clone(child_stack=0x7f2d7ca3afb0, flags=CLONE_VM|CLONE_FS|CLONE_FILES|CLONE_SIGHAND|CLONE_THREAD|CLONE_SYSVSEM|CLONE_SETTLS|CLONE_PARENT_SETTID|CLONE_CHILD_CLEARTID <unfinished ...>
+996907 mprotect(0x7f2d700ca000, 4096, PROT_READ|PROT_WRITE) = 0
+996917 set_robust_list(0x7f2d7ca3b9e0, 24) = 0
+996917 read(15, 0x7f2d7ca3aea0, 8)      = -1 EAGAIN (Resource temporarily unavailable)
+996917 poll([{fd=16, events=POLLIN}, {fd=15, events=POLLIN}], 2, -1 <unfinished ...>
+996907 ioctl(1, SNDCTL_TMR_STOP or TCSETSW, {B38400 opost isig -icanon -echo ...} <unfinished ...>
+996906 <... clone resumed>, parent_tid=[996917], tls=0x7f2d7ca3b700, child_tidptr=0x7f2d7ca3b9d0) = 996917
+996907 <... ioctl resumed>)             = 0
+996906 openat(AT_FDCWD, "/proc/self/task/996917/comm", O_RDWR <unfinished ...>
+996907 write(1, "\33[?1006;1000h", 13 <unfinished ...>
+996906 <... openat resumed>)            = 17
+996907 <... write resumed>)             = 13
+996906 write(17, "xsk_rx", 6 <unfinished ...>
+996907 mprotect(0x7f2d700cb000, 8192, PROT_READ|PROT_WRITE <unfinished ...>
+996906 <... write resumed>)             = 6
+996907 <... mprotect resumed>)          = 0
+996906 close(17 <unfinished ...>
+996907 mprotect(0x7f2d700cd000, 8192, PROT_READ|PROT_WRITE <unfinished ...>
+996906 <... close resumed>)             = 0
+996907 <... mprotect resumed>)          = 0
+996906 mmap(NULL, 1048576, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0 <unfinished ...>
+996907 fcntl(8, F_GETFL <unfinished ...>
+996906 <... mmap resumed>)              = 0x7f2d7c13b000
+996907 <... fcntl resumed>)             = 0x2 (flags O_RDWR)
+996906 socket(AF_XDP, SOCK_RAW, 0)      = 17
+996907 fcntl(8, F_SETFL, O_RDWR|O_NONBLOCK) = 0
+996906 setsockopt(17, SOL_XDP, XDP_UMEM_REG, "\0\260\23|-\177\0\0\0\0\20\0\0\0\0\0\0\20\0\0\0\0\0\0\0\0\0\0\0\0\0\0", 32) = 0
+996907 dup(8 <unfinished ...>
+996906 setsockopt(17, SOL_XDP, XDP_UMEM_FILL_RING, [512], 4 <unfinished ...>
+996907 <... dup resumed>)               = 18
+996906 <... setsockopt resumed>)        = 0
+996907 fcntl(18, F_GETFL)               = 0x802 (flags O_RDWR|O_NONBLOCK)
+996906 setsockopt(17, SOL_XDP, XDP_UMEM_COMPLETION_RING, [512], 4) = 0
+996907 eventfd2(0, EFD_CLOEXEC <unfinished ...>
+996906 getsockopt(17, SOL_XDP, XDP_MMAP_OFFSETS,  <unfinished ...>
+996907 <... eventfd2 resumed>)          = 19
+996906 <... getsockopt resumed>"\0\0\0\0\0\0\0\0@\0\0\0\0\0\0\0\200\0\0\0\0\0\0\0D\0\0\0\0\0\0\0"..., [128]) = 0
+996907 mmap(NULL, 8392704, PROT_NONE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK, -1, 0 <unfinished ...>
+996906 mmap(NULL, 4224, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_POPULATE, 17, 0x100000000 <unfinished ...>
+996907 <... mmap resumed>)              = 0x7f2d777ff000
+996906 <... mmap resumed>)              = 0x7f2d7f640000
+996907 mprotect(0x7f2d77800000, 8388608, PROT_READ|PROT_WRITE <unfinished ...>
+996906 mmap(NULL, 4224, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_POPULATE, 17, 0x180000000 <unfinished ...>
+996907 <... mprotect resumed>)          = 0
+996906 <... mmap resumed>)              = 0x7f2d7f63e000
+996907 clone(child_stack=0x7f2d77ffefb0, flags=CLONE_VM|CLONE_FS|CLONE_FILES|CLONE_SIGHAND|CLONE_THREAD|CLONE_SYSVSEM|CLONE_SETTLS|CLONE_PARENT_SETTID|CLONE_CHILD_CLEARTID <unfinished ...>
+996906 socket(AF_UNIX, SOCK_DGRAM|SOCK_CLOEXEC, 0) = 20
+996918 set_robust_list(0x7f2d77fff9e0, 24 <unfinished ...>
+996907 <... clone resumed>, parent_tid=[996918], tls=0x7f2d77fff700, child_tidptr=0x7f2d77fff9d0) = 996918
+996906 ioctl(20, SIOCGIFINDEX, {ifr_name="enp0s31f6" <unfinished ...>
+996918 <... set_robust_list resumed>)   = 0
+996918 poll([{fd=19, events=POLLIN}], 1, -1 <unfinished ...>
+996907 openat(AT_FDCWD, "/proc/self/task/996918/comm", O_RDWR <unfinished ...>
+996906 <... ioctl resumed>, })          = 0
+996907 <... openat resumed>)            = 21
+996906 close(20)                        = 0
+996907 write(21, "tui_reaper", 10 <unfinished ...>
+996906 setsockopt(17, SOL_XDP, XDP_RX_RING, [256], 4 <unfinished ...>
+996907 <... write resumed>)             = 10
+996906 <... setsockopt resumed>)        = 0
+996907 close(21)                        = 0
+996906 getsockopt(17, SOL_XDP, XDP_MMAP_OFFSETS, "\0\0\0\0\0\0\0\0@\0\0\0\0\0\0\0\200\0\0\0\0\0\0\0D\0\0\0\0\0\0\0"..., [128]) = 0
+996907 close(18 <unfinished ...>
+996906 mmap(NULL, 4224, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_POPULATE, 17, 0 <unfinished ...>
+996907 <... close resumed>)             = 0
+996906 <... mmap resumed>)              = 0x7f2d7f63c000
+996907 rt_sigaction(SIGTSTP, {sa_handler=SIG_IGN, sa_mask=[], sa_flags=SA_RESTORER|SA_RESTART, sa_restorer=0x7f2d7f2b2200},  <unfinished ...>
+996906 bind(17, {sa_family=AF_XDP, sa_data="\0\0\3\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+996906 write(15, "\1\0\0\0\0\0\0\0", 8) = 8
+996917 <... poll resumed>)              = 1 ([{fd=15, revents=POLLIN}])
+996917 read(15,  <unfinished ...>
+996906 bpf(BPF_MAP_UPDATE_ELEM, {map_fd=10, key=0x7f2d7e67cec4, value=0x7f2d7e67cec0, flags=BPF_ANY}, 120 <unfinished ...>
+996917 <... read resumed>"\1\0\0\0\0\0\0\0", 8) = 8
+996917 poll([{fd=17, events=POLLIN}, {fd=16, events=POLLIN}, {fd=15, events=POLLIN}], 3, -1 <unfinished ...>
+996906 <... bpf resumed>)               = 0
+996906 mmap(NULL, 1048576, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f2d7c03b000
+996906 socket(AF_XDP, SOCK_RAW, 0)      = 18
+996906 setsockopt(18, SOL_XDP, XDP_UMEM_REG, "\0\260\3|-\177\0\0\0\0\20\0\0\0\0\0\0\20\0\0\0\0\0\0\0\0\0\0\0\0\0\0", 32) = 0
+996906 setsockopt(18, SOL_XDP, XDP_UMEM_FILL_RING, [512], 4) = 0
+996906 setsockopt(18, SOL_XDP, XDP_UMEM_COMPLETION_RING, [512], 4) = 0
+996906 getsockopt(18, SOL_XDP, XDP_MMAP_OFFSETS, "\0\0\0\0\0\0\0\0@\0\0\0\0\0\0\0\200\0\0\0\0\0\0\0D\0\0\0\0\0\0\0"..., [128]) = 0
+996906 mmap(NULL, 4224, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_POPULATE, 18, 0x100000000) = 0x7f2d7f63a000
+996907 <... rt_sigaction resumed>{sa_handler=0x7f2d7f105b20, sa_mask=[], sa_flags=SA_RESTORER|SA_RESTART, sa_restorer=0x7f2d7f2b2200}, 8) = 0
+996907 poll([{fd=0, events=POLLIN}], 1, 0 <unfinished ...>
+996906 mmap(NULL, 4224, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_POPULATE, 18, 0x180000000) = 0x7f2d7f638000
+996907 <... poll resumed>)              = 0 (Timeout)
+996906 socket(AF_UNIX, SOCK_DGRAM|SOCK_CLOEXEC, 0 <unfinished ...>
+996907 mprotect(0x7f2d700cf000, 4096, PROT_READ|PROT_WRITE <unfinished ...>
+996906 <... socket resumed>)            = 20
+996907 <... mprotect resumed>)          = 0
+996906 ioctl(20, SIOCGIFINDEX, {ifr_name="enp0s31f6", }) = 0
+996907 write(1, "\33[39;49m", 8 <unfinished ...>
+996906 close(20)                        = 0
+996906 setsockopt(18, SOL_XDP, XDP_RX_RING, [256], 4) = 0
+996906 getsockopt(18, SOL_XDP, XDP_MMAP_OFFSETS, "\0\0\0\0\0\0\0\0@\0\0\0\0\0\0\0\200\0\0\0\0\0\0\0D\0\0\0\0\0\0\0"..., [128]) = 0
+996906 mmap(NULL, 4224, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_POPULATE, 18, 0) = 0x7f2d7f636000
+996906 bind(18, {sa_family=AF_XDP, sa_data="\0\0\3\0\0\0\1\0\0\0\0\0\0\0"}, 16) = -1 EINVAL (Invalid argument)
+996906 munmap(0x7f2d7f636000, 4224)     = 0
+996906 getsockopt(18, SOL_XDP, XDP_MMAP_OFFSETS, "\0\0\0\0\0\0\0\0@\0\0\0\0\0\0\0\200\0\0\0\0\0\0\0D\0\0\0\0\0\0\0"..., [128]) = 0
+996906 munmap(0x7f2d7f63a000, 4224)     = 0
+996906 munmap(0x7f2d7f638000, 4224)     = 0
+996906 close(18)                        = 0
+996906 madvise(0x7f2d7de7d000, 8368128, MADV_DONTNEED) = 0
+996906 exit(0)                          = ?
+996906 +++ exited with 0 +++
+996907 <... write resumed>)             = 8
+996907 write(1, "\33(B\33[0;1m\33[36m\33[44m\33[J\33[50;185H", 31) = 31
+996907 write(1, "\33[39;49m\33(B\33[m", 14) = 14
+996907 rt_sigaction(SIGTSTP, {sa_handler=0x7f2d7f105b20, sa_mask=[], sa_flags=SA_RESTORER|SA_RESTART, sa_restorer=0x7f2d7f2b2200}, NULL, 8) = 0
+996907 dup(8)                           = 18
+996907 fcntl(18, F_GETFL)               = 0x802 (flags O_RDWR|O_NONBLOCK)
+996907 openat(AT_FDCWD, "/usr/lib64/gconv/gconv-modules.cache", O_RDONLY) = 20
+996907 fstat(20, {st_mode=S_IFREG|0644, st_size=26988, ...}) = 0
+996907 mmap(NULL, 26988, PROT_READ, MAP_SHARED, 20, 0) = 0x7f2d7f635000
+996907 close(20)                        = 0
+996907 futex(0x7f2d7f0ad99c, FUTEX_WAKE_PRIVATE, 2147483647) = 0
+996907 close(18)                        = 0
+996907 rt_sigaction(SIGTSTP, {sa_handler=SIG_IGN, sa_mask=[], sa_flags=SA_RESTORER|SA_RESTART, sa_restorer=0x7f2d7f2b2200}, {sa_handler=0x7f2d7f105b20, sa_mask=[], sa_flags=SA_RESTORER|SA_RESTART, sa_restorer=0x7f2d7f2b2200}, 8) = 0
+996907 poll([{fd=0, events=POLLIN}], 1, 0) = 0 (Timeout)
+996907 poll([{fd=0, events=POLLIN}], 1, 0) = 0 (Timeout)
+996907 write(1, "\33[H\33[C", 6)        = 6
+996907 write(1, "\33(B\33[0;1m\33[36m\33[44mIShoal v2.0.0"..., 88) = 88
+996907 write(1, "\33(0\33[0;1m\33[36m\33[44mqqqqqqqqqqqqq"..., 202) = 202
+996907 write(1, "\33[39;49m\33(B\33(B\33[m", 17) = 17
+996907 rt_sigaction(SIGTSTP, {sa_handler=0x7f2d7f105b20, sa_mask=[], sa_flags=SA_RESTORER|SA_RESTART, sa_restorer=0x7f2d7f2b2200}, NULL, 8) = 0
+996907 dup(8)                           = 18
+996907 fcntl(18, F_GETFL)               = 0x802 (flags O_RDWR|O_NONBLOCK)
+996907 openat(AT_FDCWD, "/usr/share/locale/locale.alias", O_RDONLY|O_CLOEXEC) = 20
+996907 fstat(20, {st_mode=S_IFREG|0644, st_size=2998, ...}) = 0
+996907 mprotect(0x7f2d700d0000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 read(20, "# Locale name alias data base.\n#"..., 4096) = 2998
+996907 mprotect(0x7f2d700d1000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 read(20, "", 4096)               = 0
+996907 close(20)                        = 0
+996907 openat(AT_FDCWD, "/usr/share/locale/en_US.utf8/LC_MESSAGES/dialog.mo", O_RDONLY) = -1 ENOENT (No such file or directory)
+996907 openat(AT_FDCWD, "/usr/share/locale/en_US/LC_MESSAGES/dialog.mo", O_RDONLY) = -1 ENOENT (No such file or directory)
+996907 openat(AT_FDCWD, "/usr/share/locale/en.utf8/LC_MESSAGES/dialog.mo", O_RDONLY) = -1 ENOENT (No such file or directory)
+996907 openat(AT_FDCWD, "/usr/share/locale/en/LC_MESSAGES/dialog.mo", O_RDONLY) = -1 ENOENT (No such file or directory)
+996907 mprotect(0x7f2d700d2000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700d3000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700d4000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700d5000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700d6000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700d7000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 mprotect(0x7f2d700d8000, 4096, PROT_READ|PROT_WRITE) = 0
+996907 write(1, "\33[?1h\33=", 7)       = 7
+996907 write(1, "\33[?1h\33=", 7)       = 7
+996907 mprotect(0x7f2d700d9000, 8192, PROT_READ|PROT_WRITE) = 0
+996907 rt_sigaction(SIGTSTP, {sa_handler=SIG_IGN, sa_mask=[], sa_flags=SA_RESTORER|SA_RESTART, sa_restorer=0x7f2d7f2b2200}, {sa_handler=0x7f2d7f105b20, sa_mask=[], sa_flags=SA_RESTORER|SA_RESTART, sa_restorer=0x7f2d7f2b2200}, 8) = 0
+996907 poll([{fd=0, events=POLLIN}], 1, 0) = 0 (Timeout)
+996907 poll([{fd=0, events=POLLIN}], 1, 0) = 0 (Timeout)
+996907 write(1, "\33[4;11H", 7)         = 7
+996907 write(1, "\33(0\33[0;1m\33[37m\33[47mlqqqqqqqqqqqq"..., 175) = 175
+996907 write(1, "\33(0\33[0;1m\33[37m\33[47mx\33(B\33[0m\33[30m"..., 74) = 74
+996907 write(1, "\33(0\33[0m\33[30m\33[47mx\33(B\33[0;1m\33[30m"..., 46) = 46
+996907 write(1, "\33(0\33[0;1m\33[37m\33[47mx\33(B\33[0m\33[30m"..., 194) = 194
+996907 write(1, "\33(0\33[0;1m\33[37m\33[47mx\33(B\33[0m\33[30m"..., 174) = 174
+996907 write(1, "\33(0\33[0;1m\33[37m\33[47mx\33(B\33[0m\33[30m"..., 84) = 84
+996907 write(1, "\33(0\33[0;1m\33[37m\33[47mx\33(B\33[0m\33[30m"..., 125) = 125
+996907 poll([{fd=0, events=POLLIN}], 1, 0) = 0 (Timeout)
+996907 write(1, "\33(0\33[0;1m\33[37m\33[47mx\33(B\33[0m\33[30m"..., 84) = 84
+996907 write(1, "\33(0\33[0;1m\33[37m\33[47mx\33(B\33[0m\33[30m"..., 124) = 124
+996907 write(1, "\33(0\33[0;1m\33[37m\33[47mx\33(B\33[0m\33[30m"..., 85) = 85
+996907 write(1, "\33(0\33[0;1m\33[37m\33[47mx\33(B\33[0m\33[30m"..., 232) = 232
+996907 write(1, "\33(0\33[0;1m\33[37m\33[47mx\33(B\33[0m\33[30m"..., 273) = 273
+996907 write(1, "\33(0\33[0;1m\33[37m\33[47mtqqqqqqqqqqqq"..., 125) = 125
+996907 write(1, "\33(0\33[0;1m\33[37m\33[47mx\33(B\33[0m\33[30m"..., 50) = 50
+996907 poll([{fd=0, events=POLLIN}], 1, 0) = 0 (Timeout)
+996907 write(1, "\33(0\33[0m\33[30m\33[47mx\33(B\33[0;1m\33[30m"..., 47) = 47
+996907 write(1, "\33(0\33[0;1m\33[37m\33[47mm\33(0\33[0m\33[30m"..., 125) = 125
+996907 write(1, "\33[60X\33[11;63H", 13) = 13
+996907 write(1, "\33[39;49m\33(B\33[m", 14) = 14
+996907 rt_sigaction(SIGTSTP, {sa_handler=0x7f2d7f105b20, sa_mask=[], sa_flags=SA_RESTORER|SA_RESTART, sa_restorer=0x7f2d7f2b2200}, NULL, 8) = 0
+996907 rt_sigaction(SIGTSTP, {sa_handler=SIG_IGN, sa_mask=[], sa_flags=SA_RESTORER|SA_RESTART, sa_restorer=0x7f2d7f2b2200}, {sa_handler=0x7f2d7f105b20, sa_mask=[], sa_flags=SA_RESTORER|SA_RESTART, sa_restorer=0x7f2d7f2b2200}, 8) = 0
+996907 poll([{fd=0, events=POLLIN}], 1, 0) = 0 (Timeout)
+996907 poll([{fd=0, events=POLLIN}], 1, 0) = 0 (Timeout)
+996907 write(1, "\33[13;37H", 8)        = 8
+996907 write(1, "\33(B\33[0;1m\33[37m\33[44m<\33[33m\33[44m  "..., 51) = 51
+996907 write(1, "\33[39;49m\33(B\33[m", 14) = 14
+996907 rt_sigaction(SIGTSTP, {sa_handler=0x7f2d7f105b20, sa_mask=[], sa_flags=SA_RESTORER|SA_RESTART, sa_restorer=0x7f2d7f2b2200}, NULL, 8) = 0
+996907 poll([{fd=0, events=POLLIN}], 1, 10) = 0 (Timeout)
+996907 fcntl(0, F_GETFL)                = 0x402 (flags O_RDWR|O_APPEND)
+996907 fcntl(1, F_GETFL)                = 0x402 (flags O_RDWR|O_APPEND)
+996907 select(19, [18], NULL, NULL, {tv_sec=0, tv_usec=10000}) = 0 (Timeout)
+996907 rt_sigaction(SIGTSTP, {sa_handler=SIG_IGN, sa_mask=[], sa_flags=SA_RESTORER|SA_RESTART, sa_restorer=0x7f2d7f2b2200}, {sa_handler=0x7f2d7f105b20, sa_mask=[], sa_flags=SA_RESTORER|SA_RESTART, sa_restorer=0x7f2d7f2b2200}, 8) = 0
+996907 poll([{fd=0, events=POLLIN}], 1, 0) = 0 (Timeout)
+996907 poll([{fd=0, events=POLLIN}], 1, 0) = 0 (Timeout)
+996907 write(1, "\r\33[4d", 5)          = 5
+996907 write(1, "\33(B\33[0;1m\33[36m\33[44m\33[K\33[5;70H", 29) = 29
+996907 poll([{fd=0, events=POLLIN}], 1, 0) = 0 (Timeout)
+996907 write(1, "\33[1K\n", 5)          = 5
+996907 write(1, "\33[1K\n", 5)          = 5
+996907 write(1, "\33[1K\n", 5)          = 5
+996907 write(1, "\33[1K\n", 5)          = 5
+996907 write(1, "\33[1K\n", 5)          = 5
+996907 poll([{fd=0, events=POLLIN}], 1, 0) = 0 (Timeout)
+996907 write(1, "\33[1K\n", 5)          = 5
+996907 write(1, "\33[1K\n", 5)          = 5
+996907 write(1, "\33[1K\n", 5)          = 5
+996907 write(1, "\33[1K\n", 5)          = 5
+996907 poll([{fd=0, events=POLLIN}], 1, 0) = 0 (Timeout)
+996907 poll([{fd=0, events=POLLIN}], 1, 0) = 0 (Timeout)
+996907 poll([{fd=0, events=POLLIN}], 1, 0) = 0 (Timeout)
+996907 poll([{fd=0, events=POLLIN}], 1, 0) = 0 (Timeout)
+996907 poll([{fd=0, events=POLLIN}], 1, 0) = 0 (Timeout)
+996907 poll([{fd=0, events=POLLIN}], 1, 0) = 0 (Timeout)
+996907 poll([{fd=0, events=POLLIN}], 1, 0) = 0 (Timeout)
+996907 write(1, "\33[1K\n\33[72G", 10)  = 10
+996907 write(1, "\33[39;49m\33(B\33[m", 14) = 14
+996907 rt_sigaction(SIGTSTP, {sa_handler=0x7f2d7f105b20, sa_mask=[], sa_flags=SA_RESTORER|SA_RESTART, sa_restorer=0x7f2d7f2b2200}, NULL, 8) = 0
+996907 close(18)                        = 0
+996907 rt_sigaction(SIGTSTP, {sa_handler=SIG_IGN, sa_mask=[], sa_flags=SA_RESTORER|SA_RESTART, sa_restorer=0x7f2d7f2b2200}, {sa_handler=0x7f2d7f105b20, sa_mask=[], sa_flags=SA_RESTORER|SA_RESTART, sa_restorer=0x7f2d7f2b2200}, 8) = 0
+996907 poll([{fd=0, events=POLLIN}], 1, 0) = 0 (Timeout)
+996907 poll([{fd=0, events=POLLIN}], 1, 0) = 0 (Timeout)
+996907 rt_sigaction(SIGTSTP, {sa_handler=0x7f2d7f105b20, sa_mask=[], sa_flags=SA_RESTORER|SA_RESTART, sa_restorer=0x7f2d7f2b2200}, NULL, 8) = 0
+996907 dup(8)                           = 18
+996907 fcntl(18, F_GETFL)               = 0x802 (flags O_RDWR|O_NONBLOCK)
+996907 close(18)                        = 0
+996907 rt_sigaction(SIGTSTP, {sa_handler=SIG_IGN, sa_mask=[], sa_flags=SA_RESTORER|SA_RESTART, sa_restorer=0x7f2d7f2b2200}, {sa_handler=0x7f2d7f105b20, sa_mask=[], sa_flags=SA_RESTORER|SA_RESTART, sa_restorer=0x7f2d7f2b2200}, 8) = 0
+996907 poll([{fd=0, events=POLLIN}], 1, 0) = 0 (Timeout)
+996907 write(1, "\r\33[5d", 5)          = 5
+996907 poll([{fd=0, events=POLLIN}], 1, 0) = 0 (Timeout)
+996907 write(1, "\33(B\33[0;1m\33[36m\33[44m\33[J\33[2;185H", 30) = 30
+996907 write(1, "\33[39;49m\33(B\33[m", 14) = 14
+996907 rt_sigaction(SIGTSTP, {sa_handler=0x7f2d7f105b20, sa_mask=[], sa_flags=SA_RESTORER|SA_RESTART, sa_restorer=0x7f2d7f2b2200}, NULL, 8) = 0
+996907 write(1, "\33[?1006;1000l", 13)  = 13
+996907 write(1, "\33[50;1H\33[?1049l\33[23;0;0t\r\33[?1l\33>", 32) = 32
+996907 ioctl(1, SNDCTL_TMR_STOP or TCSETSW, {B38400 opost isig icanon echo ...}) = 0
+996907 write(1, "\33[?1006;1000l", 13)  = 13
+996907 write(1, "\33[50;1H\33[?1049l\33[23;0;0t\r\33[?1l\33>", 32) = 32
+996907 ioctl(1, SNDCTL_TMR_STOP or TCSETSW, {B38400 opost isig icanon echo ...}) = 0
+996907 write(1, "\33[1;1H\33[2J", 10)   = 10
+996907 write(19, "\1\0\0\0\0\0\0\0", 8) = 8
+996918 <... poll resumed>)              = 1 ([{fd=19, revents=POLLIN}])
+996907 write(16, "\1\0\0\0\0\0\0\0", 8 <unfinished ...>
+996918 openat(AT_FDCWD, "/etc/ld.so.cache", O_RDONLY|O_CLOEXEC <unfinished ...>
+996907 <... write resumed>)             = 8
+996918 <... openat resumed>)            = 18
+996917 <... poll resumed>)              = 1 ([{fd=16, revents=POLLIN}])
+996918 fstat(18,  <unfinished ...>
+996917 futex(0x55cdd3873900, FUTEX_WAIT_PRIVATE, 2, NULL <unfinished ...>
+996918 <... fstat resumed>{st_mode=S_IFREG|0644, st_size=220613, ...}) = 0
+996918 mmap(NULL, 220613, PROT_READ, MAP_PRIVATE, 18, 0 <unfinished ...>
+996907 write(8, "\1\0\0\0\0\0\0\0", 8 <unfinished ...>
+996918 <... mmap resumed>)              = 0x7f2d7c005000
+996918 close(18 <unfinished ...>
+996907 <... write resumed>)             = 8
+996918 <... close resumed>)             = 0
+996907 write(3, "\1\0\0\0\0\0\0\0", 8 <unfinished ...>
+996918 openat(AT_FDCWD, "/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/libgcc_s.so.1", O_RDONLY|O_CLOEXEC <unfinished ...>
+996900 <... poll resumed>)              = 1 ([{fd=3, revents=POLLIN}])
+996907 <... write resumed>)             = 8
+996900 futex(0x55cdd3873900, FUTEX_WAIT_PRIVATE, 2, NULL <unfinished ...>
+996918 <... openat resumed>)            = 18
+996918 read(18,  <unfinished ...>
+996907 futex(0x55cdd3873900, FUTEX_WAKE_PRIVATE, 1 <unfinished ...>
+996918 <... read resumed>"\177ELF\2\1\1\0\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0\0203\0\0\0\0\0\0"..., 832) = 832
+996918 fstat(18,  <unfinished ...>
+996917 <... futex resumed>)             = 0
+996907 <... futex resumed>)             = 1
+996918 <... fstat resumed>{st_mode=S_IFREG|0644, st_size=100520, ...}) = 0
+996917 futex(0x55cdd3873900, FUTEX_WAKE_PRIVATE, 1 <unfinished ...>
+996918 mmap(NULL, 103496, PROT_READ, MAP_PRIVATE|MAP_DENYWRITE, 18, 0 <unfinished ...>
+996900 <... futex resumed>)             = 0
+996917 <... futex resumed>)             = 1
+996900 futex(0x55cdd3873900, FUTEX_WAKE_PRIVATE, 1 <unfinished ...>
+996918 <... mmap resumed>)              = 0x7f2d7f61b000
+996900 <... futex resumed>)             = 0
+996917 madvise(0x7f2d7c23b000, 8368128, MADV_DONTNEED <unfinished ...>
+996918 mmap(0x7f2d7f61e000, 69632, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 18, 0x3000 <unfinished ...>
+996900 futex(0x7f2d77fff9d0, FUTEX_WAIT, 996918, NULL <unfinished ...>
+996917 <... madvise resumed>)           = 0
+996918 <... mmap resumed>)              = 0x7f2d7f61e000
+996917 exit(0 <unfinished ...>
+996918 mmap(0x7f2d7f62f000, 16384, PROT_READ, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 18, 0x14000 <unfinished ...>
+996917 <... exit resumed>)              = ?
+996918 <... mmap resumed>)              = 0x7f2d7f62f000
+996917 +++ exited with 0 +++
+996907 madvise(0x7f2d7d67c000, 8368128, MADV_DONTNEED <unfinished ...>
+996918 mmap(0x7f2d7f633000, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 18, 0x17000) = 0x7f2d7f633000
+996907 <... madvise resumed>)           = 0
+996918 close(18 <unfinished ...>
+996907 exit(0)                          = ?
+996907 +++ exited with 0 +++
+996918 <... close resumed>)             = 0
+996918 mprotect(0x7f2d7f633000, 4096, PROT_READ) = 0
+996918 munmap(0x7f2d7c005000, 220613)   = 0
+996918 write(1, "\33[?1006;1000l", 13)  = 13
+996918 write(1, "\33[50;1H\33[?1049l\33[23;0;0t\r\33[?1l\33>", 32) = 32
+996918 ioctl(1, SNDCTL_TMR_STOP or TCSETSW, {B38400 opost isig icanon echo ...}) = 0
+996918 write(1, "\33[1;1H\33[2J", 10)   = 10
+996918 madvise(0x7f2d777ff000, 8368128, MADV_DONTNEED) = 0
+996918 exit(0)                          = ?
+996900 <... futex resumed>)             = 0
+996918 +++ exited with 0 +++
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 bpf(BPF_MAP_DELETE_ELEM, {map_fd=10, key=0x7ffd67c47244}, 120) = 0
+996900 getsockopt(17, SOL_XDP, XDP_MMAP_OFFSETS, "\0\0\0\0\0\0\0\0@\0\0\0\0\0\0\0\200\0\0\0\0\0\0\0D\0\0\0\0\0\0\0"..., [128]) = 0
+996900 munmap(0x7f2d7f63c000, 4224)     = 0
+996900 getsockopt(17, SOL_XDP, XDP_MMAP_OFFSETS, "\0\0\0\0\0\0\0\0@\0\0\0\0\0\0\0\200\0\0\0\0\0\0\0D\0\0\0\0\0\0\0"..., [128]) = 0
+996900 munmap(0x7f2d7f640000, 4224)     = 0
+996900 munmap(0x7f2d7f63e000, 4224)     = 0
+996900 close(17)                        = 0
+996900 socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE) = 17
+996900 setsockopt(17, SOL_NETLINK, NETLINK_EXT_ACK, [1], 4) = 0
+996900 bind(17, {sa_family=AF_NETLINK, nl_pid=0, nl_groups=00000000}, 12) = 0
+996900 getsockname(17, {sa_family=AF_NETLINK, nl_pid=996900, nl_groups=00000000}, [12]) = 0
+996900 sendto(17, {{len=44, type=RTM_SETLINK, flags=NLM_F_REQUEST|NLM_F_ACK, seq=1, pid=0}, {ifi_family=AF_UNSPEC, ifi_type=ARPHRD_NETROM, ifi_index=if_nametoindex("enp0s31f6"), ifi_flags=0, ifi_change=0}, {{nla_len=12, nla_type=NLA_F_NESTED|IFLA_XDP}, {{nla_len=8, nla_type=IFLA_XDP_FD}, -1}}}, 44, 0, NULL, 0) = 44
+996900 recvfrom(17, {{len=36, type=NLMSG_ERROR, flags=NLM_F_CAPPED, seq=1, pid=996900}, {error=0, msg={len=44, type=RTM_SETLINK, flags=NLM_F_REQUEST|NLM_F_ACK, seq=1, pid=0}}}, 4096, 0, NULL, NULL) = 36
+996900 close(17)                        = 0
+996900 close(10)                        = 0
+996900 close(11)                        = 0
+996900 close(12)                        = 0
+996900 close(13)                        = 0
+996900 close(14)                        = 0
+996900 close(9)                         = 0
+996900 munmap(0x7f2d7f66a000, 4096)     = 0
+996900 access("/root", F_OK)            = 0
+996900 access("/root/.config", F_OK)    = 0
+996900 openat(AT_FDCWD, "/root/.config/ishoal.conf", O_WRONLY|O_CREAT|O_TRUNC, 0666) = 9
+996900 fstat(9, {st_mode=S_IFREG|0644, st_size=0, ...}) = 0
+996900 write(9, "\1\0\0\0\21\21\21\21\21\21\1\2\3-\300\250\1\1", 18) = 18
+996900 close(9)                         = 0
+996900 exit_group(0)                    = ?
+996900 +++ exited with 0 +++

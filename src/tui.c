@@ -371,7 +371,7 @@ void tui_thread(void *arg)
 
 		dialog_vars.begin_y = 16;
 		dialog_vars.begin_x = 2;
-		// dialog_tailbox("Log", remotes_path, 8, 76, 1);
+		dialog_tailbox("Log", remotes_path, 8, 76, 1);
 
 		dialog_vars.begin_y = 3;
 		dialog_vars.begin_x = 10;
@@ -413,6 +413,8 @@ void tui_thread(void *arg)
 			if (res)
 				break;
 
+			exitcode = 2;
+
 			goto out;
 		case 3:
 			switch_gw_dialog();
@@ -446,6 +448,8 @@ void tui_thread(void *arg)
 					   8, 40);
 			if (res)
 				break;
+
+			exitcode = 3;
 
 			goto out;
 		}
