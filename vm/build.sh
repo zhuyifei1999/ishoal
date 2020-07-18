@@ -50,7 +50,7 @@ ROOT="$(sudo losetup --offset $(( 65536 * 512 )) --sizelimit $(( 458719 * 512 ))
 sudo mkfs.fat "$BOOT"
 sudo mkfs.btrfs "$ROOT"
 
-sudo mount -o compress "$ROOT" rootfs
+sudo mount -o compress,discard "$ROOT" rootfs
 sudo mkdir -p rootfs/boot
 sudo mount "$BOOT" rootfs/boot
 
@@ -72,7 +72,7 @@ function cleanup_mnt {
 
 trap cleanup_mnt EXIT
 
-sudo docker run -v $PWD:$PWD -w $PWD --tmpfs /var/tmp/portage:exec --tmpfs /var/cache/distfiles --tmpfs /var/db/repos --cap-add=SYS_PTRACE --rm -i gentoo/stage3-amd64-nomultilib << EOF
+sudo docker run -v $PWD:$PWD -w $PWD --tmpfs /var/tmp/portage:exec --tmpfs /var/cache/distfiles --tmpfs /var/db/repos --cap-add=SYS_PTRACE --rm -i gentoo/stage3-amd64-nomultilib << 'EOF'
 set -ex
 emerge-webrsync
 
@@ -80,7 +80,14 @@ export USE='-* make-symlinks unicode ssl ncurses readline'
 emerge --quiet-build --root rootfs -v sys-apps/baselayout
 emerge --quiet-build --root rootfs -v sys-apps/busybox
 emerge --quiet-build --root rootfs -v dev-lang/python dev-util/dialog net-libs/miniupnpc
+emerge --quiet-build --root rootfs -v sys-process/htop
 ACCEPT_KEYWORDS='~amd64' emerge --quiet-build --root rootfs -v dev-libs/libbpf
+
+GCC_PATH="$(gcc -print-search-dirs | grep install | cut -d\  -f2)"
+mkdir -p rootfs/"${GCC_PATH}"
+cp -a "${GCC_PATH}"/libgcc_s.so* rootfs/"${GCC_PATH}"
+echo "${GCC_PATH}" > rootfs/etc/ld.so.conf
+ldconfig -C rootfs/etc/ld.so.cache -f rootfs/etc/ld.so.conf
 
 find rootfs/usr/share/i18n/locales/ -mindepth 1 -maxdepth 1 ! -name 'en_US' ! -name 'en_GB' ! -name 'C' ! -name 'i18n*' ! -name 'iso*' ! -name 'translit*' -delete
 find rootfs/usr/share/i18n/charmaps/ -mindepth 1 -maxdepth 1 -name '*.gz' ! -name 'UTF*' ! -name 'LATIN*' -delete
@@ -135,7 +142,7 @@ echo 'nameserver 8.8.8.8' > rootfs/etc/resolv.conf
 
 mkdir -p rootfs/etc/init.d/
 
-cat > rootfs/etc/init.d/rcS << INNEREOF
+cat > rootfs/etc/init.d/rcS << 'INNEREOF'
 #! /bin/sh
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin
 mount -n -t proc -o nosuid,noexec,nodev proc /proc
@@ -145,9 +152,12 @@ mount -n -t tmpfs -o mode=1777,nosuid,nodev tmpfs /tmp
 
 mount -n -t debugfs debugfs /sys/kernel/debug
 
-mkdir -p /dev/{pts,shm}
+mkdir -p /dev/pts
 mount -n -t devpts -o gid=tty,mode=620,noexec,nosuid devpts /dev/pts
+mkdir -p /dev/shm
 mount -n -t tmpfs -o mode=1777,nosuid,nodev tmpfs /dev/shm
+
+mount -t bpf bpffs /sys/fs/bpf
 
 mdev -s
 mdev -d
@@ -160,26 +170,55 @@ ip link set dev lo up
 ip link set dev eth0 up
 udhcpc -i eth0 -p /run/udhcpc -s /usr/share/udhcpc/default.script -q -n -f
 
-mount -t bpf bpffs /sys/fs/bpf
+ping -w 5 -c 1 8.8.8.8
 
 dmesg -n 1
 INNEREOF
-
 chmod a+x rootfs/etc/init.d/rcS
 
-cat > rootfs/etc/inittab << INNEREOF
+cat > rootfs/root/ishoal-wrapper << 'INNEREOF'
+#! /bin/sh
+while true; do
+  echo 'Booting iShoal ...'
+  /root/ishoal eth0
+  EXITCODE=$?
+
+  if [ $EXITCODE -eq 2 ]; then
+    sync
+    clear
+    poweroff
+    echo 'Waiting for system shutdown.'
+    sleep 20
+  elif [ $EXITCODE -eq 3 ]; then
+    sync
+    clear
+    reboot
+    echo 'Waiting for system reboot.'
+    sleep 20
+  elif [ $EXITCODE -ne 0 ]; then
+    echo 'IShoal failed, entering shell. Please type 'exit' to exit the shell.'
+    /bin/sh
+  fi
+done
+INNEREOF
+chmod a+x rootfs/root/ishoal-wrapper
+
+cat > rootfs/etc/inittab << 'INNEREOF'
 ::sysinit:/etc/init.d/rcS
-tty1::respawn:-/bin/sh
+tty1::respawn:/root/ishoal-wrapper
+tty2::respawn:-/bin/sh
 ::restart:/sbin/init
 ::ctrlaltdel:/sbin/reboot
 ::shutdown:/bin/umount -a -r
 INNEREOF
 EOF
 
-sudo fstrim -v rootfs
+sudo cp "${DIR}/../src/ishoal" rootfs/root/ishoal
+sudo chmod a+x rootfs/root/ishoal
 
 sudo mkdir -p rootfs/boot/EFI/Boot/
-sudo cp kernel/arch/x86/boot/bzImage rootfs/boot/EFI/Boot/bootx64.efi
+sudo cp kernel/arch/x86/boot/bzImage rootfs/boot/linux.efi
+sudo cp "${DIR}/efi_fb_res/efi_fb_res.efi" rootfs/boot/EFI/Boot/bootx64.efi
 
 do_cleanup_mnt
 MOUNTED=false
