@@ -5,7 +5,7 @@
 static VOID
 Sleep(UINTN Microseconds)
 {
-	return uefi_call_wrapper(BS->Stall, 1, Microseconds);
+	uefi_call_wrapper(BS->Stall, 1, Microseconds);
 }
 #else
 #define Print(...) do {} while (0);
@@ -13,7 +13,6 @@ Sleep(UINTN Microseconds)
 #endif
 
 static EFI_GUID GraphicsOutputProtocolGuid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
-
 
 
 EFI_STATUS EFIAPI
