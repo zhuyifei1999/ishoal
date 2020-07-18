@@ -97,35 +97,34 @@ def on_delete_remote_addr(local_ip):
     ishoalc.delete_remote_addr(local_ip)
 
 
-sio.connect('https://ishoal.ink/')
+def main():
+    sio.connect('https://ishoal.ink/')
 
+    ishoalc.wait_for_switch()
+    if ishoalc.should_stop():
+        sio.disconnect()
+        return
 
-ishoalc.wait_for_switch()
-if ishoalc.should_stop():
-    sys.exit()
-
-
-def on_switch_change():
-    pulse()
-
-
-threading.Thread(target=ishoalc.on_switch_chg_threadfn,
-                 args=(on_switch_change,), name='py_switch_chg').start()
-
-
-def periodic_pulse_threadfn():
-    while not ishoalc.should_stop():
-        ishoalc.sleep(10 * 1000)
+    def on_switch_change():
         pulse()
 
+    threading.Thread(target=ishoalc.on_switch_chg_threadfn,
+                     args=(on_switch_change,), name='py_switch_chg').start()
 
-threading.Thread(target=periodic_pulse_threadfn, name='py_pulse').start()
+    def periodic_pulse_threadfn():
+        while not ishoalc.should_stop():
+            ishoalc.sleep(10 * 1000)
+            pulse()
+
+    threading.Thread(target=periodic_pulse_threadfn, name='py_pulse').start()
+
+    # Python is dumb that signal handlers must execute on main thread :(
+    # if we ishoalc.sleep(-1) then signal handler will never execute
+    # wake up every 100ms to check for signals
+    while not ishoalc.should_stop():
+        ishoalc.sleep(100)
+
+    sio.disconnect()
 
 
-# Python is dumb that signal handlers must execute on main thread :(
-# if we ishoalc.sleep(-1) then signal handler will never execute
-# wake up every 100ms to check for signals
-while not ishoalc.should_stop():
-    ishoalc.sleep(100)
-
-sio.disconnect()
+main()
