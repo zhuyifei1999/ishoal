@@ -1,5 +1,7 @@
 *.o
+*.so
 *.d
+*.efi
 *.skel.h
 ishoal_native
 ishoal_py
