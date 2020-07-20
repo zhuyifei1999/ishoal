@@ -11,9 +11,6 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 
-#include <miniupnpc/miniupnpc.h>
-#include <miniupnpc/upnpcommands.h>
-
 #include "ishoal.h"
 #include "list.h"
 

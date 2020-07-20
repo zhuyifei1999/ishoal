@@ -79,7 +79,7 @@ emerge-webrsync
 export USE='-* make-symlinks unicode ssl ncurses readline'
 emerge --quiet-build --root rootfs -v sys-apps/baselayout
 emerge --quiet-build --root rootfs -v sys-apps/busybox
-emerge --quiet-build --root rootfs -v dev-lang/python dev-util/dialog net-libs/miniupnpc
+emerge --quiet-build --root rootfs -v dev-lang/python dev-util/dialog
 emerge --quiet-build --root rootfs -v sys-process/htop
 ACCEPT_KEYWORDS='~amd64' emerge --quiet-build --root rootfs -v dev-libs/libbpf
 
@@ -223,4 +223,12 @@ sudo cp "${DIR}/efi_fb_res/efi_fb_res.efi" rootfs/boot/EFI/Boot/bootx64.efi
 do_cleanup_mnt
 MOUNTED=false
 
-cp -a disk.img "${DIR}/disk.img"
+qemu-img convert disk.img -O vmdk ishoal-disk001.vmdk
+cp "${DIR}/ishoal.ovf" ishoal.ovf
+
+echo "SHA1 (ishoal-disk001.vmdk) = $(sha1sum ishoal-disk001.vmdk | cut -d\  -f 1 )" >> ishoal.mf
+echo "SHA1 (ishoal.ovf) = $(sha1sum ishoal.ovf | cut -d\  -f 1 )" >> ishoal.mf
+
+tar cvf ishoal.ova ishoal.ovf ishoal-disk001.vmdk ishoal.mf
+
+cp -a ishoal.ova "${DIR}/ishoal.ova"

@@ -1,5 +1,5 @@
 CFLAGS ?= -O2 -pipe -g
-LDFLAGS ?= $(CFLAGS) -lbpf -lpthread -lminiupnpc
+LDFLAGS ?= $(CFLAGS) -lbpf -lpthread
 
 PYTHON ?= python3.8
 PYTHON_CONFIG ?= $(PYTHON)-config
