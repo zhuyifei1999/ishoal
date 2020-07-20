@@ -32,6 +32,10 @@ io.on('connection', function(socket) {
     if (!IPV4_REGEXP.test(switchIP))
       return;
 
+    // No shenanigans
+    if (!switchIP.startsWith('192.168.1.'))
+      return;
+
     if (!Number.isInteger(vpnPort) ||
         vpnPort <= 0 ||
         vpnPort >= 65536)
