@@ -18,17 +18,9 @@
 #include "list.h"
 
 uint16_t vpn_port;
+uint16_t public_vpn_port;
 
 static int endpoint_fd;
-
-static char str_port[6];
-
-static struct UPNPDev *upnp_devlist;
-static size_t upnp_numdevices;
-
-static struct UPNPUrls *upnp_urls;
-static struct IGDdatas *upnp_datas;
-static char (*upnp_lanaddrs)[64];
 
 struct remote_switch {
 	struct list_head list;
@@ -46,86 +38,6 @@ __attribute__((constructor))
 static void remote_init(void)
 {
 	pthread_mutex_init(&remotes_lock, NULL);
-}
-
-static void upnp_clear()
-{
-	for (int i = 0; i < upnp_numdevices; i++) {
-		struct UPNPUrls *urls = &upnp_urls[i];
-		struct IGDdatas *data = &upnp_datas[i];
-
-		UPNP_DeletePortMapping(
-			urls->controlURL,
-			data->first.servicetype,
-			str_port, "UDP", NULL);
-	}
-}
-
-
-static void upnp_thread(void *args)
-{
-	int error;
-	upnp_devlist = upnpDiscover(2000, iface, NULL,
-			       UPNP_LOCAL_PORT_ANY, 0, 2, &error);
-
-	if (!upnp_devlist)
-		return;
-
-	snprintf(str_port, 6, "%hu", vpn_port);
-
-	for (struct UPNPDev *device = upnp_devlist; device; device = device->pNext)
-		upnp_numdevices++;
-
-	upnp_urls = calloc(upnp_numdevices, sizeof(*upnp_urls));
-	upnp_datas = calloc(upnp_numdevices, sizeof(*upnp_datas));
-	upnp_lanaddrs = calloc(upnp_numdevices, sizeof(*upnp_lanaddrs));
-
-	if (!upnp_urls || !upnp_datas || !upnp_lanaddrs)
-		perror_exit("calloc");
-
-	for (int i = 0; i < upnp_numdevices; i++) {
-		struct UPNPUrls *urls = &upnp_urls[i];
-		struct IGDdatas *data = &upnp_datas[i];
-		char *lanaddr = upnp_lanaddrs[i];
-
-		UPNP_GetValidIGD(upnp_devlist, urls, data, lanaddr, 64);
-		UPNP_AddPortMapping(
-			urls->controlURL,
-			data->first.servicetype,
-			str_port, str_port, lanaddr, NULL,
-			"UDP", NULL, NULL);
-	}
-
-	atexit(upnp_clear);
-
-	while (!thread_should_stop(current)) {
-		struct pollfd fds[1] = {{thread_stop_eventfd(current), POLLIN}};
-		poll(fds, 1, 20 * 60 * 1000);
-
-		if (thread_should_stop(current))
-			break;
-
-		for (int i = 0; i < upnp_numdevices; i++) {
-			struct UPNPUrls *urls = &upnp_urls[i];
-			struct IGDdatas *data = &upnp_datas[i];
-			char *lanaddr = upnp_lanaddrs[i];
-
-			int err = UPNP_GetSpecificPortMappingEntry(
-				urls->controlURL,
-				data->first.servicetype,
-				str_port, "UDP", NULL,
-				"", "", NULL, NULL, NULL);
-
-			if (err == UPNPCOMMAND_SUCCESS)
-				continue;
-
-			UPNP_AddPortMapping(
-				urls->controlURL,
-				data->first.servicetype,
-				str_port, str_port, lanaddr, NULL,
-				"UDP", NULL, NULL);
-		}
-	}
 }
 
 void start_endpoint(void)
@@ -167,9 +79,13 @@ void start_endpoint(void)
 	vpn_port = ntohs(addr.sin_port);
 	assert(vpn_port);
 
-	fprintf(remotes_log, "Endpoint UDP port: %d\n", vpn_port);
+	ipaddr_t public_ip;
+	do_stun(endpoint_fd, &public_ip, &public_vpn_port);
 
-	thread_start(upnp_thread, NULL, "upnp");
+	if (public_vpn_port == vpn_port)
+		fprintf(remotes_log, "Endpoint UDP port: %d\n", vpn_port);
+	else
+		fprintf(remotes_log, "Endpoint UDP port: %d, STUN resolved to: %d\n", vpn_port, public_vpn_port);
 }
 
 void set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip, uint16_t remote_port)

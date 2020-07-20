@@ -204,7 +204,7 @@ ishoalc_get_switch_ip(PyObject *self, PyObject *args)
 static PyObject *
 ishoalc_get_vpn_port(PyObject *self, PyObject *args)
 {
-    return PyLong_FromLong(vpn_port);
+    return PyLong_FromLong(public_vpn_port);
 }
 
 static PyObject *

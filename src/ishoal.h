@@ -31,6 +31,7 @@ extern ipaddr_t real_subnet_mask;
 extern ipaddr_t fake_gateway_ip;
 
 extern uint16_t vpn_port;
+extern uint16_t public_vpn_port;
 
 extern int remotes_fd;
 
@@ -79,6 +80,8 @@ void thread_release(struct thread *thread);
 void thread_all_stop(void);
 void thread_join_rest(void);
 
+void do_stun(int sockfd, ipaddr_t *address, uint16_t *port);
+
 void set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip, uint16_t remote_port);
 void delete_remote_addr(ipaddr_t local_ip);
 void broadcast_all_remotes(void *buf, size_t len);
@@ -87,5 +90,4 @@ void bpf_set_remote_addr(ipaddr_t local_ip, struct remote_addr *remote_addr);
 void bpf_delete_remote_addr(ipaddr_t local_ip);
 
 void on_switch_change(void (*fn)(void));
-
 #endif
