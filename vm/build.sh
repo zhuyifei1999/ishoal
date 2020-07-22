@@ -5,6 +5,8 @@ set -ex
 # https://stackoverflow.com/a/246128
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
+REPO="$(realpath -s ${DIR}/..)"
+
 # https://stackoverflow.com/a/34676160
 WORK_DIR=`mktemp -d`
 
@@ -16,17 +18,6 @@ function cleanup_tmp {
 }
 
 trap cleanup_tmp EXIT
-
-LINUX_PV=5.7.9
-wget "https://cdn.kernel.org/pub/linux/kernel/v${LINUX_PV%.*.*}.x/linux-${LINUX_PV}.tar.xz"
-tar xf "linux-${LINUX_PV}.tar.xz"
-mv "linux-${LINUX_PV}" kernel
-
-pushd kernel
-./scripts/kconfig/merge_config.sh ./arch/x86/configs/x86_64_defconfig "${DIR}/kconfig"
-make -j"$(nproc)"
-popd
-
 
 mkdir rootfs
 
@@ -72,16 +63,62 @@ function cleanup_mnt {
 
 trap cleanup_mnt EXIT
 
-sudo docker run -v $PWD:$PWD -w $PWD --tmpfs /var/tmp/portage:exec --tmpfs /var/cache/distfiles --tmpfs /var/db/repos --cap-add=SYS_PTRACE --rm -i gentoo/stage3-amd64-nomultilib << 'EOF'
+sudo docker run -v $REPO:$REPO -e REPO="${REPO}" -v $PWD:$PWD -w $PWD --tmpfs /var/tmp/portage:exec --tmpfs /var/cache/distfiles --tmpfs /var/db/repos --cap-add=SYS_PTRACE --rm -i gentoo/stage3-amd64-nomultilib << 'EOF'
 set -ex
+
+LINUX_VER=5.7.9
+PY_VER=3.8
+
 emerge-webrsync
 
+# for filterdiff
+emerge -v -n dev-util/patchutils
+
+mkdir -p /etc/portage/patches/sys-devel/llvm/
+wget https://reviews.llvm.org/D78466?download=true -O - | \
+  filterdiff -i '**/BPFMISimplifyPatchable.cpp' | \
+  sed 's,--- a/,--- ,;s,+++ b/,+++ ,' > \
+  /etc/portage/patches/sys-devel/llvm/D78466.diff
+
+export LLVM_TARGETS=BPF
+emerge -v -o sys-devel/llvm
+MAKEOPTS="-j$(( $(nproc) < 4 ? $(nproc) : 4 ))" emerge -v -n sys-devel/llvm sys-devel/clang
+unset LLVM_TARGETS
+
+emerge -v -o gentoo-sources
+
+source /etc/profile
+
+wget "https://cdn.kernel.org/pub/linux/kernel/v${LINUX_VER%.*.*}.x/linux-${LINUX_VER}.tar.xz"
+tar xf "linux-${LINUX_VER}.tar.xz"
+mv "linux-${LINUX_VER}" kernel
+
+pushd kernel
+./scripts/kconfig/merge_config.sh ./arch/x86/configs/x86_64_defconfig "${REPO}/vm/kconfig"
+popd
+
+make -C kernel -j"$(nproc)"
+
+make -C kernel/tools/bpf/bpftool/
+
+emerge -v -n "dev-lang/python:${PY_VER}" dev-util/dialog
+ACCEPT_KEYWORDS='~amd64' emerge -v dev-libs/libbpf
+
+"python${PY_VER}" -m ensurepip
+
+rm "${REPO}/src/"*.d || true
+make -B -C "${REPO}/src/" PYTHON="python${PY_VER}" BPFTOOL="$(realpath kernel/tools/bpf/bpftool/bpftool)" CLANGFLAGS="-D__x86_64__"
+
+emerge -v -n sys-boot/gnu-efi
+make -B -C "${REPO}/vm/efi_fb_res"
+
 export USE='-* make-symlinks unicode ssl ncurses readline'
-emerge --quiet-build --root rootfs -v sys-apps/baselayout
-emerge --quiet-build --root rootfs -v sys-apps/busybox
-emerge --quiet-build --root rootfs -v dev-lang/python dev-util/dialog
-emerge --quiet-build --root rootfs -v sys-process/htop
-ACCEPT_KEYWORDS='~amd64' emerge --quiet-build --root rootfs -v dev-libs/libbpf
+emerge --root rootfs -v sys-apps/baselayout
+emerge --root rootfs -v sys-apps/busybox
+emerge --root rootfs -v "dev-lang/python:${PY_VER}" dev-util/dialog
+emerge --root rootfs -v sys-process/htop
+ACCEPT_KEYWORDS='~amd64' emerge --root rootfs -v dev-libs/libbpf
+unset USE
 
 GCC_PATH="$(gcc -print-search-dirs | grep install | cut -d\  -f2)"
 mkdir -p rootfs/"${GCC_PATH}"
@@ -211,14 +248,14 @@ tty2::respawn:-/bin/sh
 ::ctrlaltdel:/sbin/reboot
 ::shutdown:/bin/umount -a -r
 INNEREOF
+
+cp "${REPO}/src/ishoal" rootfs/root/ishoal
+chmod a+x rootfs/root/ishoal
+
+mkdir -p rootfs/boot/EFI/Boot/
+cp kernel/arch/x86/boot/bzImage rootfs/boot/linux.efi
+cp "${REPO}/vm/efi_fb_res/efi_fb_res.efi" rootfs/boot/EFI/Boot/bootx64.efi
 EOF
-
-sudo cp "${DIR}/../src/ishoal" rootfs/root/ishoal
-sudo chmod a+x rootfs/root/ishoal
-
-sudo mkdir -p rootfs/boot/EFI/Boot/
-sudo cp kernel/arch/x86/boot/bzImage rootfs/boot/linux.efi
-sudo cp "${DIR}/efi_fb_res/efi_fb_res.efi" rootfs/boot/EFI/Boot/bootx64.efi
 
 do_cleanup_mnt
 MOUNTED=false

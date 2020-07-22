@@ -1,6 +1,9 @@
 CFLAGS ?= -O2 -pipe -g
 LDFLAGS ?= $(CFLAGS) -lbpf -lpthread
 
+# Define this to build on a system without multilib
+# CLANGFLAGS ?= -D__x86_64__
+
 PYTHON ?= python3.8
 PYTHON_CONFIG ?= $(PYTHON)-config
 PYTHON_CFLAGS = $(shell $(PYTHON_CONFIG) --cflags)
@@ -37,7 +40,7 @@ clean:
 		sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' > $@
 
 %_kern.o: %_kern.c
-	$(CLANG) -c $< -o - -fno-common $(CFLAGS) -target bpf -emit-llvm | \
+	$(CLANG) -c $< -o - -fno-common $(CFLAGS) $(CLANGFLAGS) -target bpf -emit-llvm | \
 		llc -o $@ -march=bpf -mcpu=v2 -filetype=obj
 
 %_kern.skel.h: %_kern.o

@@ -437,6 +437,7 @@ void tui_thread(void *arg)
 				}
 			} else {
 				execl("/bin/sh", "-sh", NULL);
+				_exit(127);
 			}
 
 			init_dialog(stdin, stdout);
