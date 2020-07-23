@@ -4,8 +4,9 @@ Splatoon 2 Internet Shoal, peer to peer, without the lag.
 
 ## Usage
 
-Same as iShoal v1.2.0. Import the `ishoal.ova` into
-[VirtualBox](https://www.virtualbox.org/). The rest is to be documented...
+Same as iShoal v1.2.0. Download `ishoal.ova` from https://ishoal.ink/ishoal.ova.
+Import the `ishoal.ova` into [VirtualBox](https://www.virtualbox.org/).
+The rest is to be documented...
 
 ## Development
 
