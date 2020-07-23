@@ -27,7 +27,7 @@ Execute `vm/build-wrapper.sh` in bash. If successful. will produce an
 Issues and pull requests are welcome.
 
 This is a project thanks to the help from the
-[Salmon Run Discord Server](https//discord.gg/EY3JZqk). Credits to Ionizer for
+[Salmon Run Discord Server](https://discord.gg/EY3JZqk). Credits to Ionizer for
 the idea and creating the original iShoal based on client-server VPN.
 
 ## License
