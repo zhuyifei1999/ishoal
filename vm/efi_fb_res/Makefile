@@ -1,4 +1,4 @@
-# source: https://mjg59.dreamwidth.org/18773.html
+# Adapted from: https://mjg59.dreamwidth.org/18773.html
 ARCH		= $(shell uname -m | sed s,i[3456789]86,ia32,)
 LIB_PATH	= /usr/lib64
 EFI_INCLUDE	= /usr/include/efi

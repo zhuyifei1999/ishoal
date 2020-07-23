@@ -165,15 +165,15 @@ static void recompute_l4_csum_fast(struct xdp_md *ctx, struct iphdr *iph,
 		*csum_field = 0xffff;
 }
 
-static bool mac_eq(macaddr_t *a, macaddr_t *b)
+static bool mac_eq(macaddr_t a, macaddr_t b)
 {
 	// return !memcmp(a, b, sizeof(macaddr_t))
-	return ((*a)[0] == (*b)[0] &&
-		(*a)[1] == (*b)[1] &&
-		(*a)[2] == (*b)[2] &&
-		(*a)[3] == (*b)[3] &&
-		(*a)[4] == (*b)[4] &&
-		(*a)[5] == (*b)[5]);
+	return (a[0] == b[0] &&
+		a[1] == b[1] &&
+		a[2] == b[2] &&
+		a[3] == b[3] &&
+		a[4] == b[4] &&
+		a[5] == b[5]);
 }
 
 static bool same_subnet(ipaddr_t a, ipaddr_t b)
@@ -237,7 +237,7 @@ int xdp_prog(struct xdp_md *ctx)
 		} else // TODO: ICMP?
 			return XDP_PASS;
 
-		if (mac_eq(&switch_mac, &eth->h_source)) {
+		if (mac_eq(switch_mac, eth->h_source)) {
 			if (eth_is_broadcast) {
 				if (iph->protocol == IPPROTO_UDP &&
 				    dst_port == bpf_htons(67) &&

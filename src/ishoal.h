@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "version.h"
 #include "bpf_kern.h"
 
 #define container_of(ptr, type, member) ({ \

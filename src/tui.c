@@ -88,9 +88,12 @@ static void recompute_title()
 {
 	if (!switch_ip)
 		strncpy(title_str,
-			"IShoal v2.0.0 - Switch has not been detected, yet.", 100);
+			"IShoal " ISHOAL_VERSION_STR " - "
+			"Switch has not been detected, yet.", 100);
 	else {
-		snprintf(title_str, 100, "IShoal v2.0.0 - Switch is %s at: %s (%s)",
+		snprintf(title_str, 100,
+			"IShoal " ISHOAL_VERSION_STR " - "
+			"Switch is %s at: %s (%s)",
 			 is_online ? "online" : "offline",
 			 mac_str(switch_mac),
 			 ip_str(switch_ip)

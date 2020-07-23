@@ -41,8 +41,8 @@ mkdir output
 
 setsid qemu-system-x86_64 \
   -no-reboot \
-  -cpu host \
-  -enable-kvm \
+  -cpu max \
+  -machine accel=kvm:xen:hax:hvf:whpx:tcg \
   -smp "$(nproc)" \
   -m 8G \
   -display none \
