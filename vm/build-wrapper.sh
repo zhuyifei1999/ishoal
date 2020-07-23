@@ -86,12 +86,12 @@ sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
 apt update
 apt install -y docker.io qemu-utils
 bash "${REPO}/vm/build.sh"
-cp "${REPO}/vm/ishoal.ova" /dev/output/ishoal.ova
+cp "${REPO}/vm/ishoal.ova" /mnt/output/ishoal.ova
 sync
-poweroff
 INNEREOF
 EOF
 
+ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i sshkey ubuntu@127.0.0.1 -p "${PORT}" sudo poweroff || true
 wait "$QEMU_PID"
 RUNNING=false
 
