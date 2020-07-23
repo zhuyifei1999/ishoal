@@ -8,6 +8,10 @@ Same as iShoal v1.2.0. Download `ishoal.ova` from https://ishoal.ink/ishoal.ova.
 Import the `ishoal.ova` into [VirtualBox](https://www.virtualbox.org/).
 The rest is to be documented...
 
+This is not fundamentally restricted to Shoal. It works for any switch LAN play,
+including other games, after the switch IP address and MAC address are detected
+via Shoal LAN mode or entered manually.
+
 ## Development
 
 ### Build
