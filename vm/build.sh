@@ -260,7 +260,7 @@ EOF
 do_cleanup_mnt
 MOUNTED=false
 
-qemu-img convert disk.img -O vmdk ishoal-disk001.vmdk
+qemu-img convert disk.img -O vmdk -o subformat=streamOptimized ishoal-disk001.vmdk
 cp "${DIR}/ishoal.ovf" ishoal.ovf
 
 echo "SHA1 (ishoal-disk001.vmdk) = $(sha1sum ishoal-disk001.vmdk | cut -d\  -f 1 )" >> ishoal.mf
