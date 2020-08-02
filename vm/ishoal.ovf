@@ -104,7 +104,7 @@ You should have received a copy of the GNU General Public License along with thi
           <SmbiosUuidLittleEndian enabled="true"/>
         </BIOS>
         <Network>
-          <Adapter slot="0" enabled="true" cable="true" type="82540EM">
+          <Adapter slot="0" enabled="true" cable="true" promiscuousModePolicy="AllowAll" type="82540EM">
             <DisabledModes>
               <InternalNetwork name="intnet"/>
               <NATNetwork name="NatNetwork"/>

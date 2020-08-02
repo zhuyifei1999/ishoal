@@ -1,3 +1,5 @@
+#include <arpa/inet.h>
+#include <linux/if_packet.h>
 #include <net/if.h>
 #include <poll.h>
 #include <signal.h>
@@ -14,6 +16,8 @@ int exitcode;
 char *progname;
 char *iface;
 int ifindex;
+
+static int promisc_sock;
 
 volatile sig_atomic_t stop_sig_received;
 int stop_sig_eventfd;
@@ -51,9 +55,23 @@ int main(int argc, char *argv[])
 	if (setrlimit(RLIMIT_MEMLOCK, &unlimited))
 		perror_exit("setrlimit(RLIMIT_MEMLOCK)");
 
+	/* Enable promiscuous mode in order to workaround WiFi issues */
+	promisc_sock = socket(AF_PACKET, SOCK_RAW | SOCK_CLOEXEC, htons(ETH_P_ALL));
+	if (promisc_sock < 0)
+		perror_exit("socket(AF_PACKET, SOCK_RAW)");
+
 	stop_sig_eventfd = eventfd(0, EFD_CLOEXEC);
 	if (stop_sig_eventfd < 0)
 		perror_exit("eventfd");
+
+	struct packet_mreq mreq = {
+		.mr_ifindex = ifindex,
+		.mr_type = PACKET_MR_PROMISC,
+	};
+	if (setsockopt(promisc_sock, SOL_PACKET, PACKET_ADD_MEMBERSHIP,
+		       &mreq, sizeof(mreq))) {
+		perror_exit("setsockopt");
+	}
 
 	signal(SIGINT, sig_handler);
 	signal(SIGTERM, sig_handler);
