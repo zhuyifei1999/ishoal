@@ -96,11 +96,10 @@ void set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip, uint16_t remote_port
 		if (remote->local == local_ip) {
 			remote->remote.ip = remote_ip;
 			remote->remote.port = remote_port;
-			goto next;
+			goto found;
 		}
 	}
 
-next:
 	remote = calloc(1, sizeof(*remote));
 	if (!remote)
 		perror_exit("calloc");
@@ -109,6 +108,8 @@ next:
 	remote->remote.port = remote_port;
 
 	list_add(&remote->list, &remotes);
+
+found:
 	pthread_mutex_unlock(&remotes_lock);
 
 	fprintf(remotes_log, "+ Remote IP %s\n", ip_str(local_ip));
