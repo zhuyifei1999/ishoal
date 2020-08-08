@@ -63,7 +63,13 @@ struct iph_pseudo {
 	uint8_t		reserved;
 	uint8_t		protocol;
 	uint16_t	l4_len;
-} __attribute__((packed)) __attribute__((aligned(4)));;
+} __attribute__((packed)) __attribute__((aligned(4)));
+
+struct overhead_csum {
+	struct iph_pseudo	iphp;
+	struct udphdr		udph_n;
+	struct iphdr		iph_o;
+} __attribute__((packed)) __attribute__((aligned(4)));
 
 struct arp_ipv4_payload {
 	macaddr_t	ar_sha;
@@ -212,6 +218,8 @@ int xdp_prog(struct xdp_md *ctx)
 		struct iph_pseudo iphp_orig;
 		ipv4_mk_pheader(iph, &iphp_orig);
 
+		uint16_t old_csum;
+
 		if (iph->protocol == IPPROTO_TCP) {
 			struct tcphdr *tcph = data;
 			data = tcph + 1;
@@ -220,6 +228,8 @@ int xdp_prog(struct xdp_md *ctx)
 
 			src_port = tcph->source;
 			dst_port = tcph->dest;
+
+			old_csum = tcph->check;
 		} else if (iph->protocol == IPPROTO_UDP) {
 			struct udphdr *udph = data;
 			data = udph + 1;
@@ -228,6 +238,8 @@ int xdp_prog(struct xdp_md *ctx)
 
 			src_port = udph->source;
 			dst_port = udph->dest;
+
+			old_csum = udph->check;
 
 			if (dst_port == bpf_htons(49152) &&
 			    eth_is_broadcast && !switch_ip) {
@@ -326,9 +338,15 @@ int xdp_prog(struct xdp_md *ctx)
 			if (data > data_end)
 				return XDP_DROP;
 
+			struct iphdr *iph_o = data;
+			data = iph_o + 1;
+			if (data > data_end)
+				return XDP_DROP;
+
 			udph->source = bpf_htons(vpn_port);
 			udph->dest = bpf_htons(remote_addr->port);
 			udph->len = bpf_htons((char *)data_end - (char *)udph);
+			udph->check = 0;
 
 			iph->ihl = 5;
 			iph->version = 4;
@@ -342,6 +360,21 @@ int xdp_prog(struct xdp_md *ctx)
 			iph->daddr = remote_addr->ip;
 
 			recompute_iph_csum(iph);
+
+			if (old_csum) {
+				struct overhead_csum ovh;
+				ipv4_mk_pheader(iph, &ovh.iphp);
+				ovh.udph_n = *udph;
+				ovh.iph_o = *iph_o;
+
+				uint32_t csum = 0;
+				csum = bpf_csum_diff((void *)&iphp_orig, sizeof(struct iph_pseudo),
+					             (void *)&ovh, sizeof(struct overhead_csum),
+					             0);
+				udph->check = csum_fold_helper(csum);
+				if (!udph->check)
+					udph->check = 0xffff;
+			}
 
 			memcpy(eth->h_dest, gateway_mac, sizeof(macaddr_t));
 			memcpy(eth->h_source, host_mac, sizeof(macaddr_t));
