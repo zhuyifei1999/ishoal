@@ -69,6 +69,10 @@ function cleanup_qemu {
 trap cleanup_qemu EXIT
 sleep 1
 
+while ! ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i sshkey ubuntu@127.0.0.1 -p "${PORT}" true; do
+  sleep 5
+done
+
 # shellcheck disable=SC2087
 ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i sshkey ubuntu@127.0.0.1 -p "${PORT}" << EOF
 sudo -i << 'INNEREOF'
