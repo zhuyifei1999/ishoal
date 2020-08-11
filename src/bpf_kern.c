@@ -18,6 +18,12 @@
 
 #include "bpf_kern.h"
 
+/* from include/net/ip.h */
+#define IP_CE		0x8000		/* Flag: "Congestion"		*/
+#define IP_DF		0x4000		/* Flag: "Don't Fragment"	*/
+#define IP_MF		0x2000		/* Flag: "More Fragments"	*/
+#define IP_OFFSET	0x1FFF		/* "Fragment Offset" part	*/
+
 #define SECOND_NS 1000000000ULL
 
 // It would be NAT Type B otherwise
@@ -133,7 +139,7 @@ static void ipv4_mk_pheader(struct iphdr *iph, struct iph_pseudo *iphp)
 	iphp->daddr = iph->daddr;
 	iphp->reserved = 0;
 	iphp->protocol = iph->protocol;
-	iphp->l4_len = iph->tot_len - sizeof(struct iphdr);
+	iphp->l4_len = bpf_htons(bpf_ntohs(iph->tot_len) - sizeof(struct iphdr));
 }
 
 static void recompute_l4_csum_fast(struct xdp_md *ctx, struct iphdr *iph,
@@ -352,8 +358,8 @@ int xdp_prog(struct xdp_md *ctx)
 			iph->version = 4;
 			iph->tos = 0;
 			iph->tot_len = bpf_htons((char *)data_end - (char *)iph);
-			iph->id = 0;
-			iph->frag_off = 0;
+			iph->id = iph_o->id;
+			iph->frag_off = bpf_htons(IP_DF);
 			iph->ttl = 64;
 			iph->protocol = IPPROTO_UDP;
 			iph->saddr = public_host_ip;
