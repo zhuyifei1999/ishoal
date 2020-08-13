@@ -81,7 +81,7 @@ trap cleanup_mnt EXIT
 sudo docker run -v $REPO:$REPO -e REPO="${REPO}" -v $PWD:$PWD -w $PWD --tmpfs /var/tmp/portage:exec --tmpfs /var/cache/distfiles --tmpfs /var/db/repos --cap-add=SYS_PTRACE --rm -i gentoo/stage3-x86 << 'EOF'
 set -ex
 
-LINUX_VER=5.7.11
+LINUX_VER=5.8.1
 PY_VER=3.8
 
 emerge-webrsync
@@ -101,7 +101,6 @@ mv "linux-${LINUX_VER}" kernel
 
 pushd kernel
 ./scripts/kconfig/merge_config.sh ./arch/x86/configs/i386_defconfig "${REPO}/vm/kconfig"
-patch -p1 < "${REPO}/vm/0001-libbpf-Fix-libbpf-hashmap-on-I-LP32-architectures.patch"
 popd
 
 make -C kernel -j"$(nproc)"
