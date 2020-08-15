@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include <assert.h>
+#include <stdatomic.h>
 #include <stdlib.h>
 #include <sys/eventfd.h>
 #include <pthread.h>
@@ -22,21 +23,25 @@ static struct thread main_thread;
 
 __thread struct thread *current;
 
-static pthread_mutex_t threads_lock;
+static pthread_mutex_t threads_lock = PTHREAD_MUTEX_INITIALIZER;
 static LIST_HEAD(threads);
+
+int stop_broadcast_primary;
+static struct broadcast_event *stop_broadcast;
 
 __attribute__((constructor))
 static void thread_init(void)
 {
-	pthread_mutex_init(&threads_lock, NULL);
-
-	current = &main_thread;
-
-	current->stop_eventfd = eventfd(0, EFD_CLOEXEC);
-	if (current->stop_eventfd < 0)
+	stop_broadcast_primary = eventfd(0, EFD_CLOEXEC);
+	if (stop_broadcast_primary < 0)
 		perror_exit("eventfd");
 
-	list_add(&current->list, &threads);
+	stop_broadcast = broadcast_new(stop_broadcast_primary);
+
+	current = &main_thread;
+	main_thread.stop_eventfd = broadcast_replica(stop_broadcast);
+
+	list_add(&main_thread.list, &threads);
 }
 
 static void *thread_wrapper_fn(void *thread)
@@ -66,9 +71,7 @@ struct thread *thread_start(void (*fn)(void *arg), void *arg, char *name)
 	thread->fn = fn;
 	thread->arg = arg;
 
-	thread->stop_eventfd = eventfd(0, EFD_CLOEXEC);
-	if (thread->stop_eventfd < 0)
-		perror_exit("eventfd");
+	thread->stop_eventfd = broadcast_replica(stop_broadcast);
 
 	if (pthread_create(&thread->pthread, NULL, thread_wrapper_fn, thread))
 		perror_exit("pthread_create");
@@ -82,10 +85,8 @@ void thread_stop(struct thread *thread)
 {
 	thread->should_stop = true;
 
-	uint64_t event_data = 1;
-	if (write(thread->stop_eventfd, &event_data, sizeof(event_data)) !=
-	    sizeof(event_data))
-		perror_exit("write(eventfd)");
+	if (eventfd_write(thread->stop_eventfd, 1))
+		perror_exit("eventfd_write");
 }
 
 bool thread_should_stop(struct thread *thread)
@@ -129,9 +130,12 @@ void thread_all_stop(void)
 
 	pthread_mutex_lock(&threads_lock);
 	list_for_each_entry_safe(thread, tmp, &threads, list) {
-		thread_stop(thread);
+		thread->should_stop = true;
 	}
 	pthread_mutex_unlock(&threads_lock);
+
+	if (eventfd_write(stop_broadcast_primary, 1))
+		perror_exit("eventfd_write");
 }
 
 void thread_join_rest(void)

@@ -38,26 +38,21 @@ ishoalc_sleep(PyObject *self, PyObject *args)
 
     Py_BEGIN_ALLOW_THREADS
 
-    struct pollfd fds[1] = {{thread_stop_eventfd(python_main_thread), POLLIN}};
-    poll(fds, 1, millis);
+    struct eventloop *wait_for_stun = eventloop_new();
+    eventloop_install_break(wait_for_stun, thread_stop_eventfd(python_main_thread));
+    eventloop_enter(wait_for_stun, millis);
+    eventloop_destroy(wait_for_stun);
 
     Py_END_ALLOW_THREADS
 
     Py_RETURN_NONE;
 }
 
-static pthread_mutex_t wait_switch_chg_eventfd_lock;
+static pthread_mutex_t wait_switch_chg_eventfd_lock = PTHREAD_MUTEX_INITIALIZER;
 static int wait_switch_chg_eventfd = -1;
 
-static pthread_mutex_t on_switch_chg_threadfn_lock;
+static pthread_mutex_t on_switch_chg_threadfn_lock = PTHREAD_MUTEX_INITIALIZER;
 static int on_switch_chg_threadfn_eventfd = -1;
-
-__attribute__((constructor))
-static void ishoalc_switch_chg_init(void)
-{
-    pthread_mutex_init(&wait_switch_chg_eventfd_lock, NULL);
-    pthread_mutex_init(&on_switch_chg_threadfn_lock, NULL);
-}
 
 static void ishoalc_on_switch_chg(void)
 {
@@ -169,7 +164,7 @@ ishoalc_on_switch_chg_threadfn(PyObject *self, PyObject *args)
         int res = poll(fds, 2, -1);
 
         uint64_t event_data;
-		(void)!read(on_switch_chg_threadfn_eventfd, &event_data, sizeof(event_data));
+        (void)!read(on_switch_chg_threadfn_eventfd, &event_data, sizeof(event_data));
 
         if (res < 0)
             continue;

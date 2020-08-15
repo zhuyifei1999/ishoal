@@ -1,6 +1,6 @@
 #include <assert.h>
-#include <poll.h>
 #include <pthread.h>
+#include <stdatomic.h>
 #include <sys/eventfd.h>
 #include <sys/mman.h>
 #include <unistd.h>
@@ -31,15 +31,8 @@ struct xsk_socket_info {
 	void (*handler)(void *pkt, size_t length);
 };
 
-static int xsks_change_eventfd;
-pthread_mutex_t xsks_lock;
+static pthread_mutex_t xsks_lock = PTHREAD_MUTEX_INITIALIZER;
 static struct DARRAY(struct xsk_socket_info *) xsks;
-
-__attribute__((constructor))
-static void thread_init(void)
-{
-	pthread_mutex_init(&xsks_lock, NULL);
-}
 
 static void del_socket(void)
 {
@@ -49,11 +42,14 @@ static void del_socket(void)
 	}
 }
 
-static void rx(struct xsk_socket_info *xsk)
+static void rx_cb(int fd, void *ctx)
 {
 	unsigned int rcvd, i;
+	struct xsk_socket_info *xsk = ctx;
 	uint32_t idx_rx = 0, idx_fq = 0;
 	int ret;
+
+	assert(xsk_socket__fd(xsk->xsk) == fd);
 
 	rcvd = xsk_ring_cons__peek(&xsk->rx, 64, &idx_rx);
 	if (!rcvd)
@@ -79,55 +75,22 @@ static void rx(struct xsk_socket_info *xsk)
 	xsk_ring_cons__release(&xsk->rx, rcvd);
 }
 
-static void xsk_rx_thread(void *arg)
-{
-	while (!thread_should_stop(current)) {
-		uint64_t event_data;
-		(void)!read(xsks_change_eventfd, &event_data, sizeof(event_data));
-
-		pthread_mutex_lock(&xsks_lock);
-		int nxsks = darray_nmemb(xsks);
-		int size = nxsks + 2;
-
-		struct pollfd fds[size];
-		struct xsk_socket_info *xsks_copy[nxsks];
-
-		memcpy(xsks_copy, darray_head(xsks), nxsks * sizeof(*xsks_copy));
-
-		for (int i = 0; i < nxsks; i++) {
-			fds[i].fd = xsk_socket__fd(xsks_copy[i]->xsk);
-			fds[i].events = POLLIN;
-		}
-
-		fds[nxsks].fd = thread_stop_eventfd(current);
-		fds[nxsks].events = POLLIN;
-
-		fds[nxsks + 1].fd = xsks_change_eventfd;
-		fds[nxsks + 1].events = POLLIN;
-		pthread_mutex_unlock(&xsks_lock);
-
-		int res = poll(fds, size, -1);
-		if (res <= 0)
-			continue;
-
-		for (int i = 0; i < nxsks; i++)
-			rx(xsks_copy[i]);
-	}
-}
+static struct eventloop *xsk_rx_el;
+static int xsk_rx_rpc;
 
 struct xsk_socket *xsk_configure_socket(char *iface, int queue,
 	void (*handler)(void *pkt, size_t length))
 {
-	static bool init_done;
-	if (!init_done) {
-		init_done = true;
+	static atomic_flag init_done;
+	if (!atomic_flag_test_and_set(&init_done)) {
 		atexit(del_socket);
 
-		xsks_change_eventfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-		if (xsks_change_eventfd < 0)
-			perror_exit("eventfd");
+		int xsk_rx_rpc_recv;
+		make_fd_pair(&xsk_rx_rpc, &xsk_rx_rpc_recv);
 
-		thread_start(xsk_rx_thread, NULL, "xsk_rx");
+		xsk_rx_el = eventloop_new();
+		eventloop_install_rpc(xsk_rx_el, xsk_rx_rpc_recv);
+		thread_start(eventloop_thread_fn, xsk_rx_el, "xsk_rx");
 	}
 
 	struct xsk_socket_info *xsk = calloc(1, sizeof(*xsk));
@@ -178,10 +141,12 @@ struct xsk_socket *xsk_configure_socket(char *iface, int queue,
 	*darray_tail(xsks) = xsk;
 	pthread_mutex_unlock(&xsks_lock);
 
-	uint64_t event_data = 1;
-	if (write(xsks_change_eventfd, &event_data, sizeof(event_data)) !=
-	    sizeof(event_data))
-		perror_exit("write(eventfd)");
+	eventloop_install_event_async(xsk_rx_el, &(struct event){
+		.fd = xsk_socket__fd(xsk->xsk),
+		.handler_type = EVT_CALL_FN,
+		.handler_fn = rx_cb,
+		.handler_ctx = xsk,
+	}, xsk_rx_rpc);
 
 	return xsk->xsk;
 }

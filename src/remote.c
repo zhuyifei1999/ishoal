@@ -3,7 +3,6 @@
 #include <fcntl.h>
 #include <net/if.h>
 #include <netinet/ip.h>
-#include <poll.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,17 +24,11 @@ struct remote_switch {
 	struct remote_addr remote;
 };
 
-static pthread_mutex_t remotes_lock;
+static pthread_mutex_t remotes_lock = PTHREAD_MUTEX_INITIALIZER;
 static LIST_HEAD(remotes);
 
 int remotes_fd;
 static FILE *remotes_log;
-
-__attribute__((constructor))
-static void remote_init(void)
-{
-	pthread_mutex_init(&remotes_lock, NULL);
-}
 
 void start_endpoint(void)
 {

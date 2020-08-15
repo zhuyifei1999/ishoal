@@ -25,4 +25,6 @@
 #define darray_head(darray) darray_idx(darray, 0)
 #define darray_tail(darray) darray_idx(darray, darray_nmemb(darray) - 1)
 
+#define darray_destroy(darray) free((darray).arr)
+
 #endif

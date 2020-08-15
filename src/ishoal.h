@@ -36,6 +36,8 @@ extern uint16_t public_vpn_port;
 
 extern int remotes_fd;
 
+extern int stop_broadcast_primary;
+
 void tui_thread(void *arg);
 void bpf_load_thread(void *arg);
 void python_thread(void *arg);
@@ -80,6 +82,41 @@ void thread_kill(struct thread *thread);
 void thread_release(struct thread *thread);
 void thread_all_stop(void);
 void thread_join_rest(void);
+
+void make_fd_pair(int *send_fd, int *recv_fd);
+void handle_rpc(int call_recv_fd);
+int invoke_rpc_sync(int call_send_fd, int (*fn)(void *ctx), void *ctx);
+void invoke_rpc_async(int call_send_fd, int (*fn)(void *ctx), void *ctx);
+
+enum event_handler {
+	EVT_CALL_FN,
+	EVT_BREAK,
+};
+struct event {
+	int fd;
+	bool eventfd_ack;
+	enum event_handler handler_type;
+	void (*handler_fn)(int fd, void *ctx);
+	void *handler_ctx;
+};
+
+struct eventloop;
+
+struct eventloop *eventloop_new(void);
+void eventloop_destroy(struct eventloop *el);
+void eventloop_install_event_sync(struct eventloop *el, struct event *evt);
+void eventloop_install_rpc(struct eventloop *el, int rpc_recv_fd);
+void eventloop_install_break(struct eventloop *el, int break_evt_fd);
+void eventloop_install_event_async(struct eventloop *el, struct event *evt,
+				   int rpc_send_fd);
+int eventloop_enter(struct eventloop *el, int timeout_ms);
+void eventloop_thread_fn(void *arg);
+
+struct broadcast_event;
+
+struct broadcast_event *broadcast_new(int primary_event_fd);
+int broadcast_replica(struct broadcast_event *bce);
+void __broadcast_finalize_init(void);
 
 void do_stun(int sockfd, ipaddr_t *address, uint16_t *port);
 

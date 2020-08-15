@@ -2,7 +2,6 @@
 #include <dialog.h>
 #include <errno.h>
 #include <linux/limits.h>
-#include <poll.h>
 #include <pthread.h>
 #include <setjmp.h>
 #include <sys/wait.h>
@@ -11,12 +10,7 @@
 
 static struct thread *tui_thread_ptr;
 
-static pthread_mutex_t tui_reaper_lock;
-__attribute__((constructor))
-static void tui_reaper_init(void)
-{
-	pthread_mutex_init(&tui_reaper_lock, NULL);
-}
+static pthread_mutex_t tui_reaper_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static void tui_reset(void)
 {
@@ -34,10 +28,11 @@ static void tui_reset(void)
 
 static void tui_reaper_thread(void *arg)
 {
-	while (!thread_should_stop(current)) {
-		struct pollfd fds[1] = {{thread_stop_eventfd(current), POLLIN}};
-		poll(fds, 1, -1);
-	}
+	struct eventloop *wait_for_stun = eventloop_new();
+	eventloop_install_break(wait_for_stun, thread_stop_eventfd(current));
+
+	eventloop_enter(wait_for_stun, -1);
+	eventloop_destroy(wait_for_stun);
 
 	pthread_mutex_lock(&tui_reaper_lock);
 	thread_kill(tui_thread_ptr);

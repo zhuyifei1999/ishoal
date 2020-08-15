@@ -30,7 +30,6 @@ const uint16_t stun_port = 3478;
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>
-#include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -111,11 +110,12 @@ void do_stun(int sockfd, ipaddr_t *address, uint16_t *port)
 	    (struct sockaddr *)&remote_addr, sizeof(remote_addr)) < 0)
 		perror_exit("sendto");
 
-	struct pollfd fds[2] = {
-		{thread_stop_eventfd(current), POLLIN},
-		{sockfd, POLLIN},
-	};
-	poll(fds, 2, 5000);
+	struct eventloop *wait_for_stun = eventloop_new();
+	eventloop_install_break(wait_for_stun, thread_stop_eventfd(current));
+	eventloop_install_break(wait_for_stun, sockfd);
+
+	eventloop_enter(wait_for_stun, 2000);
+	eventloop_destroy(wait_for_stun);
 
 	if (thread_should_stop(current))
 		return;

@@ -1,5 +1,4 @@
 #include <arpa/inet.h>
-#include <poll.h>
 #include <pthread.h>
 #include <unistd.h>
 
@@ -55,14 +54,8 @@ struct on_switch_chg_handler {
 	void (*fn)(void);
 };
 
-static pthread_mutex_t on_switch_chg_handlers_lock;
+static pthread_mutex_t on_switch_chg_handlers_lock = PTHREAD_MUTEX_INITIALIZER;
 static LIST_HEAD(on_switch_chg_handlers);
-
-__attribute__((constructor))
-static void on_switch_chg_init(void)
-{
-	pthread_mutex_init(&on_switch_chg_handlers_lock, NULL);
-}
 
 void on_switch_change(void (*fn)(void)) {
 	struct on_switch_chg_handler *handler = calloc(1, sizeof(*handler));

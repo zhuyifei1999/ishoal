@@ -1,7 +1,6 @@
 #include <arpa/inet.h>
 #include <linux/if_packet.h>
 #include <net/if.h>
-#include <poll.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,17 +18,10 @@ int ifindex;
 
 static int promisc_sock;
 
-volatile sig_atomic_t stop_sig_received;
-int stop_sig_eventfd;
-
 static void sig_handler(int sig_num)
 {
-	stop_sig_received = 1;
-
-	uint64_t event_data = 1;
-	if (write(stop_sig_eventfd, &event_data, sizeof(event_data)) !=
-	    sizeof(event_data))
-		perror_exit("write(eventfd)");
+	if (eventfd_write(stop_broadcast_primary, 1))
+		perror_exit("eventfd_write");
 }
 
 int main(int argc, char *argv[])
@@ -60,10 +52,6 @@ int main(int argc, char *argv[])
 	if (promisc_sock < 0)
 		perror_exit("socket(AF_PACKET, SOCK_RAW)");
 
-	stop_sig_eventfd = eventfd(0, EFD_CLOEXEC);
-	if (stop_sig_eventfd < 0)
-		perror_exit("eventfd");
-
 	struct packet_mreq mreq = {
 		.mr_ifindex = ifindex,
 		.mr_type = PACKET_MR_PROMISC,
@@ -77,16 +65,16 @@ int main(int argc, char *argv[])
 	signal(SIGTERM, sig_handler);
 
 	thread_start(bpf_load_thread, NULL, "bpf");
-	thread_start(python_thread, NULL, "python");
-	thread_start(tui_thread, NULL, "tui");
+	// thread_start(python_thread, NULL, "python");
+	// thread_start(tui_thread, NULL, "tui");
 
-	while (!thread_should_stop(current) && !stop_sig_received) {
-		struct pollfd fds[2] = {
-			{thread_stop_eventfd(current), POLLIN},
-			{stop_sig_eventfd, POLLIN},
-		};
-		poll(fds, 2, -1);
-	}
+	__broadcast_finalize_init();
+
+	struct eventloop *main_el = eventloop_new();
+	eventloop_install_break(main_el, thread_stop_eventfd(current));
+
+	eventloop_enter(main_el, -1);
+	eventloop_destroy(main_el);
 
 	thread_all_stop();
 	thread_join_rest();
