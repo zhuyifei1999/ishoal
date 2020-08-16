@@ -129,9 +129,8 @@ void thread_all_stop(void)
 	struct thread *thread, *tmp;
 
 	pthread_mutex_lock(&threads_lock);
-	list_for_each_entry_safe(thread, tmp, &threads, list) {
+	list_for_each_entry_safe(thread, tmp, &threads, list)
 		thread->should_stop = true;
-	}
 	pthread_mutex_unlock(&threads_lock);
 
 	if (eventfd_write(stop_broadcast_primary, 1))
@@ -143,12 +142,11 @@ void thread_join_rest(void)
 	struct thread *thread, *tmp;
 
 	pthread_mutex_lock(&threads_lock);
-	list_for_each_entry_safe(thread, tmp, &threads, list) {
+	list_for_each_entry_safe(thread, tmp, &threads, list)
 		if (thread != current) {
 			pthread_mutex_unlock(&threads_lock);
 			thread_join(thread);
 			pthread_mutex_lock(&threads_lock);
 		}
-	}
 	pthread_mutex_unlock(&threads_lock);
 }

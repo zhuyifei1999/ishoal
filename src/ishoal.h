@@ -11,6 +11,8 @@
 	void *__mptr = (void *)(ptr);      \
 	((type *)(__mptr - offsetof(type, member))); })
 
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(*(x)))
+
 #define MAX_ERRNO	4095
 #define PTR_ERR(val) ((unsigned long)(val))
 #define IS_ERR(val) (PTR_ERR(val) >= -MAX_ERRNO)
@@ -54,6 +56,9 @@ struct broadcast_event;
 
 extern int stop_broadcast_primary;
 
+extern int xsk_broadcast_evt_broadcast_primary;
+extern struct broadcast_event *xsk_broadcast_evt_broadcast;
+
 extern int switch_change_broadcast_primary;
 extern struct broadcast_event *switch_change_broadcast;
 
@@ -82,8 +87,6 @@ void save_conf(void);
 void bpf_set_switch_ip(ipaddr_t addr);
 void bpf_set_switch_mac(macaddr_t addr);
 void bpf_set_fake_gateway_ip(ipaddr_t addr);
-
-void tui_on_xsk_pkt(void);
 
 struct xsk_socket *xsk_configure_socket(char *iface, int queue,
 	void (*handler)(void *pkt, size_t length));
@@ -123,6 +126,9 @@ int broadcast_replica(struct broadcast_event *bce);
 void broadcast_replica_del(struct broadcast_event *bce, int fd);
 
 void __broadcast_finalize_init(void);
+
+int inotifyeventfd_add(char *pathname, uint32_t mask);
+void inotifyeventfd_rm(int fd);
 
 void do_stun(int sockfd, ipaddr_t *address, uint16_t *port);
 

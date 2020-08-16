@@ -18,6 +18,9 @@ ipaddr_t switch_ip;
 
 ipaddr_t fake_gateway_ip;
 
+int xsk_broadcast_evt_broadcast_primary;
+struct broadcast_event *xsk_broadcast_evt_broadcast;
+
 int switch_change_broadcast_primary;
 struct broadcast_event *switch_change_broadcast;
 
@@ -29,6 +32,12 @@ static void switch_change_broadcast_init(void)
 		perror_exit("eventfd");
 
 	switch_change_broadcast = broadcast_new(switch_change_broadcast_primary);
+
+	xsk_broadcast_evt_broadcast_primary = eventfd(0, EFD_CLOEXEC);
+	if (xsk_broadcast_evt_broadcast_primary < 0)
+		perror_exit("eventfd");
+
+	xsk_broadcast_evt_broadcast = broadcast_new(xsk_broadcast_evt_broadcast_primary);
 }
 
 static void close_obj(void)
@@ -108,8 +117,6 @@ void bpf_set_fake_gateway_ip(ipaddr_t addr)
 
 static void on_xsk_pkt(void *ptr, size_t length)
 {
-	tui_on_xsk_pkt();
-
 	if (obj->bss->switch_ip != switch_ip ||
 	    memcmp(obj->bss->switch_mac, switch_mac, sizeof(macaddr_t))) {
 		switch_ip = obj->bss->switch_ip;
@@ -117,6 +124,10 @@ static void on_xsk_pkt(void *ptr, size_t length)
 
 		__on_switch_change();
 	}
+
+	if (eventfd_write(xsk_broadcast_evt_broadcast_primary, 1))
+		perror_exit("eventfd_write");
+
 	if (length <= sizeof(struct ethhdr))
 		return;
 

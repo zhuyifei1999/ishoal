@@ -1,10 +1,12 @@
 #include <assert.h>
 #include <errno.h>
+#include <limits.h>
 #include <pthread.h>
 #include <poll.h>
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <sys/eventfd.h>
+#include <sys/inotify.h>
 #include <unistd.h>
 
 #include "ishoal.h"
@@ -241,5 +243,132 @@ void broadcast_replica_del(struct broadcast_event *bce, int fd)
 		}
 	pthread_mutex_unlock(&bce->replica_fds_mutex);
 
+	close(fd);
+}
+
+static int inotify_fd;
+
+static LIST_HEAD(inotifyeventfd_wd);
+
+struct inotifyeventfd_wd_entry {
+	struct list_head list;
+	int wd;
+	int eventfd;
+};
+
+struct inotifyeventfd_add_ctx {
+	char *pathname;
+	uint32_t mask;
+	int eventfd;
+};
+
+static struct eventloop *inotifyeventfd_relay_el;
+static int inotifyeventfd_relay_rpc;
+
+// adapted from:
+// https://man7.org/tlpi/code/online/book/inotify/demo_inotify.c.html
+static void inotify_cb(int fd, void *ctx)
+{
+	char buf[10 * (sizeof(struct inotify_event) + NAME_MAX + 1)] __attribute__ ((aligned(8)));
+
+	ssize_t len = read(inotify_fd, buf, sizeof(buf));
+	assert(len);
+
+	if (len < 0)
+		perror_exit("read(inotify)");
+
+	for (char *p = buf; p < buf + len;) {
+		struct inotify_event *event = (void *)p;
+
+		struct inotifyeventfd_wd_entry *iew;
+
+		list_for_each_entry(iew, &inotifyeventfd_wd, list)
+			if (iew->wd == event->wd)
+				if (eventfd_write(iew->eventfd, 1))
+					perror_exit("eventfd_write");
+
+		p += sizeof(struct inotify_event) + event->len;
+	}
+}
+
+static int inotifyeventfd_add_cb(void *_ctx)
+{
+	struct inotifyeventfd_add_ctx *ctx = _ctx;
+
+	int wd = inotify_add_watch(inotify_fd, ctx->pathname, ctx->mask);
+	if (wd < 0)
+		perror_exit("inotify_add_watch");
+
+	struct inotifyeventfd_wd_entry *iew = malloc(sizeof(*iew));
+	if (!iew)
+		perror_exit("malloc");
+
+	iew->wd = wd;
+	iew->eventfd = ctx->eventfd;
+
+	list_add(&iew->list, &inotifyeventfd_wd);
+
+	return 0;
+}
+
+static int inotifyeventfd_rm_cb(void *_ctx)
+{
+	int *ctx = _ctx;
+	int fd = *ctx;
+
+	struct inotifyeventfd_wd_entry *iew, *tmp;
+
+	list_for_each_entry_safe(iew, tmp, &inotifyeventfd_wd, list)
+		if (iew->eventfd == fd) {
+			inotify_rm_watch(inotify_fd, iew->wd);
+			list_del(&iew->list);
+			free(iew);
+		}
+
+	return 0;
+}
+
+int inotifyeventfd_add(char *pathname, uint32_t mask)
+{
+	static atomic_flag init_done;
+	if (!atomic_flag_test_and_set(&init_done)) {
+		int inotifyeventfd_relay_rpc_recv;
+		make_fd_pair(&inotifyeventfd_relay_rpc, &inotifyeventfd_relay_rpc_recv);
+
+		inotifyeventfd_relay_el = eventloop_new();
+		eventloop_install_rpc(inotifyeventfd_relay_el, inotifyeventfd_relay_rpc_recv);
+
+		inotify_fd = inotify_init1(IN_CLOEXEC);
+		if (inotify_fd < 0)
+			perror_exit("inotify_init1");
+
+		eventloop_install_event_sync(inotifyeventfd_relay_el, &(struct event){
+			.fd = inotify_fd,
+			.eventfd_ack = false,
+			.handler_type = EVT_CALL_FN,
+			.handler_fn = inotify_cb,
+		});
+
+		thread_start(eventloop_thread_fn, inotifyeventfd_relay_el, "ie_relay");
+	}
+
+	int fd = eventfd(0, EFD_CLOEXEC);
+	if (fd < 0)
+		perror_exit("eventfd");
+
+	struct inotifyeventfd_add_ctx ctx = {
+		.pathname = pathname,
+		.mask = mask,
+		.eventfd = fd,
+	};
+
+	invoke_rpc_sync(inotifyeventfd_relay_rpc, inotifyeventfd_add_cb, &ctx);
+
+	return fd;
+}
+
+void inotifyeventfd_rm(int fd)
+{
+	invoke_rpc_sync(inotifyeventfd_relay_rpc, inotifyeventfd_rm_cb, &fd);
 	close(fd);
 }

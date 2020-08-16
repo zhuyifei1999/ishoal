@@ -10,11 +10,19 @@
 #include <linux/limits.h>
 #include <pthread.h>
 #include <setjmp.h>
+#include <sys/inotify.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 
 #include "extern/plthook/plthook.h"
 
 #include "ishoal.h"
+
+static char remotes_path[PATH_MAX];
+static int remotes_inotifyeventfd;
+
+static char title_str[100];
+static bool is_online;
 
 static struct eventloop *tui_el;
 
@@ -23,9 +31,58 @@ static jmp_buf exit_jmp;
 static int (*real_wget_wch)(WINDOW *win, wint_t *wch);
 static int (*real_wgetch)(WINDOW *win);
 
+static void recompute_title();
+
 static void tui_el_exit_cb(int fd, void *_ctx)
 {
 	longjmp(exit_jmp, 1);
+}
+
+static void tui_on_switch_change(int fd, void *_ctx)
+{
+	recompute_title();
+	refresh();
+}
+
+static void tui_on_xsk_pkt(int fd, void *_ctx)
+{
+	if (!is_online) {
+		is_online = true;
+
+		recompute_title();
+		refresh();
+	}
+}
+
+static struct event tui_global_events[] = {
+	{
+		.eventfd_ack = true,
+		.handler_type = EVT_CALL_FN,
+		.handler_fn = tui_el_exit_cb,
+	},
+	{
+		.eventfd_ack = true,
+		.handler_type = EVT_CALL_FN,
+		.handler_fn = tui_on_switch_change,
+	},
+	{
+		.eventfd_ack = true,
+		.handler_type = EVT_CALL_FN,
+		.handler_fn = tui_on_xsk_pkt,
+	}
+};
+
+// https://stackoverflow.com/a/12502754
+static int same_file(int fd1, int fd2)
+{
+	struct stat stat1, stat2;
+
+	if (fstat(fd1, &stat1) < 0)
+		perror_exit("fstat");
+	if (fstat(fd2, &stat2) < 0)
+		perror_exit("fstat");
+
+	return stat1.st_dev == stat2.st_dev && stat1.st_ino == stat2.st_ino;
 }
 
 static void wgetch_el(WINDOW *win)
@@ -37,15 +94,22 @@ static void wgetch_el(WINDOW *win)
 
 	DIALOG_CALLBACK *p;
 	for (p = dialog_state.getc_callbacks; p != 0; p = p->next)
-		if (p->input)
-			eventloop_install_break(tui_el, fileno(p->input));
+		if (p->input) {
+			int fd = fileno(p->input);
 
-	eventloop_install_event_sync(tui_el, &(struct event){
-		.fd = thread_stop_eventfd(current),
-		.eventfd_ack = true,
-		.handler_type = EVT_CALL_FN,
-		.handler_fn = tui_el_exit_cb,
-	});
+			if (same_file(fd, remotes_fd)) {
+				eventloop_install_event_sync(tui_el, &(struct event){
+					.fd = remotes_inotifyeventfd,
+					.eventfd_ack = true,
+					.handler_type = EVT_BREAK,
+				});
+			} else {
+				eventloop_install_break(tui_el, fd);
+			}
+		}
+
+	for (int i = 0; i < ARRAY_SIZE(tui_global_events); i++)
+		eventloop_install_event_sync(tui_el, &tui_global_events[i]);
 
 	eventloop_enter(tui_el, -1);
 }
@@ -119,11 +183,6 @@ static void tui_reset(void)
 	(void)!write(1, CLEAR_SCREEN_ANSI, 10);
 }
 
-static char remotes_path[PATH_MAX];
-static char title_str[100];
-
-static bool is_online;
-
 static void recompute_title()
 {
 	if (!switch_ip)
@@ -154,26 +213,17 @@ static void tui_clear(void)
 	recompute_title();
 }
 
-void tui_on_xsk_pkt(void)
-{
-	is_online = true;
-}
-
 static void detect_switch_online(void)
 {
 	is_online = false;
 
 	dialog_vars.begin_set = false;
 	dialog_msgbox("Setup", "\nDetecting status of local Switch ...", 5, 40, 0);
-	usleep(2500000);
-
-	/*
-	TODO: switch_change_broadcast => all broadcast packets
-	int replica_fd = broadcast_replica(switch_change_broadcast);
 
 	eventloop_clear_events(tui_el);
 	eventloop_install_break(tui_el, STDIN_FILENO);
-	eventloop_install_break(tui_el, replica_fd);
+	eventloop_install_break(tui_el, tui_global_events[1].fd);
+	eventloop_install_break(tui_el, tui_global_events[2].fd);
 
 	eventloop_install_event_sync(tui_el, &(struct event){
 		.fd = thread_stop_eventfd(current),
@@ -183,9 +233,6 @@ static void detect_switch_online(void)
 	});
 
 	eventloop_enter(tui_el, 2500);
-
-	broadcast_replica_del(switch_change_broadcast, replica_fd);
-	*/
 }
 
 static void detect_local_switch(void)
@@ -397,6 +444,11 @@ void tui_thread(void *arg)
 	dialog_vars.default_button = -1;
 
 	snprintf(remotes_path, PATH_MAX, "/proc/self/fd/%d", remotes_fd);
+	remotes_inotifyeventfd = inotifyeventfd_add(remotes_path, IN_MODIFY);
+
+	tui_global_events[0].fd = thread_stop_eventfd(current);
+	tui_global_events[1].fd = broadcast_replica(switch_change_broadcast);
+	tui_global_events[2].fd = broadcast_replica(xsk_broadcast_evt_broadcast);
 
 	if (setjmp(exit_jmp))
 		goto out;
