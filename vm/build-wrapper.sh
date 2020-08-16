@@ -89,7 +89,7 @@ mount -t overlay overlay -o lowerdir=/mnt/source,upperdir=/mnt/tmp/upper,workdir
 sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
 apt update
 apt install -y docker.io qemu-utils
-bash "${REPO}/vm/build.sh"
+"${REPO}/vm/build.sh"
 cp "${REPO}/vm/ishoal.ova" /mnt/output/ishoal.ova
 sync
 INNEREOF

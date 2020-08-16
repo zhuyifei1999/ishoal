@@ -26,6 +26,11 @@ void eventloop_destroy(struct eventloop *el)
 	free(el);
 }
 
+void eventloop_clear_events(struct eventloop *el)
+{
+	darray_resize(el->events, 0);
+}
+
 void eventloop_install_event_sync(struct eventloop *el, struct event *evt)
 {
 	darray_inc(el->events);

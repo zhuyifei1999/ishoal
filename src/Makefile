@@ -18,7 +18,7 @@ CLANG ?= clang
 
 BPFTOOL ?= bpftool
 
-SRC = $(filter-out bpf_kern.c, $(wildcard *.c))
+SRC = $(filter-out bpf_kern.c, $(wildcard *.c) $(wildcard extern/**/*.c))
 OBJ = $(patsubst %.c, %.o, $(SRC))
 
 all: ishoal

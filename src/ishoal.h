@@ -109,6 +109,7 @@ void invoke_rpc_async(int call_send_fd, int (*fn)(void *ctx), void *ctx);
 
 struct eventloop *eventloop_new(void);
 void eventloop_destroy(struct eventloop *el);
+void eventloop_clear_events(struct eventloop *el);
 void eventloop_install_event_sync(struct eventloop *el, struct event *evt);
 void eventloop_install_rpc(struct eventloop *el, int rpc_recv_fd);
 void eventloop_install_break(struct eventloop *el, int break_evt_fd);

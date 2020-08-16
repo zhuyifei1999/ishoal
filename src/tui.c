@@ -1,16 +1,109 @@
+#define _GNU_SOURCE
+#define _XOPEN_SOURCE_EXTENDED
+
+#include <ncursesw/ncurses.h>
+
 #include <arpa/inet.h>
 #include <dialog.h>
 #include <errno.h>
+#include <link.h>
 #include <linux/limits.h>
 #include <pthread.h>
 #include <setjmp.h>
 #include <sys/wait.h>
 
+#include "extern/plthook/plthook.h"
+
 #include "ishoal.h"
 
-static struct thread *tui_thread_ptr;
+static struct eventloop *tui_el;
 
-static pthread_mutex_t tui_reaper_lock = PTHREAD_MUTEX_INITIALIZER;
+static jmp_buf exit_jmp;
+
+static int (*real_wget_wch)(WINDOW *win, wint_t *wch);
+static int (*real_wgetch)(WINDOW *win);
+
+static void tui_el_exit_cb(int fd, void *_ctx)
+{
+	longjmp(exit_jmp, 1);
+}
+
+static void wgetch_el(WINDOW *win)
+{
+	wrefresh(win);
+
+	eventloop_clear_events(tui_el);
+	eventloop_install_break(tui_el, STDIN_FILENO);
+
+	DIALOG_CALLBACK *p;
+	for (p = dialog_state.getc_callbacks; p != 0; p = p->next)
+		if (p->input)
+			eventloop_install_break(tui_el, fileno(p->input));
+
+	eventloop_install_event_sync(tui_el, &(struct event){
+		.fd = thread_stop_eventfd(current),
+		.eventfd_ack = true,
+		.handler_type = EVT_CALL_FN,
+		.handler_fn = tui_el_exit_cb,
+	});
+
+	eventloop_enter(tui_el, -1);
+}
+
+static int wrapper_wget_wch(WINDOW *win, wint_t *wch)
+{
+	wgetch_el(win);
+	return real_wget_wch(win, wch);
+}
+
+static int wrapper_wgetch(WINDOW *win)
+{
+	return real_wgetch(win);
+}
+
+struct dl_iterate_phdr_ctx {
+	char libdialog_path[PATH_MAX];
+};
+
+static int
+dl_iterate_phdr_cb(struct dl_phdr_info *info, size_t size, void *_ctx)
+{
+	struct dl_iterate_phdr_ctx *ctx = _ctx;
+
+	if (strstr(info->dlpi_name, "libdialog"))
+		strncpy(ctx->libdialog_path, info->dlpi_name, PATH_MAX);
+
+	return 0;
+}
+
+static void monkey_patch()
+{
+	struct dl_iterate_phdr_ctx ctx = {0};
+	dl_iterate_phdr(dl_iterate_phdr_cb, &ctx);
+
+	if (!strlen(ctx.libdialog_path))
+		fprintf_exit("failed to locate libdialog library path\n");
+
+	real_wget_wch = dlsym(RTLD_DEFAULT, "wget_wch");
+	real_wgetch = dlsym(RTLD_DEFAULT, "wgetch");
+
+	plthook_t *plthook;
+
+	if (plthook_open(&plthook, ctx.libdialog_path) != 0)
+		fprintf_exit("plthook_open error: %s\n", plthook_error());
+
+	bool has_replace = false;
+	if (real_wget_wch && !plthook_replace(plthook, "wget_wch",
+					      wrapper_wget_wch, NULL))
+		has_replace = true;
+	if (real_wgetch && !plthook_replace(plthook, "wgetch",
+					    wrapper_wgetch, NULL))
+		has_replace = true;
+	if (!has_replace)
+		fprintf_exit("failed to hook ncurses\n");
+
+	plthook_close(plthook);
+}
 
 static void tui_reset(void)
 {
@@ -25,54 +118,6 @@ static void tui_reset(void)
 	const char *CLEAR_SCREEN_ANSI = "\e[1;1H\e[2J";
 	(void)!write(1, CLEAR_SCREEN_ANSI, 10);
 }
-
-static void tui_reaper_thread(void *arg)
-{
-	struct eventloop *wait_for_stun = eventloop_new();
-	eventloop_install_break(wait_for_stun, thread_stop_eventfd(current));
-
-	eventloop_enter(wait_for_stun, -1);
-	eventloop_destroy(wait_for_stun);
-
-	pthread_mutex_lock(&tui_reaper_lock);
-	thread_kill(tui_thread_ptr);
-	pthread_mutex_unlock(&tui_reaper_lock);
-	tui_reset();
-}
-
-#ifdef SAFE_EXIT_DOES_NOT_WORK
-jmp_buf exit_jmp;
-
-static bool handle_exit_event(DIALOG_CALLBACK *cb)
-{
-	uint64_t event_data;
-	if (read(fileno(cb->input), &event_data, sizeof(event_data)) == sizeof(event_data))
-		longjmp(exit_jmp, 1);
-
-	return true;
-}
-
-static void install_exit_cb(void)
-{
-	// All of this are freed when we call dlg_killall_bg *facepalm*
-	FILE *exit_event = fdopen(dup(thread_stop_eventfd(current)), "r");
-	if (!exit_event)
-		perror_exit("fdopen");
-
-	DIALOG_CALLBACK *exit_cb = malloc(sizeof(*exit_cb));
-	*exit_cb = (typeof(*exit_cb)){
-		.input = exit_event,
-		.win = NULL,
-		.handle_getc = NULL,
-		.handle_input = handle_exit_event,
-		.keep_bg = 0,
-		.bg_task = 1,
-	};
-	dlg_add_callback(exit_cb);
-}
-#else
-static inline void install_exit_cb(void) {}
-#endif
 
 static char remotes_path[PATH_MAX];
 static char title_str[100];
@@ -103,7 +148,6 @@ static void tui_clear(void)
 {
 	int res;
 	dlg_killall_bg(&res);
-	install_exit_cb();
 
 	dlg_clear();
 
@@ -122,6 +166,26 @@ static void detect_switch_online(void)
 	dialog_vars.begin_set = false;
 	dialog_msgbox("Setup", "\nDetecting status of local Switch ...", 5, 40, 0);
 	usleep(2500000);
+
+	/*
+	TODO: switch_change_broadcast => all broadcast packets
+	int replica_fd = broadcast_replica(switch_change_broadcast);
+
+	eventloop_clear_events(tui_el);
+	eventloop_install_break(tui_el, STDIN_FILENO);
+	eventloop_install_break(tui_el, replica_fd);
+
+	eventloop_install_event_sync(tui_el, &(struct event){
+		.fd = thread_stop_eventfd(current),
+		.eventfd_ack = true,
+		.handler_type = EVT_CALL_FN,
+		.handler_fn = tui_el_exit_cb,
+	});
+
+	eventloop_enter(tui_el, 2500);
+
+	broadcast_replica_del(switch_change_broadcast, replica_fd);
+	*/
 }
 
 static void detect_local_switch(void)
@@ -325,26 +389,17 @@ void tui_thread(void *arg)
 {
 	int res;
 
-	tui_thread_ptr = current;
+	monkey_patch();
+
+	tui_el = eventloop_new();
+
 	init_dialog(stdin, stdout);
 	dialog_vars.default_button = -1;
 
 	snprintf(remotes_path, PATH_MAX, "/proc/self/fd/%d", remotes_fd);
 
-#ifdef SAFE_EXIT_DOES_NOT_WORK
 	if (setjmp(exit_jmp))
 		goto out;
-
-	int flags = fcntl(thread_stop_eventfd(current), F_GETFL, 0);
-	if (flags == -1)
-		perror_exit("fcntl(F_GETFL)");
-	if (fcntl(thread_stop_eventfd(current), F_SETFL, flags | O_NONBLOCK) == -1)
-		perror_exit("fcntl(F_SETFL)");
-
-	install_exit_cb();
-#endif
-
-	thread_start(tui_reaper_thread, NULL, "tui_reaper");
 
 	tui_clear();
 
@@ -450,10 +505,5 @@ void tui_thread(void *arg)
 out:
 	tui_reset();
 
-	pthread_mutex_lock(&tui_reaper_lock);
 	thread_all_stop();
-	pthread_mutex_unlock(&tui_reaper_lock);
-
-	while (true)
-		pause();
 }

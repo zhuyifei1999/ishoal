@@ -65,8 +65,8 @@ int main(int argc, char *argv[])
 	signal(SIGTERM, sig_handler);
 
 	thread_start(bpf_load_thread, NULL, "bpf");
-	thread_start(python_thread, NULL, "python");
-	// thread_start(tui_thread, NULL, "tui");
+	// thread_start(python_thread, NULL, "python");
+	thread_start(tui_thread, NULL, "tui");
 
 	__broadcast_finalize_init();
 
