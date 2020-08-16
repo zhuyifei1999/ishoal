@@ -1,5 +1,6 @@
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <sys/eventfd.h>
 #include <unistd.h>
 
 #include <bpf/bpf.h>
@@ -17,7 +18,18 @@ ipaddr_t switch_ip;
 
 ipaddr_t fake_gateway_ip;
 
-static int num_xsk;
+int switch_change_broadcast_primary;
+struct broadcast_event *switch_change_broadcast;
+
+__attribute__((constructor))
+static void switch_change_broadcast_init(void)
+{
+	switch_change_broadcast_primary = eventfd(0, EFD_CLOEXEC);
+	if (switch_change_broadcast_primary < 0)
+		perror_exit("eventfd");
+
+	switch_change_broadcast = broadcast_new(switch_change_broadcast_primary);
+}
 
 static void close_obj(void)
 {
@@ -49,33 +61,10 @@ void bpf_delete_remote_addr(ipaddr_t local_ip)
 	bpf_map_delete_elem(bpf_map__fd(obj->maps.remote_addrs), &local_ip);
 }
 
-struct on_switch_chg_handler {
-	struct list_head list;
-	void (*fn)(void);
-};
-
-static pthread_mutex_t on_switch_chg_handlers_lock = PTHREAD_MUTEX_INITIALIZER;
-static LIST_HEAD(on_switch_chg_handlers);
-
-void on_switch_change(void (*fn)(void)) {
-	struct on_switch_chg_handler *handler = calloc(1, sizeof(*handler));
-	if (!handler)
-		perror_exit("calloc");
-
-	handler->fn = fn;
-	pthread_mutex_lock(&on_switch_chg_handlers_lock);
-	list_add(&handler->list, &on_switch_chg_handlers);
-	pthread_mutex_unlock(&on_switch_chg_handlers_lock);
-}
-
 static void __on_switch_change(void)
 {
-	struct on_switch_chg_handler *handler;
-	pthread_mutex_lock(&on_switch_chg_handlers_lock);
-	list_for_each_entry(handler, &on_switch_chg_handlers, list) {
-		handler->fn();
-	}
-	pthread_mutex_unlock(&on_switch_chg_handlers_lock);
+	if (eventfd_write(switch_change_broadcast_primary, 1))
+		perror_exit("eventfd_write");
 }
 
 void bpf_set_switch_ip(ipaddr_t addr)
@@ -175,8 +164,6 @@ void bpf_load_thread(void *arg)
 		int key = i;
 		if (bpf_map_update_elem(bpf_map__fd(obj->maps.xsks_map), &key, &fd, 0))
 			perror_exit("bpf_map_update_elem");
-
-		num_xsk++;
 	}
 
 	atexit(clear_map);

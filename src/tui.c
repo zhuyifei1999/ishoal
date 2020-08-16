@@ -115,13 +115,6 @@ void tui_on_xsk_pkt(void)
 	is_online = true;
 }
 
-static void tui_on_switch_chg(void)
-{
-	// FIXME: This would be racy, we need to somehow let the tui thread
-	// do this...
-	// recompute_title();
-}
-
 static void detect_switch_online(void)
 {
 	is_online = false;
@@ -352,7 +345,6 @@ void tui_thread(void *arg)
 #endif
 
 	thread_start(tui_reaper_thread, NULL, "tui_reaper");
-	on_switch_change(tui_on_switch_chg);
 
 	tui_clear();
 

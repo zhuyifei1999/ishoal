@@ -114,11 +114,14 @@ void do_stun(int sockfd, ipaddr_t *address, uint16_t *port)
 	eventloop_install_break(wait_for_stun, thread_stop_eventfd(current));
 	eventloop_install_break(wait_for_stun, sockfd);
 
-	eventloop_enter(wait_for_stun, 2000);
+	bool timeout = eventloop_enter(wait_for_stun, 2000);
 	eventloop_destroy(wait_for_stun);
 
 	if (thread_should_stop(current))
 		return;
+
+	if (timeout)
+		fprintf_exit("STUN timeout\n");
 
 	char buffer[512];
 	ssize_t length = read(sockfd, buffer, sizeof(buffer));

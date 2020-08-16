@@ -36,7 +36,26 @@ extern uint16_t public_vpn_port;
 
 extern int remotes_fd;
 
+enum event_handler {
+	EVT_CALL_FN,
+	EVT_BREAK,
+};
+struct event {
+	int fd;
+	bool eventfd_ack;
+	enum event_handler handler_type;
+	void (*handler_fn)(int fd, void *ctx);
+	void *handler_ctx;
+};
+
+struct eventloop;
+
+struct broadcast_event;
+
 extern int stop_broadcast_primary;
+
+extern int switch_change_broadcast_primary;
+extern struct broadcast_event *switch_change_broadcast;
 
 void tui_thread(void *arg);
 void bpf_load_thread(void *arg);
@@ -88,20 +107,6 @@ void handle_rpc(int call_recv_fd);
 int invoke_rpc_sync(int call_send_fd, int (*fn)(void *ctx), void *ctx);
 void invoke_rpc_async(int call_send_fd, int (*fn)(void *ctx), void *ctx);
 
-enum event_handler {
-	EVT_CALL_FN,
-	EVT_BREAK,
-};
-struct event {
-	int fd;
-	bool eventfd_ack;
-	enum event_handler handler_type;
-	void (*handler_fn)(int fd, void *ctx);
-	void *handler_ctx;
-};
-
-struct eventloop;
-
 struct eventloop *eventloop_new(void);
 void eventloop_destroy(struct eventloop *el);
 void eventloop_install_event_sync(struct eventloop *el, struct event *evt);
@@ -112,10 +117,10 @@ void eventloop_install_event_async(struct eventloop *el, struct event *evt,
 int eventloop_enter(struct eventloop *el, int timeout_ms);
 void eventloop_thread_fn(void *arg);
 
-struct broadcast_event;
-
 struct broadcast_event *broadcast_new(int primary_event_fd);
 int broadcast_replica(struct broadcast_event *bce);
+void broadcast_replica_del(struct broadcast_event *bce, int fd);
+
 void __broadcast_finalize_init(void);
 
 void do_stun(int sockfd, ipaddr_t *address, uint16_t *port);
@@ -126,6 +131,4 @@ void broadcast_all_remotes(void *buf, size_t len);
 
 void bpf_set_remote_addr(ipaddr_t local_ip, struct remote_addr *remote_addr);
 void bpf_delete_remote_addr(ipaddr_t local_ip);
-
-void on_switch_change(void (*fn)(void));
 #endif

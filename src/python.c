@@ -48,144 +48,104 @@ ishoalc_sleep(PyObject *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
-static pthread_mutex_t wait_switch_chg_eventfd_lock = PTHREAD_MUTEX_INITIALIZER;
-static int wait_switch_chg_eventfd = -1;
-
 static pthread_mutex_t on_switch_chg_threadfn_lock = PTHREAD_MUTEX_INITIALIZER;
-static int on_switch_chg_threadfn_eventfd = -1;
-
-static void ishoalc_on_switch_chg(void)
-{
-    uint64_t event_data = 1;
-
-    pthread_mutex_lock(&wait_switch_chg_eventfd_lock);
-    if (wait_switch_chg_eventfd >= 0) {
-        if (write(wait_switch_chg_eventfd, &event_data, sizeof(event_data)) !=
-                sizeof(event_data)) {
-            int saved_errno = errno;
-            pthread_mutex_unlock(&wait_switch_chg_eventfd_lock);
-            errno = saved_errno;
-            perror_exit("write(eventfd)");
-        }
-    }
-    pthread_mutex_unlock(&wait_switch_chg_eventfd_lock);
-
-    pthread_mutex_lock(&on_switch_chg_threadfn_lock);
-    if (on_switch_chg_threadfn_eventfd >= 0) {
-        if (write(on_switch_chg_threadfn_eventfd, &event_data, sizeof(event_data)) !=
-                sizeof(event_data)) {
-            int saved_errno = errno;
-            pthread_mutex_unlock(&on_switch_chg_threadfn_lock);
-            errno = saved_errno;
-            perror_exit("write(eventfd)");
-        }
-    }
-    pthread_mutex_unlock(&on_switch_chg_threadfn_lock);
-}
+static PyThreadState *on_switch_chg_threadfn_tssave;
 
 static PyObject *
 ishoalc_wait_for_switch(PyObject *self, PyObject *args)
 {
     Py_BEGIN_ALLOW_THREADS
 
-    pthread_mutex_lock(&wait_switch_chg_eventfd_lock);
-    bool need_eventfd = wait_switch_chg_eventfd < 0;
+    int replica_fd = broadcast_replica(switch_change_broadcast);
+    struct eventloop *el = eventloop_new();
 
-    if (need_eventfd) {
-        wait_switch_chg_eventfd = eventfd(0, EFD_CLOEXEC);
-        if (wait_switch_chg_eventfd < 0) {
-            int saved_errno = errno;
-            pthread_mutex_unlock(&wait_switch_chg_eventfd_lock);
-            errno = saved_errno;
-            return PyErr_SetFromErrno(PyExc_OSError);
-        }
-    }
-    pthread_mutex_unlock(&wait_switch_chg_eventfd_lock);
+    eventloop_install_break(el, thread_stop_eventfd(python_main_thread));
+    eventloop_install_event_sync(el, &(struct event){
+        .fd = replica_fd,
+        .eventfd_ack = true,
+        .handler_type = EVT_BREAK,
+    });
 
     while ((!switch_ip ||
             !memcmp(switch_mac, (macaddr_t){}, sizeof(macaddr_t))) &&
            !thread_should_stop(python_main_thread)) {
-        struct pollfd fds[2] = {
-            {thread_stop_eventfd(python_main_thread), POLLIN},
-            {wait_switch_chg_eventfd, POLLIN},
-        };
-        poll(fds, 2, -1);
+        eventloop_enter(el, -1);
     }
 
-    if (need_eventfd) {
-        pthread_mutex_lock(&wait_switch_chg_eventfd_lock);
-        close(wait_switch_chg_eventfd);
-        wait_switch_chg_eventfd = -1;
-        pthread_mutex_unlock(&wait_switch_chg_eventfd_lock);
-    }
+    eventloop_destroy(el);
+    broadcast_replica_del(switch_change_broadcast, replica_fd);
 
     Py_END_ALLOW_THREADS
 
     Py_RETURN_NONE;
 }
 
+struct ishoalc_on_switch_chg_threadfn_ctx {
+    PyObject *handler;
+    PyThreadState *tssave;
+    int breakfd;
+};
+
+static void ishoalc_on_switch_chg_threadfn_cb(int fd, void *_ctx)
+{
+    struct ishoalc_on_switch_chg_threadfn_ctx *ctx = _ctx;
+
+    PyEval_RestoreThread(ctx->tssave);
+
+    PyObject *res = PyObject_CallFunctionObjArgs(ctx->handler, NULL);
+    if (!res)
+        if (eventfd_write(ctx->breakfd, 1))
+            perror_exit("eventfd_write");
+
+    Py_DECREF(res);
+
+    ctx->tssave = PyEval_SaveThread();
+}
+
 static PyObject *
 ishoalc_on_switch_chg_threadfn(PyObject *self, PyObject *args)
 {
-    PyObject *handler;
-    if (!PyArg_ParseTuple(args, "O:on_switch_chg_threadfn", &handler))
+    struct ishoalc_on_switch_chg_threadfn_ctx ctx;
+
+    if (!PyArg_ParseTuple(args, "O:on_switch_chg_threadfn", &ctx.handler))
         return NULL;
 
-    if (!PyCallable_Check(handler)) {
+    if (!PyCallable_Check(ctx.handler)) {
         PyErr_SetString(PyExc_ValueError,
                         "on_switch_chg_threadfn argument 1 is not callable");
         return NULL;
     }
 
-    Py_BEGIN_ALLOW_THREADS
-
-    pthread_mutex_lock(&on_switch_chg_threadfn_lock);
-    if (on_switch_chg_threadfn_eventfd >= 0) {
-        pthread_mutex_unlock(&on_switch_chg_threadfn_lock);
+    if (pthread_mutex_trylock(&on_switch_chg_threadfn_lock)) {
         PyErr_SetString(PyExc_RuntimeError,
                         "on_switch_chg_threadfn is not reentrant");
-        return NULL;
     }
 
-    on_switch_chg_threadfn_eventfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-    if (on_switch_chg_threadfn_eventfd < 0) {
-        int saved_errno = errno;
-        pthread_mutex_unlock(&on_switch_chg_threadfn_lock);
-        errno = saved_errno;
-        return PyErr_SetFromErrno(PyExc_OSError);
-    }
-    pthread_mutex_unlock(&on_switch_chg_threadfn_lock);
+    ctx.tssave = PyEval_SaveThread();
+    ctx.breakfd = eventfd(0, EFD_CLOEXEC);
+    if (ctx.breakfd < 0)
+        perror_exit("eventfd");
 
-    while (!thread_should_stop(python_main_thread)) {
-        struct pollfd fds[2] = {
-            {thread_stop_eventfd(python_main_thread), POLLIN},
-            {on_switch_chg_threadfn_eventfd, POLLIN},
-        };
-        int res = poll(fds, 2, -1);
+    int replica_fd = broadcast_replica(switch_change_broadcast);
+    struct eventloop *el = eventloop_new();
 
-        uint64_t event_data;
-        (void)!read(on_switch_chg_threadfn_eventfd, &event_data, sizeof(event_data));
+    eventloop_install_break(el, thread_stop_eventfd(python_main_thread));
+    eventloop_install_break(el, ctx.breakfd);
+    eventloop_install_event_sync(el, &(struct event){
+        .fd = replica_fd,
+        .eventfd_ack = true,
+        .handler_type = EVT_CALL_FN,
+        .handler_fn = ishoalc_on_switch_chg_threadfn_cb,
+        .handler_ctx = &ctx,
+    });
 
-        if (res < 0)
-            continue;
+    eventloop_enter(el, -1);
 
-        if (!thread_should_stop(python_main_thread)) {
-            Py_BLOCK_THREADS
-            PyObject *res = PyObject_CallFunctionObjArgs(handler, NULL);
-            if (!res)
-                break;
+    eventloop_destroy(el);
+    broadcast_replica_del(switch_change_broadcast, replica_fd);
+    close(ctx.breakfd);
 
-            Py_DECREF(res);
-            Py_UNBLOCK_THREADS
-        }
-    }
-
-    pthread_mutex_lock(&on_switch_chg_threadfn_lock);
-    close(on_switch_chg_threadfn_eventfd);
-    on_switch_chg_threadfn_eventfd = -1;
-    pthread_mutex_unlock(&on_switch_chg_threadfn_lock);
-
-    Py_END_ALLOW_THREADS
+    PyEval_RestoreThread(ctx.tssave);
 
     Py_RETURN_NONE;
 }
@@ -284,8 +244,6 @@ PyInit_ishoalc(void)
 void python_thread(void *arg)
 {
     python_main_thread = current;
-
-    on_switch_change(ishoalc_on_switch_chg);
 
     PyImport_AppendInittab("ishoalc", &PyInit_ishoalc);
 

@@ -5,8 +5,10 @@
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <sys/eventfd.h>
+#include <unistd.h>
 
 #include "ishoal.h"
+#include "list.h"
 #include "darray.h"
 
 struct eventloop {
@@ -140,18 +142,24 @@ void eventloop_thread_fn(void *arg)
 	eventloop_enter(arg, -1);
 }
 
+struct broadcast_replica {
+	struct list_head list;
+	int fd;
+};
+
 struct broadcast_event {
 	pthread_mutex_t replica_fds_mutex;
-	struct DARRAY(int) replica_fds;
+	struct list_head replica_fds;
 };
 
 static void broadcast_event_cb(int fd, void *_ctx)
 {
 	struct broadcast_event *ctx = _ctx;
+	struct broadcast_replica *bcr;
 
 	pthread_mutex_lock(&ctx->replica_fds_mutex);
-	for (int i = 0; i < darray_nmemb(ctx->replica_fds); i++)
-		if (eventfd_write(*darray_idx(ctx->replica_fds, i), 1))
+	list_for_each_entry(bcr, &ctx->replica_fds, list)
+		if (eventfd_write(bcr->fd, 1))
 			perror_exit("eventfd_write");
 	pthread_mutex_unlock(&ctx->replica_fds_mutex);
 }
@@ -171,7 +179,12 @@ struct broadcast_event *broadcast_new(int primary_event_fd)
 	}
 
 	struct broadcast_event *bce = calloc(1, sizeof(*bce));
+	if (!bce)
+		perror_exit("calloc");
+
 	pthread_mutex_init(&bce->replica_fds_mutex, 0);
+
+	INIT_LIST_HEAD(&bce->replica_fds);
 
 	eventloop_install_event_async(broadcast_relay_el, &(struct event){
 		.fd = primary_event_fd,
@@ -198,10 +211,30 @@ int broadcast_replica(struct broadcast_event *bce)
 	if (fd < 0)
 		perror_exit("eventfd");
 
+	struct broadcast_replica *bcr = calloc(1, sizeof(*bcr));
+	if (!bcr)
+		perror_exit("calloc");
+
+	bcr->fd = fd;
+
 	pthread_mutex_lock(&bce->replica_fds_mutex);
-	darray_inc(bce->replica_fds);
-	*darray_tail(bce->replica_fds) = fd;
+	list_add(&bcr->list, &bce->replica_fds);
 	pthread_mutex_unlock(&bce->replica_fds_mutex);
 
 	return fd;
+}
+
+void broadcast_replica_del(struct broadcast_event *bce, int fd)
+{
+	struct broadcast_replica *bcr, *tmp;
+
+	pthread_mutex_lock(&bce->replica_fds_mutex);
+	list_for_each_entry_safe(bcr, tmp, &bce->replica_fds, list)
+		if (bcr->fd == fd) {
+			list_del(&bcr->list);
+			free(bcr);
+		}
+	pthread_mutex_unlock(&bce->replica_fds_mutex);
+
+	close(fd);
 }
