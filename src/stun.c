@@ -22,14 +22,12 @@
  * SOFTWARE.
  */
 
-#include <stdint.h>
-
-const char stun_host[] = "ishoal.ink";
-const uint16_t stun_port = 3478;
+#include "features.h"
 
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,6 +36,9 @@ const uint16_t stun_port = 3478;
 #include <unistd.h>
 
 #include "ishoal.h"
+
+const char stun_host[] = "ishoal.ink";
+const uint16_t stun_port = 3478;
 
 // MARK: === PRIVATE DATA STRUCTURE ===
 

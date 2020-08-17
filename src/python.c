@@ -1,3 +1,5 @@
+#include "features.h"
+
 #include <arpa/inet.h>
 #include <poll.h>
 #include <pthread.h>

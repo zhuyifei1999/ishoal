@@ -1,5 +1,4 @@
-#define _GNU_SOURCE
-#define _XOPEN_SOURCE_EXTENDED
+#include "features.h"
 
 #include <ncursesw/ncurses.h>
 
@@ -121,6 +120,7 @@ static int wrapper_wget_wch(WINDOW *win, wint_t *wch)
 
 static int wrapper_wgetch(WINDOW *win)
 {
+	wgetch_el(win);
 	return real_wgetch(win);
 }
 

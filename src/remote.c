@@ -1,4 +1,5 @@
-#define _GNU_SOURCE
+#include "features.h"
+
 #include <assert.h>
 #include <fcntl.h>
 #include <net/if.h>
@@ -9,9 +10,9 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <urcu.h>
 
 #include "ishoal.h"
-#include "list.h"
 
 uint16_t vpn_port;
 uint16_t public_vpn_port;
@@ -19,13 +20,13 @@ uint16_t public_vpn_port;
 static int endpoint_fd;
 
 struct remote_switch {
-	struct list_head list;
+	struct cds_list_head list;
 	ipaddr_t local;
 	struct remote_addr remote;
 };
 
 static pthread_mutex_t remotes_lock = PTHREAD_MUTEX_INITIALIZER;
-static LIST_HEAD(remotes);
+static CDS_LIST_HEAD(remotes);
 
 int remotes_fd;
 static FILE *remotes_log;
@@ -85,7 +86,7 @@ void set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip, uint16_t remote_port
 
 	struct remote_switch *remote;
 	pthread_mutex_lock(&remotes_lock);
-	list_for_each_entry(remote, &remotes, list) {
+	cds_list_for_each_entry(remote, &remotes, list) {
 		if (remote->local == local_ip) {
 			remote->remote.ip = remote_ip;
 			remote->remote.port = remote_port;
@@ -100,7 +101,7 @@ void set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip, uint16_t remote_port
 	remote->remote.ip = remote_ip;
 	remote->remote.port = remote_port;
 
-	list_add(&remote->list, &remotes);
+	cds_list_add(&remote->list, &remotes);
 
 found:
 	pthread_mutex_unlock(&remotes_lock);
@@ -117,9 +118,9 @@ void delete_remote_addr(ipaddr_t local_ip)
 
 	struct remote_switch *remote;
 	pthread_mutex_lock(&remotes_lock);
-	list_for_each_entry(remote, &remotes, list) {
+	cds_list_for_each_entry(remote, &remotes, list) {
 		if (remote->local == local_ip) {
-			list_del(&remote->list);
+			cds_list_del(&remote->list);
 			goto found;
 		}
 	}
@@ -138,7 +139,7 @@ void broadcast_all_remotes(void *buf, size_t len)
 {
 	struct remote_switch *remote;
 	pthread_mutex_lock(&remotes_lock);
-	list_for_each_entry(remote, &remotes, list) {
+	cds_list_for_each_entry(remote, &remotes, list) {
 		struct sockaddr_in addr = {
 			.sin_family = AF_INET,
 			.sin_port = htons(remote->remote.port),

@@ -1,3 +1,5 @@
+#include "features.h"
+
 #include <assert.h>
 #include <pthread.h>
 #include <stdatomic.h>

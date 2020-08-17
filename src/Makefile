@@ -1,5 +1,5 @@
 CFLAGS ?= -O2 -pipe -g -Wall
-LDFLAGS ?= $(CFLAGS) -lbpf -lpthread
+LDFLAGS ?= $(CFLAGS) -lbpf -lurcu -lpthread
 
 # Define this to build on a x86_64 system without multilib
 # CLANGFLAGS ?= -D__x86_64__

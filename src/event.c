@@ -1,3 +1,5 @@
+#include "features.h"
+
 #include <assert.h>
 #include <errno.h>
 #include <limits.h>
@@ -8,9 +10,9 @@
 #include <sys/eventfd.h>
 #include <sys/inotify.h>
 #include <unistd.h>
+#include <urcu.h>
 
 #include "ishoal.h"
-#include "list.h"
 #include "darray.h"
 
 struct eventloop {
@@ -150,13 +152,13 @@ void eventloop_thread_fn(void *arg)
 }
 
 struct broadcast_replica {
-	struct list_head list;
+	struct cds_list_head list;
 	int fd;
 };
 
 struct broadcast_event {
 	pthread_mutex_t replica_fds_mutex;
-	struct list_head replica_fds;
+	struct cds_list_head replica_fds;
 };
 
 static void broadcast_event_cb(int fd, void *_ctx)
@@ -165,7 +167,7 @@ static void broadcast_event_cb(int fd, void *_ctx)
 	struct broadcast_replica *bcr;
 
 	pthread_mutex_lock(&ctx->replica_fds_mutex);
-	list_for_each_entry(bcr, &ctx->replica_fds, list)
+	cds_list_for_each_entry(bcr, &ctx->replica_fds, list)
 		if (eventfd_write(bcr->fd, 1))
 			perror_exit("eventfd_write");
 	pthread_mutex_unlock(&ctx->replica_fds_mutex);
@@ -191,7 +193,7 @@ struct broadcast_event *broadcast_new(int primary_event_fd)
 
 	pthread_mutex_init(&bce->replica_fds_mutex, 0);
 
-	INIT_LIST_HEAD(&bce->replica_fds);
+	CDS_INIT_LIST_HEAD(&bce->replica_fds);
 
 	eventloop_install_event_async(broadcast_relay_el, &(struct event){
 		.fd = primary_event_fd,
@@ -225,7 +227,7 @@ int broadcast_replica(struct broadcast_event *bce)
 	bcr->fd = fd;
 
 	pthread_mutex_lock(&bce->replica_fds_mutex);
-	list_add(&bcr->list, &bce->replica_fds);
+	cds_list_add(&bcr->list, &bce->replica_fds);
 	pthread_mutex_unlock(&bce->replica_fds_mutex);
 
 	return fd;
@@ -236,9 +238,9 @@ void broadcast_replica_del(struct broadcast_event *bce, int fd)
 	struct broadcast_replica *bcr, *tmp;
 
 	pthread_mutex_lock(&bce->replica_fds_mutex);
-	list_for_each_entry_safe(bcr, tmp, &bce->replica_fds, list)
+	cds_list_for_each_entry_safe(bcr, tmp, &bce->replica_fds, list)
 		if (bcr->fd == fd) {
-			list_del(&bcr->list);
+			cds_list_del(&bcr->list);
 			free(bcr);
 		}
 	pthread_mutex_unlock(&bce->replica_fds_mutex);
@@ -248,10 +250,10 @@ void broadcast_replica_del(struct broadcast_event *bce, int fd)
 
 static int inotify_fd;
 
-static LIST_HEAD(inotifyeventfd_wd);
+static CDS_LIST_HEAD(inotifyeventfd_wd);
 
 struct inotifyeventfd_wd_entry {
-	struct list_head list;
+	struct cds_list_head list;
 	int wd;
 	int eventfd;
 };
@@ -282,7 +284,7 @@ static void inotify_cb(int fd, void *ctx)
 
 		struct inotifyeventfd_wd_entry *iew;
 
-		list_for_each_entry(iew, &inotifyeventfd_wd, list)
+		cds_list_for_each_entry(iew, &inotifyeventfd_wd, list)
 			if (iew->wd == event->wd)
 				if (eventfd_write(iew->eventfd, 1))
 					perror_exit("eventfd_write");
@@ -306,7 +308,7 @@ static int inotifyeventfd_add_cb(void *_ctx)
 	iew->wd = wd;
 	iew->eventfd = ctx->eventfd;
 
-	list_add(&iew->list, &inotifyeventfd_wd);
+	cds_list_add(&iew->list, &inotifyeventfd_wd);
 
 	return 0;
 }
@@ -318,10 +320,10 @@ static int inotifyeventfd_rm_cb(void *_ctx)
 
 	struct inotifyeventfd_wd_entry *iew, *tmp;
 
-	list_for_each_entry_safe(iew, tmp, &inotifyeventfd_wd, list)
+	cds_list_for_each_entry_safe(iew, tmp, &inotifyeventfd_wd, list)
 		if (iew->eventfd == fd) {
 			inotify_rm_watch(inotify_fd, iew->wd);
-			list_del(&iew->list);
+			cds_list_del(&iew->list);
 			free(iew);
 		}
 

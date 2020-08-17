@@ -1,3 +1,5 @@
+#include "features.h"
+
 #include <arpa/inet.h>
 #include <linux/if_packet.h>
 #include <net/if.h>

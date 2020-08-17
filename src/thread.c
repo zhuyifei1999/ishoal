@@ -1,16 +1,17 @@
-#define _GNU_SOURCE
+#include "features.h"
+
 #include <assert.h>
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <sys/eventfd.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <urcu.h>
 
 #include "ishoal.h"
-#include "list.h"
 
 struct thread {
-	struct list_head list;
+	struct cds_list_head list;
 	pthread_t pthread;
 	void (*fn)(void *arg);
 	void *arg;
@@ -24,7 +25,7 @@ static struct thread main_thread;
 __thread struct thread *current;
 
 static pthread_mutex_t threads_lock = PTHREAD_MUTEX_INITIALIZER;
-static LIST_HEAD(threads);
+static CDS_LIST_HEAD(threads);
 
 int stop_broadcast_primary;
 static struct broadcast_event *stop_broadcast;
@@ -41,20 +42,20 @@ static void thread_init(void)
 	current = &main_thread;
 	main_thread.stop_eventfd = broadcast_replica(stop_broadcast);
 
-	list_add(&main_thread.list, &threads);
+	cds_list_add(&main_thread.list, &threads);
 }
 
 static void *thread_wrapper_fn(void *thread)
 {
 	current = thread;
 	pthread_mutex_lock(&threads_lock);
-	list_add(&current->list, &threads);
+	cds_list_add(&current->list, &threads);
 	pthread_mutex_unlock(&threads_lock);
 
 	current->fn(current->arg);
 
 	pthread_mutex_lock(&threads_lock);
-	list_del(&current->list);
+	cds_list_del(&current->list);
 	pthread_mutex_unlock(&threads_lock);
 
 	current->exited = true;
@@ -129,7 +130,7 @@ void thread_all_stop(void)
 	struct thread *thread, *tmp;
 
 	pthread_mutex_lock(&threads_lock);
-	list_for_each_entry_safe(thread, tmp, &threads, list)
+	cds_list_for_each_entry_safe(thread, tmp, &threads, list)
 		thread->should_stop = true;
 	pthread_mutex_unlock(&threads_lock);
 
@@ -142,7 +143,7 @@ void thread_join_rest(void)
 	struct thread *thread, *tmp;
 
 	pthread_mutex_lock(&threads_lock);
-	list_for_each_entry_safe(thread, tmp, &threads, list)
+	cds_list_for_each_entry_safe(thread, tmp, &threads, list)
 		if (thread != current) {
 			pthread_mutex_unlock(&threads_lock);
 			thread_join(thread);

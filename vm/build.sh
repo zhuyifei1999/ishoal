@@ -118,7 +118,7 @@ make -B -C "${REPO}/src/" PYTHON="python${PY_VER}" BPFTOOL="$(realpath kernel/to
 export USE='-* make-symlinks unicode ssl ncurses readline'
 emerge --root rootfs -v sys-apps/baselayout
 emerge --root rootfs -v sys-apps/busybox
-emerge --root rootfs -v "dev-lang/python:${PY_VER}" dev-util/dialog
+emerge --root rootfs -v "dev-lang/python:${PY_VER}" dev-util/dialog dev-libs/userspace-rcu
 emerge --root rootfs -v sys-process/htop sys-process/lsof dev-util/strace
 ACCEPT_KEYWORDS='~x86' emerge --root rootfs -v dev-libs/libbpf
 unset USE

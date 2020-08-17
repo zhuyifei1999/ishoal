@@ -1,3 +1,5 @@
+#include "features.h"
+
 #include <libgen.h>
 #include <linux/limits.h>
 #include <stdbool.h>

@@ -1,3 +1,5 @@
+#include "features.h"
+
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <sys/eventfd.h>
@@ -8,7 +10,6 @@
 #include <bpf/xsk.h>
 
 #include "ishoal.h"
-#include "list.h"
 #include "bpf_kern.skel.h"
 
 static struct bpf_kern *obj;
