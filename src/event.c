@@ -109,7 +109,7 @@ int eventloop_enter(struct eventloop *el, int timeout_ms)
 
 		int res = poll(fds, size, timeout_ms);
 		if (res < 0) {
-			if (errno = EINTR)
+			if (errno == EINTR)
 				continue;
 			perror_exit("poll");
 		}

@@ -164,7 +164,7 @@ void ifinfo_init(void)
 	get_if_netmask(iface, &real_subnet_mask);
 	get_if_macaddr(iface, &host_mac);
 
-	ipaddr_t gateway_ip;
+	ipaddr_t gateway_ip = 0;
 	get_if_gateway(iface, &gateway_ip);
 	resolve_arp(iface, gateway_ip, &gateway_mac);
 }

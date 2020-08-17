@@ -97,15 +97,14 @@ static void wgetch_el(WINDOW *win)
 		if (p->input) {
 			int fd = fileno(p->input);
 
-			if (same_file(fd, remotes_fd)) {
+			if (same_file(fd, remotes_fd))
 				eventloop_install_event_sync(tui_el, &(struct event){
 					.fd = remotes_inotifyeventfd,
 					.eventfd_ack = true,
 					.handler_type = EVT_BREAK,
 				});
-			} else {
+			else
 				eventloop_install_break(tui_el, fd);
-			}
 		}
 
 	for (int i = 0; i < ARRAY_SIZE(tui_global_events); i++)
@@ -135,7 +134,7 @@ dl_iterate_phdr_cb(struct dl_phdr_info *info, size_t size, void *_ctx)
 	struct dl_iterate_phdr_ctx *ctx = _ctx;
 
 	if (strstr(info->dlpi_name, "libdialog"))
-		strncpy(ctx->libdialog_path, info->dlpi_name, PATH_MAX);
+		strncpy(ctx->libdialog_path, info->dlpi_name, PATH_MAX - 1);
 
 	return 0;
 }
@@ -189,7 +188,7 @@ static void recompute_title()
 		strncpy(title_str,
 			"IShoal " ISHOAL_VERSION_STR " - "
 			"Switch has not been detected, yet.", 100);
-	else {
+	else
 		snprintf(title_str, 100,
 			"IShoal " ISHOAL_VERSION_STR " - "
 			"Switch is %s at: %s (%s)",
@@ -197,7 +196,6 @@ static void recompute_title()
 			 mac_str(switch_mac),
 			 ip_str(switch_ip)
 		);
-	}
 
 	dialog_vars.backtitle = title_str;
 	dlg_put_backtitle();
@@ -455,11 +453,10 @@ void tui_thread(void *arg)
 
 	tui_clear();
 
-	if (!switch_ip) {
+	if (!switch_ip)
 		detect_local_switch();
-	} else {
+	else
 		detect_switch_online();
-	}
 
 	while (true) {
 		tui_clear();

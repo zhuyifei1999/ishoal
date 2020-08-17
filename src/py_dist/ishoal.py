@@ -2,7 +2,6 @@ import ctypes
 import ctypes.util
 import re
 import signal
-import sys
 import threading
 
 import socketio

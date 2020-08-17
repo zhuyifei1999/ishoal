@@ -48,9 +48,6 @@ ishoalc_sleep(PyObject *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
-static pthread_mutex_t on_switch_chg_threadfn_lock = PTHREAD_MUTEX_INITIALIZER;
-static PyThreadState *on_switch_chg_threadfn_tssave;
-
 static PyObject *
 ishoalc_wait_for_switch(PyObject *self, PyObject *args)
 {
@@ -114,11 +111,6 @@ ishoalc_on_switch_chg_threadfn(PyObject *self, PyObject *args)
         PyErr_SetString(PyExc_ValueError,
                         "on_switch_chg_threadfn argument 1 is not callable");
         return NULL;
-    }
-
-    if (pthread_mutex_trylock(&on_switch_chg_threadfn_lock)) {
-        PyErr_SetString(PyExc_RuntimeError,
-                        "on_switch_chg_threadfn is not reentrant");
     }
 
     ctx.tssave = PyEval_SaveThread();
@@ -249,14 +241,14 @@ void python_thread(void *arg)
 
     Py_Initialize();
 
+    PyObject *selfpath = NULL;
+    PyObject *mainmod = NULL;
+
     PyObject *sys_path = PySys_GetObject("path");
     if (!sys_path) {
         PyErr_SetString(PyExc_RuntimeError, "Can't get sys.path");
         goto out;
     }
-
-    PyObject *selfpath = NULL;
-    PyObject *mainmod = NULL;
 
     selfpath = PyUnicode_FromString("/proc/self/exe");
     if (!selfpath)

@@ -34,10 +34,8 @@ int main(int argc, char *argv[])
 	progname = argv[0];
 	iface = argv[1];
 	ifindex = if_nametoindex(iface);
-	if (!ifindex) {
-		perror(iface);
-		exit(1);
-	};
+	if (!ifindex)
+		perror_exit(iface);
 
 	ifinfo_init();
 	start_endpoint();
@@ -57,9 +55,8 @@ int main(int argc, char *argv[])
 		.mr_type = PACKET_MR_PROMISC,
 	};
 	if (setsockopt(promisc_sock, SOL_PACKET, PACKET_ADD_MEMBERSHIP,
-		       &mreq, sizeof(mreq))) {
+		       &mreq, sizeof(mreq)))
 		perror_exit("setsockopt");
-	}
 
 	signal(SIGINT, sig_handler);
 	signal(SIGTERM, sig_handler);

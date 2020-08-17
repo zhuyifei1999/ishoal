@@ -162,7 +162,8 @@ static void recompute_l4_csum_fast(struct xdp_md *ctx, struct iphdr *iph,
 		// if ipv4
 		if (!*csum_field)
 			return;
-	}
+	} else
+		return;
 
 	void *data_end = (void *)(long)ctx->data_end;
 	if ((void *)(csum_field + 1) > data_end)

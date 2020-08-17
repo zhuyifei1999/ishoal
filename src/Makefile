@@ -1,4 +1,4 @@
-CFLAGS ?= -O2 -pipe -g
+CFLAGS ?= -O2 -pipe -g -Wall
 LDFLAGS ?= $(CFLAGS) -lbpf -lpthread
 
 # Define this to build on a x86_64 system without multilib
