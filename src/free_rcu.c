@@ -144,6 +144,10 @@ void free_rcu_init(void)
 		memmem(offset_start, offset_stop - offset_start,
 		       &magic, sizeof(magic));
 
+	assert(magic_ptr);
+	assert(!memmem(magic_ptr + 1, offset_stop - magic_ptr - 1,
+		       &magic, sizeof(magic)));
+
 	trampoline_magic_offset = (void *)&call_rcu_trampoline_fn - trampoline;
 	trampoline_magic_offset = magic_ptr - trampoline;
 
