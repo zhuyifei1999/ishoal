@@ -29,11 +29,11 @@ static pthread_mutex_t trampolines_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void *offset_start, *offset_stop;
 
-__attribute__ ((section("call_rcu_trampoline_data"), used))
+__attribute__ ((section("free_rcu_trampoline_data"), used))
 static void (*free_ptr)(void *ptr) = free;
 
-__attribute__ ((section("call_rcu_trampoline"), used, noinline, noclone, optimize(0)))
-static void call_rcu_trampoline_fn(struct rcu_head *rcu)
+__attribute__ ((section("free_rcu_trampoline"), used, noinline, noclone, optimize(0)))
+static void free_rcu_trampoline_fn(struct rcu_head *rcu)
 {
 	volatile uint32_t offset;
 
@@ -109,21 +109,21 @@ out:
 
 void free_rcu_init(void)
 {
-	call_rcu_trampoline_fn((void *)MAGIC);
+	free_rcu_trampoline_fn((void *)MAGIC);
 
-	extern void *__start_call_rcu_trampoline;
-	extern void *__stop_call_rcu_trampoline;
+	extern void *__start_free_rcu_trampoline;
+	extern void *__stop_free_rcu_trampoline;
 
-	extern void *__start_call_rcu_trampoline_data;
-	extern void *__stop_call_rcu_trampoline_data;
+	extern void *__start_free_rcu_trampoline_data;
+	extern void *__stop_free_rcu_trampoline_data;
 
-	void *trampoline_start = caa_min(&__start_call_rcu_trampoline,
-		&__start_call_rcu_trampoline_data);
-	void *trampoline_stop = caa_max(&__stop_call_rcu_trampoline,
-		&__stop_call_rcu_trampoline_data);
+	void *trampoline_start = caa_min(&__start_free_rcu_trampoline,
+		&__start_free_rcu_trampoline_data);
+	void *trampoline_stop = caa_max(&__stop_free_rcu_trampoline,
+		&__stop_free_rcu_trampoline_data);
 
-	assert(trampoline_start <= (void *)&call_rcu_trampoline_fn);
-	assert((void *)&call_rcu_trampoline_fn < offset_start);
+	assert(trampoline_start <= (void *)&free_rcu_trampoline_fn);
+	assert((void *)&free_rcu_trampoline_fn < offset_start);
 	assert(offset_start < offset_stop);
 	assert(offset_stop < trampoline_stop);
 
@@ -131,13 +131,13 @@ void free_rcu_init(void)
 	trampoline_len = trampoline_stop - trampoline;
 
 	trampoline_code_off =
-		(void *)&__start_call_rcu_trampoline - trampoline_start;
+		(void *)&__start_free_rcu_trampoline - trampoline_start;
 	trampoline_code_len =
-		(void *)&__stop_call_rcu_trampoline - (void *)&__start_call_rcu_trampoline;
+		(void *)&__stop_free_rcu_trampoline - (void *)&__start_free_rcu_trampoline;
 	trampoline_data_off =
-		(void *)&__start_call_rcu_trampoline_data - trampoline_start;
+		(void *)&__start_free_rcu_trampoline_data - trampoline_start;
 	trampoline_data_len =
-		(void *)&__stop_call_rcu_trampoline_data - (void *)&__start_call_rcu_trampoline_data;
+		(void *)&__stop_free_rcu_trampoline_data - (void *)&__start_free_rcu_trampoline_data;
 
 	uint32_t magic = MAGIC;
 
@@ -149,7 +149,7 @@ void free_rcu_init(void)
 	assert(!memmem(magic_ptr + 1, offset_stop - magic_ptr - 1,
 		       &magic, sizeof(magic)));
 
-	trampoline_magic_offset = (void *)&call_rcu_trampoline_fn - trampoline;
+	trampoline_magic_offset = (void *)&free_rcu_trampoline_fn - trampoline;
 	trampoline_magic_offset = magic_ptr - trampoline;
 
 	// Test this against a few cases
