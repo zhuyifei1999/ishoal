@@ -24,8 +24,7 @@ static size_t trampoline_code_len;
 static size_t trampoline_data_off;
 static size_t trampoline_data_len;
 
-static size_t num_trampolines;
-static struct DARRAY(void *) trampolines;
+static struct DARRAY_RCU(void *) trampolines;
 static pthread_mutex_t trampolines_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void *offset_start, *offset_stop;
@@ -52,13 +51,17 @@ lbl_offset_stop:
 
 void *free_rcu_get_cb(size_t offset)
 {
-	// We don't use darray_nmemb becaise we are racing against memset.
-	if (caa_unlikely(uatomic_read(&num_trampolines) <= offset)) {
+	void *res;
+
+	rcu_read_lock();
+
+	if (caa_unlikely(darray_nmemb_rcu(trampolines) <= offset)) {
 		pthread_mutex_lock(&trampolines_mutex);
 		goto resize;
 	}
 
-	if (caa_unlikely(!uatomic_read(darray_idx(trampolines, offset)))) {
+	res = uatomic_read(darray_idx_rcu(trampolines, offset));
+	if (caa_unlikely(!res)) {
 		pthread_mutex_lock(&trampolines_mutex);
 		goto fill;
 	}
@@ -66,20 +69,12 @@ void *free_rcu_get_cb(size_t offset)
 	goto out;
 
 resize:;
-	size_t cursize = num_trampolines;
-	if (cursize <= offset) {
-		darray_resize(trampolines, offset + 1);
-
-		memset(darray_idx(trampolines, cursize), 0,
-		       (void *)darray_idx(trampolines, offset + 1) -
-		       (void *)darray_idx(trampolines, cursize));
-
-		cmm_wmb();
-		uatomic_set(&num_trampolines, offset + 1);
-	}
+	if (darray_nmemb_rcu(trampolines) <= offset)
+		darray_resize_rcu(trampolines, offset + 1);
 
 fill:
-	if (!*darray_idx(trampolines, offset)) {
+	res = *darray_idx_rcu(trampolines, offset);
+	if (!res) {
 		void *page = mmap(NULL, trampoline_len, PROT_READ | PROT_WRITE,
 				  MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
 		if (page == MAP_FAILED)
@@ -98,14 +93,18 @@ fill:
 			     PROT_READ | PROT_EXEC))
 			perror_exit("mprotect");
 
+		res = page + trampoline_func_offset;
+
 		cmm_wmb();
-		uatomic_set(darray_idx(trampolines, offset), page + trampoline_func_offset);
+		uatomic_set(darray_idx_rcu(trampolines, offset), res);
 	}
 
 	pthread_mutex_unlock(&trampolines_mutex);
 
 out:
-	return uatomic_read(darray_idx(trampolines, offset));
+	rcu_read_unlock();
+
+	return res;
 }
 
 void free_rcu_init(void)
