@@ -14,6 +14,8 @@
 
 #define MAGIC 0xDEADBEEF
 
+static size_t page_size;
+
 static void *trampoline;
 static size_t trampoline_len;
 static size_t trampoline_func_offset;
@@ -86,10 +88,24 @@ fill:
 		       trampoline_data_len);
 		*(uint32_t *)(page + trampoline_magic_offset) = offset;
 
-		if (mprotect(page, trampoline_len, PROT_READ))
+		if (mprotect(page, trampoline_len, PROT_NONE))
 			perror_exit("mprotect");
 
-		if (mprotect(page + trampoline_code_off, trampoline_code_len,
+		void *aligned_data =
+			(void *)((uintptr_t)(page + trampoline_data_off) &
+				 ~(page_size - 1));
+		size_t aligned_data_len =
+			trampoline_data_len + trampoline_data_off - (aligned_data - page);
+		if (mprotect(aligned_data, aligned_data_len,
+			     PROT_READ))
+			perror_exit("mprotect");
+
+		void *aligned_code =
+			(void *)((uintptr_t)(page + trampoline_code_off) &
+				 ~(page_size - 1));
+		size_t aligned_code_len =
+			trampoline_code_len + trampoline_code_off - (aligned_code - page);
+		if (mprotect(aligned_code, aligned_code_len,
 			     PROT_READ | PROT_EXEC))
 			perror_exit("mprotect");
 
@@ -109,6 +125,10 @@ out:
 
 void free_rcu_init(void)
 {
+	page_size = sysconf(_SC_PAGESIZE);
+	if (page_size <= 0)
+		perror_exit("sysconf(_SC_PAGESIZE)");
+
 	free_rcu_trampoline_fn((void *)MAGIC);
 
 	extern void *__start_free_rcu_trampoline;
