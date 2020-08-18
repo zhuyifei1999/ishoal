@@ -12,6 +12,7 @@
 #include <sys/inotify.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <termios.h>
 
 #include "extern/plthook/plthook.h"
 
@@ -30,7 +31,14 @@ static jmp_buf exit_jmp;
 static int (*real_wget_wch)(WINDOW *win, wint_t *wch);
 static int (*real_wgetch)(WINDOW *win);
 
-static void recompute_title();
+struct termios start_termios, run_termios;
+
+static void reset_termios(void)
+{
+	tcsetattr(STDIN_FILENO, TCSANOW, &start_termios);
+}
+
+static void recompute_title(void);
 
 static void tui_el_exit_cb(int fd, void *_ctx)
 {
@@ -177,12 +185,14 @@ static void tui_reset(void)
 	mouse_close();
 	(void)endwin();
 
+	fflush(stdout);
+
 	// https://stackoverflow.com/a/7660837/13673228
 	const char *CLEAR_SCREEN_ANSI = "\e[1;1H\e[2J";
 	(void)!write(1, CLEAR_SCREEN_ANSI, 10);
 }
 
-static void recompute_title()
+static void recompute_title(void)
 {
 	if (!switch_ip)
 		strncpy(title_str,
@@ -434,12 +444,14 @@ void tui_thread(void *arg)
 {
 	int res;
 
+	if (tcgetattr(STDIN_FILENO, &start_termios))
+		perror_exit("tcgetattr");
+
+	atexit(reset_termios);
+
 	monkey_patch();
 
 	tui_el = eventloop_new();
-
-	init_dialog(stdin, stdout);
-	dialog_vars.default_button = -1;
 
 	snprintf(remotes_path, PATH_MAX, "/proc/self/fd/%d", remotes_fd);
 	remotes_inotifyeventfd = inotifyeventfd_add(remotes_path, IN_MODIFY);
@@ -447,6 +459,21 @@ void tui_thread(void *arg)
 	tui_global_events[0].fd = thread_stop_eventfd(current);
 	tui_global_events[1].fd = broadcast_replica(switch_change_broadcast);
 	tui_global_events[2].fd = broadcast_replica(xsk_broadcast_evt_broadcast);
+
+	init_dialog(stdin, stdout);
+	dialog_vars.default_button = -1;
+
+	if (tcgetattr(STDIN_FILENO, &run_termios))
+		perror_exit("tcgetattr");
+
+	run_termios.c_lflag &= ~(ISIG | IXON | IXOFF);
+	run_termios.c_cc[VINTR] = _POSIX_VDISABLE;
+	run_termios.c_cc[VQUIT] = _POSIX_VDISABLE;
+	run_termios.c_cc[VSTOP] = _POSIX_VDISABLE;
+	run_termios.c_cc[VSUSP] = _POSIX_VDISABLE;
+
+	if (tcsetattr(STDIN_FILENO, TCSANOW, &run_termios))
+		perror_exit("tcsetattr");
 
 	if (setjmp(exit_jmp))
 		goto out;
@@ -518,6 +545,10 @@ void tui_thread(void *arg)
 			break;
 		case 5:
 			tui_reset();
+
+			if (tcsetattr(STDIN_FILENO, TCSANOW, &start_termios))
+				perror_exit("tcsetattr");
+
 			printf("Please type 'exit' to exit the shell.\n");
 			fflush(stdout);
 
@@ -535,6 +566,13 @@ void tui_thread(void *arg)
 			}
 
 			init_dialog(stdin, stdout);
+
+			tui_clear();
+			refresh();
+
+			if (tcsetattr(STDIN_FILENO, TCSANOW, &run_termios))
+				perror_exit("tcsetattr");
+
 			break;
 		case 6:
 			dialog_vars.begin_set = false;
