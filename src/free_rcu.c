@@ -105,7 +105,7 @@ fill:
 	pthread_mutex_unlock(&trampolines_mutex);
 
 out:
-	return CMM_ACCESS_ONCE(*darray_idx(trampolines, offset));
+	return uatomic_read(darray_idx(trampolines, offset));
 }
 
 void free_rcu_init(void)
