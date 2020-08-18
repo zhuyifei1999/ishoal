@@ -53,12 +53,12 @@ lbl_offset_stop:
 void *free_rcu_get_cb(size_t offset)
 {
 	// We don't use darray_nmemb becaise we are racing against memset.
-	if (caa_unlikely(CMM_ACCESS_ONCE(num_trampolines) <= offset)) {
+	if (caa_unlikely(uatomic_read(&num_trampolines) <= offset)) {
 		pthread_mutex_lock(&trampolines_mutex);
 		goto resize;
 	}
 
-	if (caa_unlikely(!CMM_ACCESS_ONCE(*darray_idx(trampolines, offset)))) {
+	if (caa_unlikely(!uatomic_read(darray_idx(trampolines, offset)))) {
 		pthread_mutex_lock(&trampolines_mutex);
 		goto fill;
 	}
@@ -74,7 +74,8 @@ resize:;
 		       (void *)darray_idx(trampolines, offset + 1) -
 		       (void *)darray_idx(trampolines, cursize));
 
-		num_trampolines = offset + 1;
+		cmm_wmb();
+		uatomic_set(&num_trampolines, offset + 1);
 	}
 
 fill:
@@ -97,7 +98,8 @@ fill:
 			     PROT_READ | PROT_EXEC))
 			perror_exit("mprotect");
 
-		*darray_idx(trampolines, offset) = page + trampoline_func_offset;
+		cmm_wmb();
+		uatomic_set(darray_idx(trampolines, offset), page + trampoline_func_offset);
 	}
 
 	pthread_mutex_unlock(&trampolines_mutex);
