@@ -11,6 +11,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <urcu.h>
+#include <urcu/rculist.h>
 
 #include "ishoal.h"
 
@@ -102,7 +103,7 @@ void set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip, uint16_t remote_port
 	remote->remote.ip = remote_ip;
 	remote->remote.port = remote_port;
 
-	cds_list_add(&remote->list, &remotes);
+	cds_list_add_rcu(&remote->list, &remotes);
 
 found:
 	pthread_mutex_unlock(&remotes_lock);
@@ -121,7 +122,7 @@ void delete_remote_addr(ipaddr_t local_ip)
 	pthread_mutex_lock(&remotes_lock);
 	cds_list_for_each_entry(remote, &remotes, list) {
 		if (remote->local == local_ip) {
-			cds_list_del(&remote->list);
+			cds_list_del_rcu(&remote->list);
 			free_rcu(remote, rcu);
 			goto found;
 		}
@@ -140,8 +141,9 @@ found:
 void broadcast_all_remotes(void *buf, size_t len)
 {
 	struct remote_switch *remote;
-	pthread_mutex_lock(&remotes_lock);
-	cds_list_for_each_entry(remote, &remotes, list) {
+
+	rcu_read_lock();
+	cds_list_for_each_entry_rcu(remote, &remotes, list) {
 		struct sockaddr_in addr = {
 			.sin_family = AF_INET,
 			.sin_port = htons(remote->remote.port),
@@ -150,5 +152,5 @@ void broadcast_all_remotes(void *buf, size_t len)
 		sendto(endpoint_fd, buf, len, 0,
 		       (struct sockaddr *)&addr, sizeof(addr));
 	}
-	pthread_mutex_unlock(&remotes_lock);
+	rcu_read_unlock();
 }
