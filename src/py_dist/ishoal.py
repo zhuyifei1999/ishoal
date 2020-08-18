@@ -62,11 +62,6 @@ def pulse():
     sio.emit('pulse', (ishoalc.get_switch_ip(), ishoalc.get_vpn_port()))
 
 
-@sio.event
-def connect():
-    pulse()
-
-
 @sio.on('set_remote_addr')
 def on_set_remote_addr(local_ip, remote_ip, remote_port):
     if not isinstance(local_ip, str) or not IPV4_REGEXP.match(local_ip):
@@ -103,6 +98,8 @@ def main():
     if ishoalc.should_stop():
         sio.disconnect()
         return
+
+    pulse()
 
     def on_switch_change():
         pulse()

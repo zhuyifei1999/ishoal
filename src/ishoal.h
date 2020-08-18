@@ -18,6 +18,15 @@
 #define IS_ERR(val) (PTR_ERR(val) >= -MAX_ERRNO)
 #define IS_ERR_OR_NULL(val) (IS_ERR(val) || !(val))
 
+#define free_rcu(ptr, rhf)						\
+do {									\
+	typeof (ptr) ___p = (ptr);					\
+									\
+	if (___p)							\
+		call_rcu(&((___p)->rhf), free_rcu_get_cb(	\
+				offsetof(typeof(*(ptr)), rhf)));		\
+} while (0)
+
 extern int exitcode;
 
 extern char *progname;
@@ -61,6 +70,9 @@ extern struct broadcast_event *xsk_broadcast_evt_broadcast;
 
 extern int switch_change_broadcast_primary;
 extern struct broadcast_event *switch_change_broadcast;
+
+void free_rcu_init(void);
+void *free_rcu_get_cb(size_t offset);
 
 void tui_thread(void *arg);
 void bpf_load_thread(void *arg);

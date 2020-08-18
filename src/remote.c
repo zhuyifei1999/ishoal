@@ -21,6 +21,7 @@ static int endpoint_fd;
 
 struct remote_switch {
 	struct cds_list_head list;
+	struct rcu_head rcu;
 	ipaddr_t local;
 	struct remote_addr remote;
 };
@@ -121,6 +122,7 @@ void delete_remote_addr(ipaddr_t local_ip)
 	cds_list_for_each_entry(remote, &remotes, list) {
 		if (remote->local == local_ip) {
 			cds_list_del(&remote->list);
+			free_rcu(remote, rcu);
 			goto found;
 		}
 	}

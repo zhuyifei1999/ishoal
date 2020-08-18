@@ -7,6 +7,7 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <urcu.h>
+#include <urcu/rculist.h>
 
 #include "ishoal.h"
 
@@ -48,15 +49,20 @@ static void thread_init(void)
 static void *thread_wrapper_fn(void *thread)
 {
 	current = thread;
+
+	rcu_register_thread();
+
 	pthread_mutex_lock(&threads_lock);
-	cds_list_add(&current->list, &threads);
+	cds_list_add_rcu(&current->list, &threads);
 	pthread_mutex_unlock(&threads_lock);
 
 	current->fn(current->arg);
 
 	pthread_mutex_lock(&threads_lock);
-	cds_list_del(&current->list);
+	cds_list_del_rcu(&current->list);
 	pthread_mutex_unlock(&threads_lock);
+
+	rcu_unregister_thread();
 
 	current->exited = true;
 
@@ -127,12 +133,12 @@ void thread_release(struct thread *thread)
 
 void thread_all_stop(void)
 {
-	struct thread *thread, *tmp;
+	struct thread *thread;
 
-	pthread_mutex_lock(&threads_lock);
-	cds_list_for_each_entry_safe(thread, tmp, &threads, list)
+	rcu_read_lock();
+	cds_list_for_each_entry_rcu(thread, &threads, list)
 		thread->should_stop = true;
-	pthread_mutex_unlock(&threads_lock);
+	rcu_read_unlock();
 
 	if (eventfd_write(stop_broadcast_primary, 1))
 		perror_exit("eventfd_write");

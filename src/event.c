@@ -11,6 +11,7 @@
 #include <sys/inotify.h>
 #include <unistd.h>
 #include <urcu.h>
+#include <urcu/rculist.h>
 
 #include "ishoal.h"
 #include "darray.h"
@@ -153,6 +154,7 @@ void eventloop_thread_fn(void *arg)
 
 struct broadcast_replica {
 	struct cds_list_head list;
+	struct rcu_head rcu;
 	int fd;
 };
 
@@ -166,11 +168,11 @@ static void broadcast_event_cb(int fd, void *_ctx)
 	struct broadcast_event *ctx = _ctx;
 	struct broadcast_replica *bcr;
 
-	pthread_mutex_lock(&ctx->replica_fds_mutex);
-	cds_list_for_each_entry(bcr, &ctx->replica_fds, list)
+	rcu_read_lock();
+	cds_list_for_each_entry_rcu(bcr, &ctx->replica_fds, list)
 		if (eventfd_write(bcr->fd, 1))
 			perror_exit("eventfd_write");
-	pthread_mutex_unlock(&ctx->replica_fds_mutex);
+	rcu_read_unlock();
 }
 
 static struct eventloop *broadcast_relay_el;
@@ -227,7 +229,7 @@ int broadcast_replica(struct broadcast_event *bce)
 	bcr->fd = fd;
 
 	pthread_mutex_lock(&bce->replica_fds_mutex);
-	cds_list_add(&bcr->list, &bce->replica_fds);
+	cds_list_add_rcu(&bcr->list, &bce->replica_fds);
 	pthread_mutex_unlock(&bce->replica_fds_mutex);
 
 	return fd;
@@ -235,13 +237,13 @@ int broadcast_replica(struct broadcast_event *bce)
 
 void broadcast_replica_del(struct broadcast_event *bce, int fd)
 {
-	struct broadcast_replica *bcr, *tmp;
+	struct broadcast_replica *bcr;
 
 	pthread_mutex_lock(&bce->replica_fds_mutex);
-	cds_list_for_each_entry_safe(bcr, tmp, &bce->replica_fds, list)
+	cds_list_for_each_entry_rcu(bcr, &bce->replica_fds, list)
 		if (bcr->fd == fd) {
-			cds_list_del(&bcr->list);
-			free(bcr);
+			cds_list_del_rcu(&bcr->list);
+			free_rcu(bcr, rcu);
 		}
 	pthread_mutex_unlock(&bce->replica_fds_mutex);
 

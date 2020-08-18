@@ -9,6 +9,7 @@
 #include <sys/eventfd.h>
 #include <sys/resource.h>
 #include <unistd.h>
+#include <urcu.h>
 
 #include "ishoal.h"
 
@@ -38,6 +39,11 @@ int main(int argc, char *argv[])
 	ifindex = if_nametoindex(iface);
 	if (!ifindex)
 		perror_exit(iface);
+
+	rcu_init();
+	rcu_register_thread();
+
+	free_rcu_init();
 
 	ifinfo_init();
 	start_endpoint();
@@ -77,6 +83,8 @@ int main(int argc, char *argv[])
 
 	thread_all_stop();
 	thread_join_rest();
+
+	rcu_unregister_thread();
 
 	return exitcode;
 }
