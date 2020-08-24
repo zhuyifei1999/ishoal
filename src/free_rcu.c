@@ -70,7 +70,7 @@ void *free_rcu_get_cb(size_t offset)
 
 	goto out;
 
-resize:;
+resize:
 	if (darray_nmemb_rcu(trampolines) <= offset)
 		darray_resize_rcu(trampolines, offset + 1);
 

@@ -61,7 +61,7 @@ ishoal_native: $(OBJ)
 py_dist_build: py_dist py_dist/** py-requirements.txt
 	mkdir -p py_dist_build && \
 	cp -a py_dist/* py_dist_build && \
-	$(PYTHON) -m pip install -r py-requirements.txt --target py_dist_build && \
+	$(PYTHON) -m pip install -Ur py-requirements.txt --target py_dist_build && \
 	rm -rf py_dist_build/*.dist-info || \
 	(rm -rf py_dist_build; exit 1)
 

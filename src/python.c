@@ -4,6 +4,7 @@
 #include <poll.h>
 #include <pthread.h>
 #include <sys/eventfd.h>
+#include <urcu.h>
 
 #define PY_SSIZE_T_CLEAN
 #define Py_LIMITED_API 0x03030000
@@ -26,6 +27,20 @@ ishoalc_should_stop(PyObject *self, PyObject *args)
     PyObject *res = thread_should_stop(python_main_thread) ? Py_True : Py_False;
     Py_INCREF(res);
     return res;
+}
+
+static PyObject *
+ishoalc_rcu_register_thread(PyObject *self, PyObject *args)
+{
+    rcu_register_thread();
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+ishoalc_rcu_unregister_thread(PyObject *self, PyObject *args)
+{
+    rcu_unregister_thread();
+    Py_RETURN_NONE;
 }
 
 static PyObject *
@@ -214,6 +229,8 @@ ishoalc_delete_remote_addr(PyObject *self, PyObject *args)
 static PyMethodDef IshoalcMethods[] = {
     {"thread_all_stop", ishoalc_thread_all_stop, METH_NOARGS, NULL},
     {"should_stop", ishoalc_should_stop, METH_NOARGS, NULL},
+    {"rcu_register_thread", ishoalc_rcu_register_thread, METH_NOARGS, NULL},
+    {"rcu_unregister_thread", ishoalc_rcu_unregister_thread, METH_NOARGS, NULL},
     {"sleep", ishoalc_sleep, METH_VARARGS, NULL},
     {"wait_for_switch", ishoalc_wait_for_switch, METH_NOARGS, NULL},
     {"on_switch_chg_threadfn", ishoalc_on_switch_chg_threadfn, METH_VARARGS, NULL},
