@@ -1,6 +1,7 @@
 *.o
 *.so
 *.d
+*.efi
 *.skel.h
 /src/ishoal_native
 /src/ishoal_py

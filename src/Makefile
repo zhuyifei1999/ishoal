@@ -1,7 +1,7 @@
 CFLAGS ?= -O2 -pipe -g -Wall
 LDFLAGS ?= $(CFLAGS) -lbpf -lurcu -lpthread
 
-# Define this to build on a x86_64 system without multilib
+# Define this to build on a system without multilib
 # CLANGFLAGS ?= -D__x86_64__
 
 PYTHON ?= python3.8

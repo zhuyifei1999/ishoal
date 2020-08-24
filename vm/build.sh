@@ -23,38 +23,23 @@ mkdir rootfs
 
 truncate -s $((256 * 1048576)) disk.img
 fdisk disk.img << EOF
-o
+g
 n
-p
 1
 2048
 65535
 n
-p
 2
 65536
-524287
-a
-1
+524254
 w
 EOF
 
 BOOT="$(sudo losetup --offset $(( 2048 * 512 )) --sizelimit $(( 63488 * 512 )) --show --find disk.img)"
-ROOT="$(sudo losetup --offset $(( 65536 * 512 )) --sizelimit $(( 458752 * 512 )) --show --find disk.img)"
+ROOT="$(sudo losetup --offset $(( 65536 * 512 )) --sizelimit $(( 458719 * 512 )) --show --find disk.img)"
 
-sudo mkfs.vfat "$BOOT"
+sudo mkfs.fat "$BOOT"
 sudo mkfs.btrfs "$ROOT"
-
-sudo docker run -v $PWD:$PWD -w $PWD --tmpfs /var/tmp/portage:exec --tmpfs /var/cache/distfiles --tmpfs /var/db/repos --cap-add=SYS_PTRACE --rm -i gentoo/stage3-x86 << 'EOF'
-set -ex
-
-emerge-webrsync
-
-emerge -v -n syslinux
-
-syslinux -t $(( 2048 * 512 )) -i disk.img
-dd bs=440 count=1 conv=notrunc if=/usr/share/syslinux/mbr.bin of=disk.img
-EOF
 
 sudo mount -o compress,discard "$ROOT" rootfs
 sudo mkdir -p rootfs/boot
@@ -78,18 +63,18 @@ function cleanup_mnt {
 
 trap cleanup_mnt EXIT
 
-sudo docker run -v $REPO:$REPO -e REPO="${REPO}" -v $PWD:$PWD -w $PWD --tmpfs /var/tmp/portage:exec --tmpfs /var/cache/distfiles --tmpfs /var/db/repos --cap-add=SYS_PTRACE --rm -i gentoo/stage3-x86 << 'EOF'
+sudo docker run -v $REPO:$REPO -e REPO="${REPO}" -v $PWD:$PWD -w $PWD --tmpfs /var/tmp/portage:exec --tmpfs /var/cache/distfiles --tmpfs /var/db/repos --cap-add=SYS_PTRACE --rm -i gentoo/stage3-amd64-nomultilib << 'EOF'
 set -ex
 
-LINUX_VER=5.8.1
+LINUX_VER=5.8.3
 PY_VER=3.8
 
 emerge-webrsync
 
-export LLVM_TARGETS=BPF ACCEPT_KEYWORDS='~x86'
+export LLVM_TARGETS=BPF
 emerge -v -o sys-devel/llvm:10
 MAKEOPTS="-j$(( $(nproc) < 4 ? $(nproc) : 4 ))" emerge -v -n sys-devel/llvm:10 sys-devel/clang:10
-unset LLVM_TARGETS ACCEPT_KEYWORDS
+unset LLVM_TARGETS
 
 emerge -v -o gentoo-sources
 
@@ -100,27 +85,30 @@ tar xf "linux-${LINUX_VER}.tar.xz"
 mv "linux-${LINUX_VER}" kernel
 
 pushd kernel
-./scripts/kconfig/merge_config.sh ./arch/x86/configs/i386_defconfig "${REPO}/vm/kconfig"
+./scripts/kconfig/merge_config.sh ./arch/x86/configs/x86_64_defconfig "${REPO}/vm/kconfig"
 popd
 
 make -C kernel -j"$(nproc)"
 
 make -C kernel/tools/bpf/bpftool/
 
-emerge -v -n "dev-lang/python:${PY_VER}" dev-util/dialog
-ACCEPT_KEYWORDS='~x86' emerge -v dev-libs/libbpf
+emerge -v -n "dev-lang/python:${PY_VER}" dev-util/dialog dev-libs/userspace-rcu
+ACCEPT_KEYWORDS='~amd64' emerge -v dev-libs/libbpf
 
 "python${PY_VER}" -m ensurepip
 
 rm "${REPO}/src/"*.d || true
-make -B -C "${REPO}/src/" PYTHON="python${PY_VER}" BPFTOOL="$(realpath kernel/tools/bpf/bpftool/bpftool)"
+make -B -C "${REPO}/src/" PYTHON="python${PY_VER}" BPFTOOL="$(realpath kernel/tools/bpf/bpftool/bpftool)" CLANGFLAGS="-D__x86_64__"
+
+emerge -v -n sys-boot/gnu-efi
+make -B -C "${REPO}/vm/efi_fb_res"
 
 export USE='-* make-symlinks unicode ssl ncurses readline'
 emerge --root rootfs -v sys-apps/baselayout
 emerge --root rootfs -v sys-apps/busybox
 emerge --root rootfs -v "dev-lang/python:${PY_VER}" dev-util/dialog dev-libs/userspace-rcu
 emerge --root rootfs -v sys-process/htop sys-process/lsof dev-util/strace
-ACCEPT_KEYWORDS='~x86' emerge --root rootfs -v dev-libs/libbpf
+ACCEPT_KEYWORDS='~amd64' emerge --root rootfs -v dev-libs/libbpf
 unset USE
 
 GCC_PATH="$(gcc -print-search-dirs | grep install | cut -d\  -f2)"
@@ -131,7 +119,7 @@ ldconfig -C rootfs/etc/ld.so.cache -f rootfs/etc/ld.so.conf
 
 find rootfs/usr/share/i18n/locales/ -mindepth 1 -maxdepth 1 ! -name 'en_US' ! -name 'en_GB' ! -name 'C' ! -name 'i18n*' ! -name 'iso*' ! -name 'translit*' -delete
 find rootfs/usr/share/i18n/charmaps/ -mindepth 1 -maxdepth 1 -name '*.gz' ! -name 'UTF*' ! -name 'LATIN*' -delete
-find rootfs/usr/lib/gconv/ -mindepth 1 -maxdepth 1 -name '*.so' ! -name 'UTF*' ! -name 'LATIN*' ! -name 'UNICODE*' -delete
+find rootfs/usr/lib64/gconv/ -mindepth 1 -maxdepth 1 -name '*.so' ! -name 'UTF*' ! -name 'LATIN*' ! -name 'UNICODE*' -delete
 find rootfs/usr/share/locale/ -mindepth 1 -maxdepth 1 -type d ! -name 'en_US' ! -name 'en_GB' ! -name 'C' -exec rm -r {} \;
 find rootfs/usr/share/terminfo/ -mindepth 2 -maxdepth 2 ! -name 'ansi*' ! -name 'linux*' ! -name 'vt*' ! -name 'xterm*' ! -name 'screen*' ! -name 'gnome*' -delete
 find rootfs/usr/share/terminfo/ -empty -type d -delete
@@ -255,10 +243,9 @@ INNEREOF
 cp "${REPO}/src/ishoal" rootfs/root/ishoal
 chmod a+x rootfs/root/ishoal
 
-cp kernel/arch/x86/boot/bzImage rootfs/boot/LINUX
-cat > rootfs/boot/syslinux.cfg << INNEREOF
-default LINUX
-INNEREOF
+mkdir -p rootfs/boot/EFI/Boot/
+cp kernel/arch/x86/boot/bzImage rootfs/boot/linux.efi
+cp "${REPO}/vm/efi_fb_res/efi_fb_res.efi" rootfs/boot/EFI/Boot/bootx64.efi
 EOF
 
 do_cleanup_mnt

@@ -21,16 +21,22 @@
     </ProductSection>
     <EulaSection>
       <Info>License agreement for the virtual system</Info>
-      <License>This program is free software: you can redistribute it and/or modify it under the terms of version 2 of the the GNU General Public License as published by the Free Software Foundation.
+      <License>This program is free software: you can redistribute it and/or modify
+it under the terms of version 2 of the the GNU General Public License
+as published by the Free Software Foundation.
 
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License along with this program.  If not, see &lt;https://www.gnu.org/licenses/&gt;.</License>
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see &lt;https://www.gnu.org/licenses/&gt;.</License>
     </EulaSection>
-    <OperatingSystemSection ovf:id="99">
+    <OperatingSystemSection ovf:id="100">
       <Info>The kind of installed guest operating system</Info>
-      <Description>Linux26</Description>
-      <vbox:OSType ovf:required="false">Linux26</vbox:OSType>
+      <Description>Linux26_64</Description>
+      <vbox:OSType ovf:required="false">Linux26_64</vbox:OSType>
     </OperatingSystemSection>
     <VirtualHardwareSection>
       <Info>Virtual hardware requirements for a virtual machine</Info>
@@ -86,23 +92,19 @@ You should have received a copy of the GNU General Public License along with thi
         <rasd:ResourceType>10</rasd:ResourceType>
       </Item>
     </VirtualHardwareSection>
-    <vbox:Machine ovf:required="false" version="1.15-linux" uuid="{ea916e22-fe2e-461f-aee7-b0b15eb4f079}" name="ishoal" OSType="Linux26" snapshotFolder="Snapshots" lastStateChange="2000-01-01T00:00:00Z">
+    <vbox:Machine ovf:required="false" version="1.15-linux" uuid="{ea916e22-fe2e-461f-aee7-b0b15eb4f079}" name="ishoal" OSType="Linux26_64" snapshotFolder="Snapshots" lastStateChange="2020-07-19T07:02:43Z">
       <ovf:Info>Complete VirtualBox machine configuration in VirtualBox format</ovf:Info>
       <Hardware>
         <CPU>
-          <HardwareVirtExNestedPaging enabled="false"/>
           <PAE enabled="true"/>
-          <LongMode enabled="false"/>
           <HardwareVirtExLargePages enabled="false"/>
         </CPU>
         <Memory RAMSize="512"/>
+        <Firmware type="EFI"/>
         <Paravirt provider="Default"/>
         <Display controller="VMSVGA" VRAMSize="16"/>
         <VideoCapture screens="1" file="." fps="25"/>
         <RemoteDisplay enabled="false"/>
-        <BIOS>
-          <SmbiosUuidLittleEndian enabled="true"/>
-        </BIOS>
         <Network>
           <Adapter slot="0" enabled="true" cable="true" promiscuousModePolicy="AllowAll" type="82540EM">
             <DisabledModes>
