@@ -1,6 +1,8 @@
 #ifndef __PKT_H
 #define __PKT_H
 
+#include <stdbool.h>
+
 #include "bpf_kern.h"
 
 struct arp_ipv4_payload {
@@ -17,5 +19,10 @@ struct arp_ipv4_payload {
 #define IP_OFFSET	0x1FFF		/* "Fragment Offset" part	*/
 
 #define BROADCAST_MAC ((macaddr_t){0xff, 0xff, 0xff, 0xff, 0xff, 0xff})
+
+static __always_inline bool same_subnet(ipaddr_t a, ipaddr_t b, ipaddr_t subnet_mask)
+{
+	return (a & subnet_mask) == (b & subnet_mask);
+}
 
 #endif

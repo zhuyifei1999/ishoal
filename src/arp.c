@@ -64,6 +64,11 @@ void resolve_arp_user(struct resolve_arp_user *ctx)
 		return;
 	}
 
+	if (!same_subnet(ctx->ipaddr, public_host_ip, real_subnet_mask)) {
+		ctx->cb(false, ctx->ctx);
+		return;
+	}
+
 	int sock = socket(AF_PACKET, SOCK_RAW | SOCK_CLOEXEC, htons(ETH_P_ARP));
 	if (sock < 0)
 		perror_exit("socket(AF_PACKET, SOCK_RAW)");

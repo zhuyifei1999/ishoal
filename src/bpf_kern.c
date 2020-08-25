@@ -179,11 +179,6 @@ static __always_inline bool mac_eq(macaddr_t a, macaddr_t b)
 		a[5] == b[5]);
 }
 
-static __always_inline bool same_subnet(ipaddr_t a, ipaddr_t b)
-{
-	return (a & subnet_mask) == (b & subnet_mask);
-}
-
 SEC("xdp")
 int xdp_prog(struct xdp_md *ctx)
 {
@@ -268,8 +263,8 @@ int xdp_prog(struct xdp_md *ctx)
 			}
 
 			if (fake_gateway_ip &&
-			    same_subnet(iph->saddr, fake_gateway_ip) &&
-			    !same_subnet(iph->daddr, fake_gateway_ip)) {
+			    same_subnet(iph->saddr, fake_gateway_ip, subnet_mask) &&
+			    !same_subnet(iph->daddr, fake_gateway_ip, subnet_mask)) {
 				/* NAT route */
 				if (iph->ttl <= 1)
 					return XDP_PASS;
@@ -419,7 +414,7 @@ int xdp_prog(struct xdp_md *ctx)
 			}
 
 			if (fake_gateway_ip &&
-			    !same_subnet(iph->saddr, fake_gateway_ip)) {
+			    !same_subnet(iph->saddr, fake_gateway_ip, subnet_mask)) {
 				/* NAT return route */
 				if (iph->ttl <= 1)
 					return XDP_PASS;
