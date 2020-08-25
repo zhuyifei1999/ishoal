@@ -9,6 +9,7 @@
 #include <linux/limits.h>
 #include <pthread.h>
 #include <setjmp.h>
+#include <sys/eventfd.h>
 #include <sys/inotify.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -40,18 +41,18 @@ static void reset_termios(void)
 
 static void recompute_title(void);
 
-static void tui_el_exit_cb(int fd, void *_ctx)
+static void tui_el_exit_cb(int fd, void *_ctx, bool expired)
 {
 	longjmp(exit_jmp, 1);
 }
 
-static void tui_on_switch_change(int fd, void *_ctx)
+static void tui_on_switch_change(int fd, void *_ctx, bool expired)
 {
 	recompute_title();
 	refresh();
 }
 
-static void tui_on_xsk_pkt(int fd, void *_ctx)
+static void tui_on_xsk_pkt(int fd, void *_ctx, bool expired)
 {
 	if (!is_online) {
 		is_online = true;
@@ -229,7 +230,6 @@ static void detect_switch_online(void)
 	dialog_msgbox("Setup", "\nDetecting status of local Switch ...", 5, 40, 0);
 
 	eventloop_clear_events(tui_el);
-	eventloop_install_break(tui_el, STDIN_FILENO);
 	eventloop_install_break(tui_el, tui_global_events[1].fd);
 	eventloop_install_break(tui_el, tui_global_events[2].fd);
 
@@ -295,6 +295,28 @@ static void detect_local_switch(void)
 	save_conf();
 }
 
+static void __set_fake_gateway_ip(ipaddr_t new_gateway_ip)
+{
+	bpf_set_fake_gateway_ip(new_gateway_ip);
+	save_conf();
+}
+
+struct tui_rau_ctx {
+	int done_eventfd;
+	bool has_collision;
+	struct resolve_arp_user rau;
+};
+
+static void rau_cb(bool solved, void *_ctx)
+{
+	struct tui_rau_ctx *ctx = _ctx;
+
+	ctx->has_collision = solved;
+
+	if (eventfd_write(ctx->done_eventfd, 1))
+		perror_exit("eventfd_write");
+}
+
 static void switch_gw_dialog(void)
 {
 	ipaddr_t new_gateway_ip = 0;
@@ -309,9 +331,11 @@ static void switch_gw_dialog(void)
 	if (res)
 		goto out;
 
+	new_gateway_ip = fake_gateway_ip ? : htonl(0xc0a80101);
+
+reenter:
 	tui_clear();
 
-	new_gateway_ip = fake_gateway_ip ? : htonl(0xc0a80101);
 	dialog_vars.nocancel = false;
 
 	snprintf(tmpbuf, 20, "%s", ip_str(new_gateway_ip));
@@ -339,9 +363,52 @@ invalid_ip:
 	}
 
 out:
-	bpf_set_fake_gateway_ip(new_gateway_ip);
+	if (new_gateway_ip) {
+		dialog_vars.begin_set = false;
+		dialog_msgbox("Setup", "\nDetecting IP collision ...", 5, 40, 0);
 
-	save_conf();
+		eventloop_clear_events(tui_el);
+		eventloop_install_event_sync(tui_el, &(struct event){
+			.fd = thread_stop_eventfd(current),
+			.eventfd_ack = true,
+			.handler_type = EVT_CALL_FN,
+			.handler_fn = tui_el_exit_cb,
+		});
+
+		struct tui_rau_ctx *ctx = calloc(1, sizeof(*ctx));
+		if (!ctx)
+			perror_exit("calloc");
+
+		ctx->done_eventfd = eventfd(0, EFD_CLOEXEC);
+		if (ctx->done_eventfd < 0)
+			perror_exit("eventfd");
+
+		eventloop_install_break(tui_el, ctx->done_eventfd);
+
+		ctx->rau.ipaddr = new_gateway_ip;
+		ctx->rau.el = tui_el;
+		ctx->rau.cb = rau_cb;
+		ctx->rau.ctx = ctx;
+		resolve_arp_user(&ctx->rau);
+
+		eventloop_enter(tui_el, -1);
+		close(ctx->done_eventfd);
+		bool has_collision = ctx->has_collision;
+		free(ctx);
+
+		if (!has_collision) {
+			__set_fake_gateway_ip(new_gateway_ip);
+			return;
+		}
+
+		res = dialog_yesno("Setup",
+				   "\nIP collision detected. Do you want to "
+				   "enter another IP?\n\n", 8, 40);
+		if (!res)
+			goto reenter;
+	} else {
+		__set_fake_gateway_ip(new_gateway_ip);
+	}
 }
 
 static void switch_information_dialog(void)

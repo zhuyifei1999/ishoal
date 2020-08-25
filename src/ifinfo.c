@@ -110,7 +110,7 @@ static void get_if_gateway(char *iface, ipaddr_t *addr)
 }
 
 
-static void resolve_arp(char *iface, ipaddr_t ipaddr, macaddr_t *macaddr)
+static void resolve_arp_kernel(char *iface, ipaddr_t ipaddr, macaddr_t *macaddr)
 {
 	bool found = false;
 	char *buf = read_whole_file("/proc/net/arp", NULL);
@@ -168,5 +168,5 @@ void ifinfo_init(void)
 
 	ipaddr_t gateway_ip = 0;
 	get_if_gateway(iface, &gateway_ip);
-	resolve_arp(iface, gateway_ip, &gateway_mac);
+	resolve_arp_kernel(iface, gateway_ip, &gateway_mac);
 }

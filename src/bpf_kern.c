@@ -18,12 +18,8 @@
 #include <linux/udp.h>
 
 #include "bpf_kern.h"
-
-/* from include/net/ip.h */
-#define IP_CE		0x8000		/* Flag: "Congestion"		*/
-#define IP_DF		0x4000		/* Flag: "Don't Fragment"	*/
-#define IP_MF		0x2000		/* Flag: "More Fragments"	*/
-#define IP_OFFSET	0x1FFF		/* "Fragment Offset" part	*/
+#include "pkt.h"
+#include "pkt.inc.c"
 
 #define SECOND_NS 1000000000ULL
 
@@ -77,13 +73,6 @@ struct overhead_csum {
 	struct udphdr		udph_n;
 	struct iphdr		iph_o;
 } __attribute__((packed)) __attribute__((aligned(4)));
-
-struct arp_ipv4_payload {
-	macaddr_t	ar_sha;
-	ipaddr_t	ar_sip;
-	macaddr_t	ar_tha;
-	ipaddr_t	ar_tip;
-} __attribute__((packed));
 
 macaddr_t switch_mac;
 macaddr_t host_mac;
@@ -179,7 +168,7 @@ static void recompute_l4_csum_fast(struct xdp_md *ctx, struct iphdr *iph,
 		*csum_field = 0xffff;
 }
 
-static bool mac_eq(macaddr_t a, macaddr_t b)
+static __always_inline bool mac_eq(macaddr_t a, macaddr_t b)
 {
 	// return !memcmp(a, b, sizeof(macaddr_t))
 	return (a[0] == b[0] &&
@@ -190,7 +179,7 @@ static bool mac_eq(macaddr_t a, macaddr_t b)
 		a[5] == b[5]);
 }
 
-static bool same_subnet(ipaddr_t a, ipaddr_t b)
+static __always_inline bool same_subnet(ipaddr_t a, ipaddr_t b)
 {
 	return (a & subnet_mask) == (b & subnet_mask);
 }
@@ -208,12 +197,7 @@ int xdp_prog(struct xdp_md *ctx)
 	if (data > data_end)
 		return XDP_DROP;
 
-	bool eth_is_broadcast = (eth->h_dest[0] &
-				 eth->h_dest[1] &
-				 eth->h_dest[2] &
-				 eth->h_dest[3] &
-				 eth->h_dest[4] &
-				 eth->h_dest[5]) == 0xff;
+	bool eth_is_broadcast = mac_eq(eth->h_dest, BROADCAST_MAC);
 
 	if (eth->h_proto == bpf_htons(ETH_P_IP)) {
 		uint16_t src_port, dst_port;

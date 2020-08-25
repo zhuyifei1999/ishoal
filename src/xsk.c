@@ -44,7 +44,7 @@ static void del_socket(void)
 	}
 }
 
-static void rx_cb(int fd, void *ctx)
+static void rx_cb(int fd, void *ctx, bool expired)
 {
 	unsigned int rcvd, i;
 	struct xsk_socket_info *xsk = ctx;

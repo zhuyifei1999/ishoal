@@ -100,7 +100,7 @@ struct ishoalc_on_switch_chg_threadfn_ctx {
     int breakfd;
 };
 
-static void ishoalc_on_switch_chg_threadfn_cb(int fd, void *_ctx)
+static void ishoalc_on_switch_chg_threadfn_cb(int fd, void *_ctx, bool expired)
 {
     struct ishoalc_on_switch_chg_threadfn_ctx *ctx = _ctx;
 

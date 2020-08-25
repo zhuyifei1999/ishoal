@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <sys/eventfd.h>
 #include <sys/inotify.h>
+#include <time.h>
 #include <unistd.h>
 #include <urcu.h>
 #include <urcu/rculist.h>
@@ -16,30 +17,63 @@
 #include "ishoal.h"
 #include "darray.h"
 
+struct eventloop_elem {
+	struct cds_list_head list;
+	struct event evt;
+};
+
 struct eventloop {
-	struct DARRAY(struct event) events;
+	struct cds_list_head events;
+	size_t num_events;
+	struct eventloop_elem *current_evt;
 };
 
 struct eventloop *eventloop_new(void)
 {
-	return calloc(1, sizeof(struct eventloop));
+	struct eventloop *el = calloc(1, sizeof(*el));
+	if (!el)
+		perror_exit("calloc");
+
+	CDS_INIT_LIST_HEAD(&el->events);
+	return el;
 }
 
 void eventloop_destroy(struct eventloop *el)
 {
-	darray_destroy(el->events);
+	eventloop_clear_events(el);
 	free(el);
 }
 
 void eventloop_clear_events(struct eventloop *el)
 {
-	darray_resize(el->events, 0);
+	struct eventloop_elem *ele, *tmp;
+
+	cds_list_for_each_entry_safe(ele, tmp, &el->events, list) {
+		cds_list_del(&ele->list);
+		free(ele);
+	}
+
+	el->num_events = 0;
 }
 
 void eventloop_install_event_sync(struct eventloop *el, struct event *evt)
 {
-	darray_inc(el->events);
-	*darray_tail(el->events) = *evt;
+	struct eventloop_elem *ele = malloc(sizeof(*ele));
+	if (!ele)
+		perror_exit("malloc");
+
+	ele->evt = *evt;
+
+	if (evt->expiry.tv_sec || evt->expiry.tv_nsec) {
+		struct timespec now;
+		if (clock_gettime(CLOCK_MONOTONIC, &now))
+			perror_exit("clock_gettime");
+
+		timespec_add(&ele->evt.expiry, &now);
+	}
+
+	cds_list_add(&ele->list, &el->events);
+	el->num_events++;
 }
 
 struct eventloop_install_async {
@@ -57,7 +91,7 @@ static int rpc_install_event_async_cb(void *_ctx)
 	return 0;
 }
 
-static void eventloop_rpc_cb(int fd, void *ctx)
+static void eventloop_rpc_cb(int fd, void *ctx, bool expired)
 {
 	handle_rpc(fd);
 }
@@ -96,51 +130,134 @@ void eventloop_install_event_async(struct eventloop *el, struct event *evt,
 	invoke_rpc_async(rpc_send_fd, rpc_install_event_async_cb, rpc_ctx);
 }
 
+void eventloop_remove_event_current(struct eventloop *el)
+{
+	assert(el->current_evt);
+
+	cds_list_del(&el->current_evt->list);
+	el->num_events--;
+
+	free(el->current_evt);
+	el->current_evt = NULL;
+}
+
 int eventloop_enter(struct eventloop *el, int timeout_ms)
 {
+	assert (!el->current_evt);
+
+	bool has_timeout = false;
+	struct timespec timeout_abs;
+
+	if (timeout_ms >= 0) {
+		has_timeout = true;
+
+		struct timespec now;
+		if (clock_gettime(CLOCK_MONOTONIC, &now))
+			perror_exit("clock_gettime");
+
+		timeout_abs = (struct timespec) {
+			.tv_sec = timeout_ms / 1000,
+			.tv_nsec = (timeout_ms % 1000) * 1000000,
+		};
+
+		timespec_add(&timeout_abs, &now);
+	}
+
 	bool do_break = false;
 
 	while (!do_break) {
-		int size = darray_nmemb(el->events);
+		struct eventloop_elem *ele, *tmp;
+		int i;
+		int size = el->num_events;
 
 		struct pollfd fds[size];
 
-		for (int i = 0; i < size; i++) {
-			fds[i].fd = darray_idx(el->events, i)->fd;
+		bool has_expiry = has_timeout;
+		struct timespec min_expiry = timeout_abs;
+
+		i = 0;
+		cds_list_for_each_entry(ele, &el->events, list) {
+			assert(i < size);
+
+			fds[i].fd = ele->evt.fd;
 			fds[i].events = POLLIN;
+			fds[i].revents = 0;
+
+			if (ele->evt.expiry.tv_sec || ele->evt.expiry.tv_nsec) {
+				if (!has_expiry) {
+					has_expiry = true;
+					min_expiry = ele->evt.expiry;
+				} else if (timespec_cmp(&ele->evt.expiry, &min_expiry) < 0) {
+					min_expiry = ele->evt.expiry;
+				}
+			}
+			i++;
 		}
 
-		int res = poll(fds, size, timeout_ms);
+		struct timespec now;
+		int timeout_ms_poll = -1;
+
+		if (has_expiry) {
+			if (clock_gettime(CLOCK_MONOTONIC, &now))
+				perror_exit("clock_gettime");
+
+			if (timespec_cmp(&min_expiry, &now) <= 0)
+				timeout_ms_poll = 0;
+			else {
+				timespec_sub(&min_expiry, &now);
+#define ceildiv(x, y) (!!(x) + (((x) - !!(x)) / (y)) )
+				timeout_ms_poll = min_expiry.tv_sec * 1000 +
+						  ceildiv(min_expiry.tv_nsec, 1000000);
+#undef ceildiv
+			}
+		}
+
+		int res = poll(fds, size, timeout_ms_poll);
 		if (res < 0) {
 			if (errno == EINTR)
 				continue;
 			perror_exit("poll");
 		}
 
-		if (!res)
-			return 1;
+		if (has_expiry) {
+			if (clock_gettime(CLOCK_MONOTONIC, &now))
+				perror_exit("clock_gettime");
+		}
 
-		for (int i = 0; i < size; i++) {
-			struct event *evt = darray_idx(el->events, i);
+		i = 0;
+		cds_list_for_each_entry_safe(ele, tmp, &el->events, list) {
+			assert(i < size);
+			assert(fds[i].fd == ele->evt.fd);
 
-			assert(fds[i].fd == evt->fd);
 			if (fds[i].revents) {
-				if (evt->eventfd_ack) {
+				if (ele->evt.eventfd_ack) {
 					eventfd_t event_value;
-					if (eventfd_read(evt->fd, &event_value))
+					if (eventfd_read(ele->evt.fd, &event_value))
 						perror_exit("eventfd_read");
 				}
 
-				switch (evt->handler_type) {
+				switch (ele->evt.handler_type) {
 				case EVT_CALL_FN:
-					evt->handler_fn(evt->fd, evt->handler_ctx);
+					el->current_evt = ele;
+					ele->evt.handler_fn(ele->evt.fd, ele->evt.handler_ctx, false);
+					el->current_evt = NULL;
 					break;
 				case EVT_BREAK:
 					do_break = true;
 					break;
 				}
+			} else if ((ele->evt.expiry.tv_sec || ele->evt.expiry.tv_nsec) &&
+				   timespec_cmp(&ele->evt.expiry, &now) <= 0) {
+				el->current_evt = ele;
+				ele->evt.handler_fn(ele->evt.fd, ele->evt.handler_ctx, true);
+				el->current_evt = NULL;
 			}
+
+			i++;
 		}
+
+		if (has_timeout && timespec_cmp(&timeout_abs, &now) <= 0 && !do_break)
+			return 1;
 	}
 
 	return 0;
@@ -163,7 +280,7 @@ struct broadcast_event {
 	struct cds_list_head replica_fds;
 };
 
-static void broadcast_event_cb(int fd, void *_ctx)
+static void broadcast_event_cb(int fd, void *_ctx, bool expired)
 {
 	struct broadcast_event *ctx = _ctx;
 	struct broadcast_replica *bcr;
@@ -271,7 +388,7 @@ static int inotifyeventfd_relay_rpc;
 
 // adapted from:
 // https://man7.org/tlpi/code/online/book/inotify/demo_inotify.c.html
-static void inotify_cb(int fd, void *ctx)
+static void inotify_cb(int fd, void *ctx, bool expired)
 {
 	char buf[10 * (sizeof(struct inotify_event) + NAME_MAX + 1)] __attribute__ ((aligned(8)));
 

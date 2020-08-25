@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <time.h>
 
 #include "version.h"
 #include "bpf_kern.h"
@@ -53,9 +54,10 @@ enum event_handler {
 };
 struct event {
 	int fd;
+	struct timespec expiry;
 	bool eventfd_ack;
 	enum event_handler handler_type;
-	void (*handler_fn)(int fd, void *ctx);
+	void (*handler_fn)(int fd, void *ctx, bool expired);
 	void *handler_ctx;
 };
 
@@ -73,6 +75,10 @@ extern struct broadcast_event *switch_change_broadcast;
 
 void free_rcu_init(void);
 void *free_rcu_get_cb(size_t offset);
+
+int timespec_cmp(const struct timespec *x, const struct timespec *y);
+void timespec_add(struct timespec *x, const struct timespec *y);
+void timespec_sub(struct timespec *x, const struct timespec *y);
 
 void tui_thread(void *arg);
 void bpf_load_thread(void *arg);
@@ -130,6 +136,7 @@ void eventloop_install_rpc(struct eventloop *el, int rpc_recv_fd);
 void eventloop_install_break(struct eventloop *el, int break_evt_fd);
 void eventloop_install_event_async(struct eventloop *el, struct event *evt,
 				   int rpc_send_fd);
+void eventloop_remove_event_current(struct eventloop *el);
 int eventloop_enter(struct eventloop *el, int timeout_ms);
 void eventloop_thread_fn(void *arg);
 
@@ -143,6 +150,16 @@ int inotifyeventfd_add(char *pathname, uint32_t mask);
 void inotifyeventfd_rm(int fd);
 
 void do_stun(int sockfd, ipaddr_t *address, uint16_t *port);
+
+struct resolve_arp_user {
+	ipaddr_t ipaddr;
+	macaddr_t *macaddr;
+	struct eventloop *el;
+	void (*cb)(bool solved, void *ctx);
+	void *ctx;
+};
+
+void resolve_arp_user(struct resolve_arp_user *ctx);
 
 void set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip, uint16_t remote_port);
 void delete_remote_addr(ipaddr_t local_ip);
