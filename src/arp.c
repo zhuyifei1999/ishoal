@@ -57,6 +57,13 @@ static void resolve_arp_user_cb(int fd, void *_ctx, bool expired)
 
 void resolve_arp_user(struct resolve_arp_user *ctx)
 {
+	if (ctx->ipaddr == public_host_ip) {
+		if (ctx->macaddr)
+			memcpy(ctx->macaddr, host_mac, sizeof(macaddr_t));
+		ctx->cb(true, ctx->ctx);
+		return;
+	}
+
 	int sock = socket(AF_PACKET, SOCK_RAW | SOCK_CLOEXEC, htons(ETH_P_ARP));
 	if (sock < 0)
 		perror_exit("socket(AF_PACKET, SOCK_RAW)");
