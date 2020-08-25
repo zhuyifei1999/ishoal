@@ -28,7 +28,8 @@ Issues and pull requests are welcome.
 
 This is a project thanks to the help from the
 [Salmon Run Discord Server](https://discord.gg/EY3JZqk). Credits to Ionizer for
-the idea and creating the original iShoal based on client-server VPN.
+the idea and creating the original iShoal based on client-server VPN. A lot of
+wheels has been reinvented in this project.
 
 ## License
 

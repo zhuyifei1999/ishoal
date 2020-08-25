@@ -71,10 +71,10 @@ PY_VER=3.8
 
 emerge-webrsync
 
-export LLVM_TARGETS=BPF
+export LLVM_TARGETS=BPF ACCEPT_KEYWORDS='~amd64'
 emerge -v -o sys-devel/llvm:10
 MAKEOPTS="-j$(( $(nproc) < 4 ? $(nproc) : 4 ))" emerge -v -n sys-devel/llvm:10 sys-devel/clang:10
-unset LLVM_TARGETS
+unset LLVM_TARGETS ACCEPT_KEYWORDS
 
 emerge -v -o gentoo-sources
 
