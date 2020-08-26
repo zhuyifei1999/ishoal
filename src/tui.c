@@ -1,5 +1,6 @@
 #include "features.h"
 
+#define NCURSES_OPAQUE 0
 #include <ncursesw/ncurses.h>
 
 #include <arpa/inet.h>
@@ -93,10 +94,8 @@ static int same_file(int fd1, int fd2)
 	return stat1.st_dev == stat2.st_dev && stat1.st_ino == stat2.st_ino;
 }
 
-static void wgetch_el(WINDOW *win)
+static void wgetch_el()
 {
-	wrefresh(win);
-
 	eventloop_clear_events(tui_el);
 	eventloop_install_break(tui_el, STDIN_FILENO);
 
@@ -123,13 +122,39 @@ static void wgetch_el(WINDOW *win)
 
 static int wrapper_wget_wch(WINDOW *win, wint_t *wch)
 {
-	wgetch_el(win);
+	if (win) {
+		int old_delay = win->_delay;
+		nodelay(win, true);
+
+		int res = real_wget_wch(win, wch);
+
+		wtimeout(win, old_delay);
+
+		if (res != ERR)
+			return res;
+
+		wgetch_el();
+	}
+
 	return real_wget_wch(win, wch);
 }
 
 static int wrapper_wgetch(WINDOW *win)
 {
-	wgetch_el(win);
+	if (win) {
+		int old_delay = win->_delay;
+		nodelay(win, true);
+
+		int res = real_wgetch(win);
+
+		wtimeout(win, old_delay);
+
+		if (res != ERR)
+			return res;
+
+		wgetch_el();
+	}
+
 	return real_wgetch(win);
 }
 
