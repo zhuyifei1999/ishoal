@@ -162,7 +162,9 @@ ishoalc_on_switch_chg_threadfn(PyObject *self, PyObject *args)
 static PyObject *
 ishoalc_get_switch_ip(PyObject *self, PyObject *args)
 {
-    return PyUnicode_FromString(ip_str(switch_ip));
+    char str[IP_STR_BULEN];
+    ip_str(switch_ip, str);
+    return PyUnicode_FromString(str);
 }
 
 static PyObject *

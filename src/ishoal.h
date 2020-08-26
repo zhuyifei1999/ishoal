@@ -101,8 +101,10 @@ char *read_whole_file(char *path, size_t *nbytes);
 
 void hex_dump(void *ptr, size_t length);
 
-char *ip_str(ipaddr_t addr);
-char *mac_str(macaddr_t addr);
+#define IP_STR_BULEN 16
+void ip_str(ipaddr_t addr, char *str);
+#define MAC_STR_BULEN 18
+void mac_str(macaddr_t addr, char *str);
 
 void ifinfo_init(void);
 void start_endpoint(void);

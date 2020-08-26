@@ -97,10 +97,12 @@ static void remotes_arp_cb(bool solved, void *_ctx)
 	struct remotes_arp_ctx *ctx = _ctx;
 
 	if (solved) {
+		char str[IP_STR_BULEN];
+		ip_str(ctx->local_ip, str);
 		fprintf(remotes_log,
 			"x Remote IP %s -- Detected IP collision. "
 			"Not adding.\n",
-			ip_str(ctx->local_ip));
+			str);
 	} else {
 		__set_remote_addr(ctx->local_ip, ctx->remote_ip, ctx->remote_port, true);
 	}
@@ -121,6 +123,8 @@ static int remotes_arp_rpc_cb(void *_ctx)
 static void __set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip,
 			      uint16_t remote_port, bool checked)
 {
+	char str[IP_STR_BULEN];
+
 	if (local_ip == switch_ip)
 		return;
 
@@ -132,7 +136,8 @@ static void __set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip,
 			remote->remote.port = remote_port;
 
 			pthread_mutex_unlock(&remotes_lock);
-			fprintf(remotes_log, "* Remote IP %s\n", ip_str(local_ip));
+			ip_str(local_ip, str);
+			fprintf(remotes_log, "* Remote IP %s\n", str);
 			bpf_set_remote_addr(local_ip, &remote->remote);
 			return;
 		}
@@ -149,7 +154,8 @@ static void __set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip,
 		cds_list_add_rcu(&remote->list, &remotes);
 
 		pthread_mutex_unlock(&remotes_lock);
-		fprintf(remotes_log, "+ Remote IP %s\n", ip_str(local_ip));
+		ip_str(local_ip, str);
+		fprintf(remotes_log, "+ Remote IP %s\n", str);
 		bpf_set_remote_addr(local_ip, &remote->remote);
 	} else {
 		pthread_mutex_unlock(&remotes_lock);
@@ -182,6 +188,8 @@ void set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip, uint16_t remote_port
 
 void delete_remote_addr(ipaddr_t local_ip)
 {
+	char str[IP_STR_BULEN];
+
 	if (local_ip == switch_ip)
 		return;
 
@@ -200,7 +208,8 @@ void delete_remote_addr(ipaddr_t local_ip)
 found:
 	pthread_mutex_unlock(&remotes_lock);
 
-	fprintf(remotes_log, "- Remote IP %s\n", ip_str(local_ip));
+	ip_str(local_ip, str);
+	fprintf(remotes_log, "- Remote IP %s\n", str);
 
 	bpf_delete_remote_addr(local_ip);
 }

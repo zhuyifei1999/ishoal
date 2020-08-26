@@ -156,8 +156,11 @@ static void resolve_arp_kernel(char *iface, ipaddr_t ipaddr, macaddr_t *macaddr)
 
 	free(buf);
 
-	if (!found)
-		fprintf_exit("Unable to resolve ARP for %s\n", ip_str(ipaddr));
+	if (!found) {
+		char str[IP_STR_BULEN];
+		ip_str(ipaddr, str);
+		fprintf_exit("Unable to resolve ARP for %s\n", str);
+	}
 }
 
 void ifinfo_init(void)

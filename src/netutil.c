@@ -2,24 +2,26 @@
 
 #include <arpa/inet.h>
 #include <stdio.h>
-#include <sys/socket.h>
 
 #include "ishoal.h"
 
-char *ip_str(ipaddr_t addr)
+void ip_str(ipaddr_t addr, char *str)
 {
-	return inet_ntoa((struct in_addr){ addr });
+	addr = ntohl(addr);
+	snprintf(str, IP_STR_BULEN, "%hhu.%hhu.%hhu.%hhu",
+		 (uint8_t)((addr & 0xFF000000) >> 24),
+		 (uint8_t)((addr & 0x00FF00000) >> 16),
+		 (uint8_t)((addr & 0x0000FF00) >> 8),
+		 (uint8_t)(addr & 0x000000FF));
 }
 
-char *mac_str(macaddr_t addr)
+void mac_str(macaddr_t addr, char *str)
 {
-	static char str[18];
-	snprintf(str, 18, "%02x:%02x:%02x:%02x:%02x:%02x",
+	snprintf(str, MAC_STR_BULEN, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx",
 		 addr[0],
 		 addr[1],
 		 addr[2],
 		 addr[3],
 		 addr[4],
 		 addr[5]);
-	return str;
 }

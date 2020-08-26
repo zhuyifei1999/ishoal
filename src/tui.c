@@ -199,14 +199,21 @@ static void recompute_title(void)
 		strncpy(title_str,
 			"IShoal " ISHOAL_VERSION_STR " - "
 			"Switch has not been detected, yet.", 100);
-	else
+	else {
+		char ip[IP_STR_BULEN];
+		char mac[MAC_STR_BULEN];
+
+		ip_str(switch_ip, ip);
+		mac_str(switch_mac, mac);
+
 		snprintf(title_str, 100,
 			"IShoal " ISHOAL_VERSION_STR " - "
 			"Switch is %s at: %s (%s)",
 			 is_online ? "online" : "offline",
-			 mac_str(switch_mac),
-			 ip_str(switch_ip)
+			 mac,
+			 ip
 		);
+	}
 
 	dialog_vars.backtitle = title_str;
 	dlg_put_backtitle();
@@ -286,9 +293,15 @@ static void detect_local_switch(void)
 	}
 
 	if (switch_ip) {
+		char ip[IP_STR_BULEN];
+		char mac[MAC_STR_BULEN];
 		char buf[100];
+
+		ip_str(switch_ip, ip);
+		mac_str(switch_mac, mac);
+
 		snprintf(buf, 100, "\nFound local Switch:\n\n%s (%s)",
-			 ip_str(switch_ip), mac_str(switch_mac));
+			 ip, mac);
 		dialog_msgbox("Setup", buf, 9, 40, 1);
 	}
 
@@ -320,7 +333,7 @@ static void rau_cb(bool solved, void *_ctx)
 static void switch_gw_dialog(void)
 {
 	ipaddr_t new_gateway_ip = 0;
-	char tmpbuf[20];
+	char tmpbuf[IP_STR_BULEN];
 	int res;
 
 	dialog_vars.begin_set = false;
@@ -338,7 +351,7 @@ reenter:
 
 	dialog_vars.nocancel = false;
 
-	snprintf(tmpbuf, 20, "%s", ip_str(new_gateway_ip));
+	ip_str(new_gateway_ip, tmpbuf);
 	while (true) {
 		tui_clear();
 
@@ -358,7 +371,7 @@ reenter:
 		break;
 invalid_ip:
 		dialog_msgbox("Setup", "Invalid IP address", 7, 40, 1);
-		snprintf(tmpbuf, 20, "%s", dialog_vars.input_result);
+		snprintf(tmpbuf, IP_STR_BULEN, "%s", dialog_vars.input_result);
 		continue;
 	}
 
@@ -413,7 +426,8 @@ out:
 
 static void switch_information_dialog(void)
 {
-	char tmpbuf[20];
+	char ip[IP_STR_BULEN];
+	char mac[MAC_STR_BULEN];
 	int res;
 
 	ipaddr_t new_switch_ip = switch_ip;
@@ -423,18 +437,18 @@ static void switch_information_dialog(void)
 	dialog_vars.nocancel = false;
 	dialog_vars.begin_set = false;
 
-	snprintf(tmpbuf, 20, "%s", mac_str(new_switch_mac));
+	mac_str(new_switch_mac, mac);
 	if ((new_switch_mac[0] | new_switch_mac[1] |
 	     new_switch_mac[2] | new_switch_mac[3] |
 	     new_switch_mac[4] | new_switch_mac[5]) == 0)
-		tmpbuf[0] = 0;
+		mac[0] = 0;
 
 	while (true) {
 		tui_clear();
 
 		res = dialog_inputbox("Setup",
 				      "Please enter the MAC address of the Switch:\n",
-				      10, 40, tmpbuf, 0);
+				      10, 40, mac, 0);
 		if (res)
 			return;
 
@@ -466,17 +480,20 @@ static void switch_information_dialog(void)
 
 invalid_mac:
 		dialog_msgbox("Setup", "Invalid MAC address", 7, 40, 1);
-		snprintf(tmpbuf, 20, "%s", dialog_vars.input_result);
+		snprintf(mac, MAC_STR_BULEN, "%s", dialog_vars.input_result);
 		continue;
 	}
 
-	snprintf(tmpbuf, 20, "%s", new_switch_ip ? ip_str(new_switch_ip) : "");
+	if (new_switch_ip)
+		ip_str(new_switch_ip, ip);
+	else
+		ip[0] = 0;
 	while (true) {
 		tui_clear();
 
 		res = dialog_inputbox("Setup",
 				      "Please enter the IP address of the Switch:\n",
-				      10, 40, tmpbuf, 0);
+				      10, 40, ip, 0);
 		if (res)
 			return;
 
@@ -489,14 +506,18 @@ invalid_mac:
 		break;
 invalid_ip:
 		dialog_msgbox("Setup", "Invalid IP address", 7, 40, 1);
-		snprintf(tmpbuf, 20, "%s", dialog_vars.input_result);
+		snprintf(ip, IP_STR_BULEN, "%s", dialog_vars.input_result);
 		continue;
 	}
 
 	char msg[110];
+
+	ip_str(switch_ip, ip);
+	mac_str(switch_mac, mac);
+
 	snprintf(msg, 110, "You entered that your Switch can be found at:\n"
 		 "\n%s (%s).\n\nIs that correct?",
-		 mac_str(new_switch_mac), ip_str(new_switch_ip));
+		 mac, ip);
 	res = dialog_yesno("Setup", msg, 10, 40);
 	if (res)
 		return;
