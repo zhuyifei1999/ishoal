@@ -7,6 +7,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <urcu.h>
 
 #include "ishoal.h"
 #include "pkt.h"
@@ -86,24 +87,26 @@ void resolve_arp_user(struct resolve_arp_user *ctx)
 	if (bind(sock, (struct sockaddr *)&addr_bind, sizeof(addr_bind)))
 		perror_exit("bind");
 
-	struct arppkt arp_request;
+	/* Min L2 frame size: 64 bytes w/ 4 bytes CRC added by driver */
+	char arp_request_buf[caa_max(sizeof(struct arppkt), 60)] = {0};
+	struct arppkt *arp_request = (void *)arp_request_buf;
 
-	memcpy(arp_request.eth.h_dest, BROADCAST_MAC, sizeof(macaddr_t));
-	memcpy(arp_request.eth.h_source, host_mac, sizeof(macaddr_t));
-	arp_request.eth.h_proto = htons(ETH_P_ARP);
+	memcpy(arp_request->eth.h_dest, BROADCAST_MAC, sizeof(macaddr_t));
+	memcpy(arp_request->eth.h_source, host_mac, sizeof(macaddr_t));
+	arp_request->eth.h_proto = htons(ETH_P_ARP);
 
-	arp_request.arph.ar_hrd = htons(ARPHRD_ETHER);
-	arp_request.arph.ar_pro = htons(ETH_P_IP);
-	arp_request.arph.ar_hln = 6;
-	arp_request.arph.ar_pln = 4;
-	arp_request.arph.ar_op = htons(ARPOP_REQUEST);
+	arp_request->arph.ar_hrd = htons(ARPHRD_ETHER);
+	arp_request->arph.ar_pro = htons(ETH_P_IP);
+	arp_request->arph.ar_hln = 6;
+	arp_request->arph.ar_pln = 4;
+	arp_request->arph.ar_op = htons(ARPOP_REQUEST);
 
-	memcpy(arp_request.arppl.ar_sha, host_mac, sizeof(macaddr_t));
-	arp_request.arppl.ar_sip = public_host_ip;
-	memset(arp_request.arppl.ar_tha, 0, sizeof(macaddr_t));
-	arp_request.arppl.ar_tip = ctx->ipaddr;
+	memcpy(arp_request->arppl.ar_sha, host_mac, sizeof(macaddr_t));
+	arp_request->arppl.ar_sip = public_host_ip;
+	memset(arp_request->arppl.ar_tha, 0, sizeof(macaddr_t));
+	arp_request->arppl.ar_tip = ctx->ipaddr;
 
-	if (send(sock, &arp_request, sizeof(arp_request), 0) < 0)
+	if (send(sock, arp_request, sizeof(arp_request_buf), 0) < 0)
 		perror_exit("send");
 
 	eventloop_install_event_sync(ctx->el, &(struct event) {
