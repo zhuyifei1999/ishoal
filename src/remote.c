@@ -30,6 +30,9 @@ struct remote_switch {
 static pthread_mutex_t remotes_lock = PTHREAD_MUTEX_INITIALIZER;
 static CDS_LIST_HEAD(remotes);
 
+static struct eventloop *remotes_arp_el;
+static int remotes_arp_rpc;
+
 int remotes_fd;
 static FILE *remotes_log;
 
@@ -78,10 +81,55 @@ void start_endpoint(void)
 	if (public_vpn_port == vpn_port)
 		fprintf(remotes_log, "Endpoint UDP port: %d\n", vpn_port);
 	else
-		fprintf(remotes_log, "Endpoint UDP port: %d, STUN resolved to: %d\n", vpn_port, public_vpn_port);
+		fprintf(remotes_log, "Endpoint UDP port: %d, STUN resolved to: %d\n",
+			vpn_port, public_vpn_port);
+
+	int remotes_arp_rpc_recv;
+	make_fd_pair(&remotes_arp_rpc, &remotes_arp_rpc_recv);
+
+	remotes_arp_el = eventloop_new();
+	eventloop_install_rpc(remotes_arp_el, remotes_arp_rpc_recv);
+	thread_start(eventloop_thread_fn, remotes_arp_el, "remotes_arp");
 }
 
-void set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip, uint16_t remote_port)
+struct remotes_arp_ctx {
+	ipaddr_t local_ip;
+	ipaddr_t remote_ip;
+	uint16_t remote_port;
+	struct resolve_arp_user rau;
+};
+
+static void __set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip,
+			      uint16_t remote_port, bool checked);
+
+static void remotes_arp_cb(bool solved, void *_ctx)
+{
+	struct remotes_arp_ctx *ctx = _ctx;
+
+	if (solved) {
+		fprintf(remotes_log,
+			"x Remote IP %s -- Detected IP collision. "
+			"Not adding.\n",
+			ip_str(ctx->local_ip));
+	} else {
+		__set_remote_addr(ctx->local_ip, ctx->remote_ip, ctx->remote_port, true);
+	}
+
+	free(ctx);
+}
+
+static int remotes_arp_rpc_cb(void *_ctx)
+{
+	struct remotes_arp_ctx *ctx = _ctx;
+
+	resolve_arp_user(&ctx->rau);
+
+	return 0;
+}
+
+
+static void __set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip,
+			      uint16_t remote_port, bool checked)
 {
 	if (local_ip == switch_ip)
 		return;
@@ -92,26 +140,55 @@ void set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip, uint16_t remote_port
 		if (remote->local == local_ip) {
 			remote->remote.ip = remote_ip;
 			remote->remote.port = remote_port;
-			goto found;
+
+			pthread_mutex_unlock(&remotes_lock);
+			fprintf(remotes_log, "* Remote IP %s\n", ip_str(local_ip));
+			bpf_set_remote_addr(local_ip, &remote->remote);
+			return;
 		}
 	}
 
-	remote = calloc(1, sizeof(*remote));
-	if (!remote)
-		perror_exit("calloc");
-	remote->local = local_ip;
-	remote->remote.ip = remote_ip;
-	remote->remote.port = remote_port;
+	if (checked) {
+		remote = calloc(1, sizeof(*remote));
+		if (!remote)
+			perror_exit("calloc");
+		remote->local = local_ip;
+		remote->remote.ip = remote_ip;
+		remote->remote.port = remote_port;
 
-	cds_list_add_rcu(&remote->list, &remotes);
+		cds_list_add_rcu(&remote->list, &remotes);
 
-found:
-	pthread_mutex_unlock(&remotes_lock);
+		pthread_mutex_unlock(&remotes_lock);
+		fprintf(remotes_log, "+ Remote IP %s\n", ip_str(local_ip));
+		bpf_set_remote_addr(local_ip, &remote->remote);
+	} else {
+		pthread_mutex_unlock(&remotes_lock);
 
-	fprintf(remotes_log, "+ Remote IP %s\n", ip_str(local_ip));
+		struct remotes_arp_ctx *rpc_ctx = malloc(sizeof(*rpc_ctx));
+		if (!rpc_ctx)
+			perror_exit("malloc");
 
-	bpf_set_remote_addr(local_ip, &remote->remote);
+		*rpc_ctx = (struct remotes_arp_ctx) {
+			.local_ip = local_ip,
+			.remote_ip = remote_ip,
+			.remote_port = remote_port,
+			.rau = {
+				.ipaddr = local_ip,
+				.el = remotes_arp_el,
+				.cb = remotes_arp_cb,
+				.ctx = rpc_ctx,
+			}
+		};
+
+		invoke_rpc_async(remotes_arp_rpc, remotes_arp_rpc_cb, rpc_ctx);
+	}
 }
+
+void set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip, uint16_t remote_port)
+{
+	__set_remote_addr(local_ip, remote_ip, remote_port, false);
+}
+
 
 void delete_remote_addr(ipaddr_t local_ip)
 {
