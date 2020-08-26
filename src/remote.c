@@ -98,6 +98,7 @@ static void remotes_arp_cb(bool solved, void *_ctx)
 
 	if (solved) {
 		char str[IP_STR_BULEN];
+
 		ip_str(ctx->local_ip, str);
 		fprintf(remotes_log,
 			"x Remote IP %s -- Detected IP collision. "
