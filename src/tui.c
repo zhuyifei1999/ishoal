@@ -602,8 +602,10 @@ void tui_thread(void *arg)
 		};
 
 		int choice;
-		dlg_menu("IShoal", "Please select an option:", 11, 60, 7, 7,
+		res = dlg_menu("IShoal", "Please select an option:", 11, 60, 7, 7,
 			 choices, &choice, dlg_dummy_menutext);
+		if (res)
+			choice = 2;
 
 		tui_clear();
 
