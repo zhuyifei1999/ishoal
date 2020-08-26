@@ -136,6 +136,17 @@ int invoke_rpc_sync(int call_send_fd, int (*fn)(void *ctx), void *ctx);
 __async
 void invoke_rpc_async(int call_send_fd, int (*fn)(void *ctx), void *ctx);
 
+extern int worker_rpc;
+extern struct eventloop *worker_el;
+extern struct thread *worker_thread;
+
+void worker_start(void);
+int worker_sync(int (*fn)(void *ctx), void *ctx);
+__async
+void worker_async(int (*fn)(void *ctx), void *ctx);
+__async
+void worker_install_event(struct event *evt);
+
 struct eventloop *eventloop_new(void);
 void eventloop_destroy(struct eventloop *el);
 void eventloop_clear_events(struct eventloop *el);
@@ -152,8 +163,6 @@ void eventloop_thread_fn(void *arg);
 struct broadcast_event *broadcast_new(int primary_event_fd);
 int broadcast_replica(struct broadcast_event *bce);
 void broadcast_replica_del(struct broadcast_event *bce, int fd);
-
-void __broadcast_finalize_init(void);
 
 int inotifyeventfd_add(char *pathname, uint32_t mask);
 void inotifyeventfd_rm(int fd);

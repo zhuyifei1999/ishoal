@@ -30,9 +30,6 @@ struct remote_switch {
 static pthread_mutex_t remotes_lock = PTHREAD_MUTEX_INITIALIZER;
 static CDS_LIST_HEAD(remotes);
 
-static struct eventloop *remotes_arp_el;
-static int remotes_arp_rpc;
-
 int remotes_fd;
 static FILE *remotes_log;
 
@@ -83,13 +80,6 @@ void start_endpoint(void)
 	else
 		fprintf(remotes_log, "Endpoint UDP port: %d, STUN resolved to: %d\n",
 			vpn_port, public_vpn_port);
-
-	int remotes_arp_rpc_recv;
-	make_fd_pair(&remotes_arp_rpc, &remotes_arp_rpc_recv);
-
-	remotes_arp_el = eventloop_new();
-	eventloop_install_rpc(remotes_arp_el, remotes_arp_rpc_recv);
-	thread_start(eventloop_thread_fn, remotes_arp_el, "remotes_arp");
 }
 
 struct remotes_arp_ctx {
@@ -174,13 +164,13 @@ static void __set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip,
 			.remote_port = remote_port,
 			.rau = {
 				.ipaddr = local_ip,
-				.el = remotes_arp_el,
+				.el = worker_el,
 				.cb = remotes_arp_cb,
 				.ctx = rpc_ctx,
 			}
 		};
 
-		invoke_rpc_async(remotes_arp_rpc, remotes_arp_rpc_cb, rpc_ctx);
+		worker_async(remotes_arp_rpc_cb, rpc_ctx);
 	}
 }
 

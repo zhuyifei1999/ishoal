@@ -292,20 +292,8 @@ static void broadcast_event_cb(int fd, void *_ctx, bool expired)
 	rcu_read_unlock();
 }
 
-static struct eventloop *broadcast_relay_el;
-static int broadcast_relay_rpc;
-
 struct broadcast_event *broadcast_new(int primary_event_fd)
 {
-	static atomic_flag init_done;
-	if (!atomic_flag_test_and_set(&init_done)) {
-		int broadcast_relay_rpc_recv;
-		make_fd_pair(&broadcast_relay_rpc, &broadcast_relay_rpc_recv);
-
-		broadcast_relay_el = eventloop_new();
-		eventloop_install_rpc(broadcast_relay_el, broadcast_relay_rpc_recv);
-	}
-
 	struct broadcast_event *bce = calloc(1, sizeof(*bce));
 	if (!bce)
 		perror_exit("calloc");
@@ -314,23 +302,15 @@ struct broadcast_event *broadcast_new(int primary_event_fd)
 
 	CDS_INIT_LIST_HEAD(&bce->replica_fds);
 
-	eventloop_install_event_async(broadcast_relay_el, &(struct event){
+	worker_install_event(&(struct event){
 		.fd = primary_event_fd,
 		.eventfd_ack = true,
 		.handler_type = EVT_CALL_FN,
 		.handler_fn = broadcast_event_cb,
 		.handler_ctx = bce,
-	}, broadcast_relay_rpc);
+	});
 
 	return bce;
-}
-
-void __broadcast_finalize_init(void)
-{
-	static atomic_flag init_done;
-	if (!atomic_flag_test_and_set(&init_done)) {
-		thread_start(eventloop_thread_fn, broadcast_relay_el, "bc_relay");
-	}
 }
 
 int broadcast_replica(struct broadcast_event *bce)
@@ -382,9 +362,6 @@ struct inotifyeventfd_add_ctx {
 	uint32_t mask;
 	int eventfd;
 };
-
-static struct eventloop *inotifyeventfd_relay_el;
-static int inotifyeventfd_relay_rpc;
 
 // adapted from:
 // https://man7.org/tlpi/code/online/book/inotify/demo_inotify.c.html
@@ -453,24 +430,16 @@ int inotifyeventfd_add(char *pathname, uint32_t mask)
 {
 	static atomic_flag init_done;
 	if (!atomic_flag_test_and_set(&init_done)) {
-		int inotifyeventfd_relay_rpc_recv;
-		make_fd_pair(&inotifyeventfd_relay_rpc, &inotifyeventfd_relay_rpc_recv);
-
-		inotifyeventfd_relay_el = eventloop_new();
-		eventloop_install_rpc(inotifyeventfd_relay_el, inotifyeventfd_relay_rpc_recv);
-
 		inotify_fd = inotify_init1(IN_CLOEXEC);
 		if (inotify_fd < 0)
 			perror_exit("inotify_init1");
 
-		eventloop_install_event_sync(inotifyeventfd_relay_el, &(struct event){
+		worker_install_event(&(struct event){
 			.fd = inotify_fd,
 			.eventfd_ack = false,
 			.handler_type = EVT_CALL_FN,
 			.handler_fn = inotify_cb,
 		});
-
-		thread_start(eventloop_thread_fn, inotifyeventfd_relay_el, "ie_relay");
 	}
 
 	int fd = eventfd(0, EFD_CLOEXEC);
@@ -483,13 +452,13 @@ int inotifyeventfd_add(char *pathname, uint32_t mask)
 		.eventfd = fd,
 	};
 
-	invoke_rpc_sync(inotifyeventfd_relay_rpc, inotifyeventfd_add_cb, &ctx);
+	worker_sync(inotifyeventfd_add_cb, &ctx);
 
 	return fd;
 }
 
 void inotifyeventfd_rm(int fd)
 {
-	invoke_rpc_sync(inotifyeventfd_relay_rpc, inotifyeventfd_rm_cb, &fd);
+	worker_sync(inotifyeventfd_rm_cb, &fd);
 	close(fd);
 }
