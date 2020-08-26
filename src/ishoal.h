@@ -28,6 +28,14 @@ do {									\
 				offsetof(typeof(*(ptr)), rhf)));		\
 } while (0)
 
+/* This is just a marker to show which functions are async (i.e. may return
+ * before its work is done). They are typically achieved through inter-thread
+ * RPC without waiting for result (invoke_rpc_async()). Pointers passed into
+ * these functions need special care to make sure they kept alive. Often
+ * callback mechanisms exist to notify when a job is done.
+ */
+#define __async
+
 extern int exitcode;
 
 extern char *progname;
@@ -118,7 +126,6 @@ bool thread_should_stop(struct thread *thread);
 int thread_stop_eventfd(struct thread *thread);
 bool thread_is_main(struct thread *thread);
 void thread_join(struct thread *thread);
-void thread_kill(struct thread *thread);
 void thread_release(struct thread *thread);
 void thread_all_stop(void);
 void thread_join_rest(void);
@@ -126,6 +133,7 @@ void thread_join_rest(void);
 void make_fd_pair(int *send_fd, int *recv_fd);
 void handle_rpc(int call_recv_fd);
 int invoke_rpc_sync(int call_send_fd, int (*fn)(void *ctx), void *ctx);
+__async
 void invoke_rpc_async(int call_send_fd, int (*fn)(void *ctx), void *ctx);
 
 struct eventloop *eventloop_new(void);
@@ -134,6 +142,7 @@ void eventloop_clear_events(struct eventloop *el);
 void eventloop_install_event_sync(struct eventloop *el, struct event *evt);
 void eventloop_install_rpc(struct eventloop *el, int rpc_recv_fd);
 void eventloop_install_break(struct eventloop *el, int break_evt_fd);
+__async
 void eventloop_install_event_async(struct eventloop *el, struct event *evt,
 				   int rpc_send_fd);
 void eventloop_remove_event_current(struct eventloop *el);
@@ -159,8 +168,10 @@ struct resolve_arp_user {
 	void *ctx;
 };
 
+__async
 void resolve_arp_user(struct resolve_arp_user *ctx);
 
+__async
 void set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip, uint16_t remote_port);
 void delete_remote_addr(ipaddr_t local_ip);
 void broadcast_all_remotes(void *buf, size_t len);
