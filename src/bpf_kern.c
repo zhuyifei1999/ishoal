@@ -187,10 +187,7 @@ int xdp_prog(struct xdp_md *ctx)
 		return XDP_DROP;
 
 	bool eth_is_broadcast = mac_eq(eth->h_dest, BROADCAST_MAC);
-	bool eth_is_multicast = (eth->h_dest[0] & 1) && !eth_is_broadcast;
-
-	if (eth_is_multicast)
-		return XDP_PASS;
+	bool eth_is_multicast = eth->h_dest[0] & 1;
 
 	if (eth->h_proto == bpf_htons(ETH_P_IP)) {
 		uint16_t src_port, dst_port;
@@ -234,7 +231,7 @@ int xdp_prog(struct xdp_md *ctx)
 		} else // TODO: ICMP?
 			return XDP_PASS;
 
-		if (!eth_is_broadcast && fake_gateway_ip &&
+		if (!eth_is_multicast && fake_gateway_ip &&
 		    (mac_eq(switch_mac, eth->h_source) || mac_eq(switch_mac, (macaddr_t){0})) &&
 		    same_subnet(iph->saddr, fake_gateway_ip, subnet_mask) &&
 		    !same_subnet(iph->daddr, fake_gateway_ip, subnet_mask) &&
@@ -270,7 +267,7 @@ int xdp_prog(struct xdp_md *ctx)
 		}
 
 		if (mac_eq(switch_mac, eth->h_source)) {
-			if (eth_is_broadcast) {
+			if (eth_is_multicast) {
 				if (iph->protocol == IPPROTO_UDP &&
 				    dst_port == bpf_htons(67) &&
 				    dst_port == bpf_htons(68))
