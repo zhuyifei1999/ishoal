@@ -23,19 +23,13 @@
 
 #define SECOND_NS 1000000000ULL
 
-// It would be NAT Type B otherwise
-#define NAT_TYPE_A
-
 struct conntrack_key {
 	uint8_t  protocol;
 	uint16_t sport;
-#ifndef NAT_TYPE_A
-	ipaddr_t daddr;
-	uint16_t dport;
-#endif
 } __attribute__((packed));
 struct conntrack_entry {
 	ipaddr_t saddr;
+	macaddr_t h_source;
 	uint64_t ktime_ns;
 } __attribute__((packed));
 
@@ -236,6 +230,41 @@ int xdp_prog(struct xdp_md *ctx)
 		} else // TODO: ICMP?
 			return XDP_PASS;
 
+		if (!eth_is_broadcast && fake_gateway_ip &&
+		    (mac_eq(switch_mac, eth->h_source) || mac_eq(switch_mac, (macaddr_t){0})) &&
+		    same_subnet(iph->saddr, fake_gateway_ip, subnet_mask) &&
+		    !same_subnet(iph->daddr, fake_gateway_ip, subnet_mask) &&
+		    // FIXME: should this be 'real subnet mask'?
+		    !same_subnet(iph->daddr, public_host_ip, subnet_mask)) {
+			/* NAT route */
+			if (iph->ttl <= 1)
+				return XDP_PASS;
+
+			ip_decrease_ttl(iph);
+
+			struct conntrack_key conntrack_key = {
+				.protocol = iph->protocol,
+				.sport = src_port,
+			};
+			struct conntrack_entry conntrack_entry = {
+				.saddr = iph->saddr,
+				.ktime_ns = bpf_ktime_get_ns(),
+			};
+			memcpy(conntrack_entry.h_source, eth->h_source, sizeof(macaddr_t));
+
+			bpf_map_update_elem(&conntrack_map, &conntrack_key,
+					    &conntrack_entry, BPF_ANY);
+
+			iph->saddr = public_host_ip;
+			recompute_iph_csum(iph);
+			recompute_l4_csum_fast(ctx, iph, &iphp_orig);
+
+			memcpy(eth->h_dest, gateway_mac, sizeof(macaddr_t));
+			memcpy(eth->h_source, host_mac, sizeof(macaddr_t));
+
+			return XDP_TX;
+		}
+
 		if (mac_eq(switch_mac, eth->h_source)) {
 			if (eth_is_broadcast) {
 				if (iph->protocol == IPPROTO_UDP &&
@@ -260,40 +289,6 @@ int xdp_prog(struct xdp_md *ctx)
 					return bpf_redirect_map(&xsks_map, index, 0);
 
 				return XDP_PASS;
-			}
-
-			if (fake_gateway_ip &&
-			    same_subnet(iph->saddr, fake_gateway_ip, subnet_mask) &&
-			    !same_subnet(iph->daddr, fake_gateway_ip, subnet_mask)) {
-				/* NAT route */
-				if (iph->ttl <= 1)
-					return XDP_PASS;
-
-				ip_decrease_ttl(iph);
-
-				struct conntrack_key conntrack_key = {
-					.protocol = iph->protocol,
-					.sport = src_port,
-#ifndef NAT_TYPE_A
-					.daddr = iph->daddr,
-					.dport = dst_port,
-#endif
-				};
-				struct conntrack_entry conntrack_entry = {
-					.saddr = iph->saddr,
-					.ktime_ns = bpf_ktime_get_ns(),
-				};
-				bpf_map_update_elem(&conntrack_map, &conntrack_key,
-						    &conntrack_entry, BPF_ANY);
-
-				iph->saddr = public_host_ip;
-				recompute_iph_csum(iph);
-				recompute_l4_csum_fast(ctx, iph, &iphp_orig);
-
-				memcpy(eth->h_dest, gateway_mac, sizeof(macaddr_t));
-				memcpy(eth->h_source, host_mac, sizeof(macaddr_t));
-
-				return XDP_TX;
 			}
 
 			struct remote_addr *remote_addr =
@@ -424,10 +419,6 @@ int xdp_prog(struct xdp_md *ctx)
 				struct conntrack_key conntrack_key = {
 					.protocol = iph->protocol,
 					.sport = dst_port,
-#ifndef NAT_TYPE_A
-					.daddr = iph->saddr,
-					.dport = src_port,
-#endif
 				};
 				struct conntrack_entry *conntrack_entry =
 					bpf_map_lookup_elem(&conntrack_map, &conntrack_key);
@@ -445,7 +436,7 @@ int xdp_prog(struct xdp_md *ctx)
 				recompute_iph_csum(iph);
 				recompute_l4_csum_fast(ctx, iph, &iphp_orig);
 
-				memcpy(eth->h_dest, switch_mac, sizeof(macaddr_t));
+				memcpy(eth->h_dest, conntrack_entry->h_source, sizeof(macaddr_t));
 				memcpy(eth->h_source, host_mac, sizeof(macaddr_t));
 
 				return XDP_TX;
