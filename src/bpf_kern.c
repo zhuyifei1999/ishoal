@@ -187,6 +187,10 @@ int xdp_prog(struct xdp_md *ctx)
 		return XDP_DROP;
 
 	bool eth_is_broadcast = mac_eq(eth->h_dest, BROADCAST_MAC);
+	bool eth_is_multicast = (eth->h_dest[0] & 1) && !eth_is_broadcast;
+
+	if (eth_is_multicast)
+		return XDP_PASS;
 
 	if (eth->h_proto == bpf_htons(ETH_P_IP)) {
 		uint16_t src_port, dst_port;
