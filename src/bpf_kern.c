@@ -23,6 +23,7 @@
 #include "pkt.inc.c"
 
 #define ACCESS_ONCE(x)	(*(__volatile__  __typeof__(x) *)&(x))
+#define barrier() __asm__ __volatile__ ("" : : : "memory")
 
 #define SECOND_NS 1000000000ULL
 
@@ -198,6 +199,76 @@ static __always_inline bool mac_eq(macaddr_t a, macaddr_t b)
 		a[5] == b[5]);
 }
 
+// source: samples/bpf/xdp_adjust_tail_kern.c
+static __always_inline int send_icmp4_timeout_exceeded(struct xdp_md *xdp)
+{
+	void *data, *data_end;
+
+	data = (void *)(long)xdp->data;
+	data_end = (void *)(long)xdp->data_end;
+	if ((void *)data + sizeof(struct ethhdr) > data_end)
+		return XDP_DROP;
+
+	struct ethhdr eth_orig = *(struct ethhdr *)data;
+
+	if (bpf_xdp_adjust_head(xdp, 0 - (int)(sizeof(struct iphdr) + sizeof(struct icmphdr))))
+		return XDP_DROP;
+
+	if (bpf_xdp_adjust_tail(xdp, (int)(sizeof(struct ethhdr) +
+					   sizeof(struct iphdr) +
+					   sizeof(struct icmphdr) +
+					   sizeof(struct icmp_errortrack_data)) -
+				     ((long)xdp->data_end - (long)xdp->data)))
+		return XDP_DROP;
+
+	data = (void *)(long)xdp->data;
+	data_end = (void *)(long)xdp->data_end;
+
+	struct ethhdr *eth = data;
+	data = eth + 1;
+	if (data > data_end)
+		return XDP_DROP;
+
+	struct iphdr *iph = data;
+	data = iph + 1;
+	if (data > data_end)
+		return XDP_DROP;
+
+	struct icmphdr *icmph = data;
+	data = icmph + 1;
+	if (data > data_end)
+		return XDP_DROP;
+
+	struct icmp_errortrack_data *icmp_pl = data;
+	data = icmp_pl + 1;
+	if (data > data_end)
+		return XDP_DROP;
+
+	memset(icmph, 0, sizeof(*icmph));
+	icmph->type = ICMP_TIME_EXCEEDED;
+	icmph->code = ICMP_EXC_TTL;
+	uint32_t csum = 0;
+	ipv4_csum(icmph, sizeof(*icmph) + sizeof(*icmp_pl), &csum);
+	icmph->checksum = csum;
+
+	iph->ttl = 64;
+	iph->daddr = icmp_pl->iph.saddr;
+	iph->saddr = public_host_ip;
+	iph->version = 4;
+	iph->ihl = 5;
+	iph->protocol = IPPROTO_ICMP;
+	iph->tos = 0;
+	iph->tot_len = bpf_htons((char *)data_end - (char *)iph);
+	iph->check = 0;
+	recompute_iph_csum(iph);
+
+	memcpy(eth->h_dest, eth_orig.h_source, sizeof(macaddr_t));
+	memcpy(eth->h_source, host_mac, sizeof(macaddr_t));
+	eth->h_proto = bpf_htons(ETH_P_IP);
+
+	return XDP_TX;
+}
+
 SEC("xdp")
 int xdp_prog(struct xdp_md *ctx)
 {
@@ -287,7 +358,7 @@ int xdp_prog(struct xdp_md *ctx)
 		    !same_subnet(iph->daddr, public_host_ip, subnet_mask)) {
 			/* NAT route */
 			if (iph->ttl <= 1)
-				return XDP_PASS;
+				return send_icmp4_timeout_exceeded(ctx);
 
 			struct track_entry track_entry = {
 				.saddr = iph->saddr,
@@ -497,7 +568,7 @@ int xdp_prog(struct xdp_md *ctx)
 			    !same_subnet(iph->saddr, fake_gateway_ip, subnet_mask)) {
 				/* NAT return route */
 				if (iph->ttl <= 1)
-					return XDP_PASS;
+					return send_icmp4_timeout_exceeded(ctx);
 
 				macaddr_t h_source;
 				struct track_entry *track_entry;
