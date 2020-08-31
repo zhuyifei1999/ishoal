@@ -1,5 +1,4 @@
 # CONFIG_MODULES is not set
-# CONFIG_SMP is not set
 
 CONFIG_BTRFS_FS=y
 CONFIG_BPF_SYSCALL=y
