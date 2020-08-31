@@ -687,14 +687,14 @@ int xdp_prog(struct xdp_md *ctx)
 
 						if (icmp_pl->iph.protocol == IPPROTO_TCP) {
 							struct tcphdr *tcph = (void *)&icmp_pl->ipdat;
-							static_assert(offsetof(struct tcphdr, source) +
+							static_assert(__builtin_offsetof(struct tcphdr, source) +
 								      sizeof(tcph->source) <=
 								      sizeof(icmp_pl->ipdat),
 								      "Bad TCP port offset");
 							port = tcph->source;
 						} else if (icmp_pl->iph.protocol == IPPROTO_UDP) {
 							struct tcphdr *udph = (void *)&icmp_pl->ipdat;
-							static_assert(offsetof(struct udphdr, source) +
+							static_assert(__builtin_offsetof(struct udphdr, source) +
 								      sizeof(udph->source) <=
 								      sizeof(icmp_pl->ipdat),
 								      "Bad UDP port offset");
