@@ -129,6 +129,21 @@ static __always_inline int ip_decrease_ttl(struct iphdr *iph)
 static __always_inline uint16_t onec_add(uint16_t x, uint16_t y)
 {
 	uint32_t z = x + y;
+
+	/* after two iterations, there does not exist a z where the most
+	 * significant 16 bits is non-zero. This can be shown with a SAT solver:
+	 *
+	 * import claripy
+	 * val = claripy.BVS('val', 32)
+	 * z = val
+	 * s = claripy.Solver()
+	 * hex(s.eval(val, 1, extra_constraints=[z & 0xffff0000 != 0])[0])
+	 * z = (z & 0xffff) + (z >> 16)
+	 * hex(s.eval(val, 1, extra_constraints=[z & 0xffff0000 != 0])[0])
+	 * z = (z & 0xffff) + (z >> 16)
+	 * hex(s.eval(val, 1, extra_constraints=[z & 0xffff0000 != 0])[0])
+	 */
+
 	z = (z & 0xffff) + (z >> 16);
 	z = (z & 0xffff) + (z >> 16);
 	return z;
