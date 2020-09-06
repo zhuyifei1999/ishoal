@@ -111,6 +111,8 @@ emerge --root rootfs -v sys-process/htop sys-process/lsof dev-util/strace
 ACCEPT_KEYWORDS='~amd64' emerge --root rootfs -v dev-libs/libbpf
 unset USE
 
+make -C kernel -j"$(nproc)" modules_install INSTALL_MOD_PATH=rootfs
+
 GCC_PATH="$(gcc -print-search-dirs | grep install | cut -d\  -f2)"
 mkdir -p rootfs/"${GCC_PATH}"
 cp -a "${GCC_PATH}"/libgcc_s.so* rootfs/"${GCC_PATH}"
