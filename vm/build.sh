@@ -66,10 +66,35 @@ trap cleanup_mnt EXIT
 sudo docker run -v $REPO:$REPO -e REPO="${REPO}" -v $PWD:$PWD -w $PWD --tmpfs /var/tmp/portage:exec --tmpfs /var/cache/distfiles --tmpfs /var/db/repos --cap-add=SYS_PTRACE --rm -i gentoo/stage3-amd64-nomultilib << 'EOF'
 set -ex
 
-LINUX_VER=5.8.3
+LINUX_VER=5.8.7
 PY_VER=3.8
 
 emerge-webrsync
+
+emerge -v -n app-portage/repoman
+
+mkdir -p /var/db/repos/localrepo/{metadata,profiles}
+chown -R portage:portage /var/db/repos/localrepo
+echo localrepo > /var/db/repos/localrepo/profiles/repo_name
+
+cat > /var/db/repos/localrepo/metadata/layout.conf << 'INNEREOF'
+masters = gentoo
+auto-sync = false
+INNEREOF
+
+mkdir -p /etc/portage/repos.conf/
+cat > /etc/portage/repos.conf/localrepo.conf << 'INNEREOF'
+[localrepo]
+location = /var/db/repos/localrepo
+INNEREOF
+
+mkdir -p /var/db/repos/localrepo/sys-apps/bpftool/
+cp "${REPO}/vm/bpftool.ebuild" "/var/db/repos/localrepo/sys-apps/bpftool/bpftool-${LINUX_VER}.ebuild"
+chown -R portage:portage /var/db/repos/localrepo
+
+pushd /var/db/repos/localrepo/sys-apps/bpftool/
+repoman manifest
+popd
 
 export LLVM_TARGETS=BPF ACCEPT_KEYWORDS='~amd64'
 emerge -v -o sys-devel/llvm:10
@@ -90,7 +115,7 @@ popd
 
 make -C kernel -j"$(nproc)"
 
-make -C kernel/tools/bpf/bpftool/
+emerge -v -n sys-apps/bpftool
 
 emerge -v -n "dev-lang/python:${PY_VER}" dev-util/dialog dev-libs/userspace-rcu
 ACCEPT_KEYWORDS='~amd64' emerge -v dev-libs/libbpf
@@ -98,7 +123,7 @@ ACCEPT_KEYWORDS='~amd64' emerge -v dev-libs/libbpf
 "python${PY_VER}" -m ensurepip
 
 rm "${REPO}/src/"*.d || true
-make -B -C "${REPO}/src/" PYTHON="python${PY_VER}" BPFTOOL="$(realpath kernel/tools/bpf/bpftool/bpftool)" CLANGFLAGS="-D__x86_64__"
+make -B -C "${REPO}/src/" PYTHON="python${PY_VER}" CLANGFLAGS="-D__x86_64__"
 
 emerge -v -n sys-boot/gnu-efi
 make -B -C "${REPO}/vm/efi_fb_res"
@@ -108,7 +133,7 @@ emerge --root rootfs -v sys-apps/baselayout
 emerge --root rootfs -v sys-apps/busybox
 emerge --root rootfs -v "dev-lang/python:${PY_VER}" dev-util/dialog dev-libs/userspace-rcu
 emerge --root rootfs -v sys-process/htop sys-process/lsof dev-util/strace
-ACCEPT_KEYWORDS='~amd64' emerge --root rootfs -v dev-libs/libbpf
+ACCEPT_KEYWORDS='~amd64' emerge --root rootfs -v dev-libs/libbpf sys-apps/bpftool
 unset USE
 
 make -C kernel -j"$(nproc)" modules_install INSTALL_MOD_PATH=rootfs

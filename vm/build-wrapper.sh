@@ -61,7 +61,7 @@ setsid qemu-system-x86_64 \
 RUNNING=true
 function cleanup_qemu {
   if $RUNNING; then
-    kill "$QEMU_PID"
+    kill "$QEMU_PID" || true
   fi
   cleanup_tmp
 }
