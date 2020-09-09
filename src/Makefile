@@ -39,11 +39,11 @@ clean:
 	$(CC) -M $< $(shell $(PYTHON_CONFIG) --includes) $(CFLAGS) | \
 		sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' > $@
 
-%_kern.o: %_kern.c
+bpf_kern.o: bpf_kern.c bpf_kern.d
 	$(CLANG) -c $< -o - -fno-common $(CFLAGS) $(CLANGFLAGS) -target bpf -emit-llvm | \
 		llc -o $@ -march=bpf -mcpu=v2 -filetype=obj
 
-%_kern.skel.h: %_kern.o
+bpf_kern.skel.h: bpf_kern.o
 	$(BPFTOOL) gen skeleton $< > $@
 
 python.o: python.c

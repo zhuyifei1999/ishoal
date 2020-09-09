@@ -160,6 +160,14 @@ ishoalc_on_switch_chg_threadfn(PyObject *self, PyObject *args)
 }
 
 static PyObject *
+ishoalc_get_public_host_ip(PyObject *self, PyObject *args)
+{
+    char str[IP_STR_BULEN];
+    ip_str(public_host_ip, str);
+    return PyUnicode_FromString(str);
+}
+
+static PyObject *
 ishoalc_get_switch_ip(PyObject *self, PyObject *args)
 {
     char str[IP_STR_BULEN];
@@ -236,6 +244,7 @@ static PyMethodDef IshoalcMethods[] = {
     {"sleep", ishoalc_sleep, METH_VARARGS, NULL},
     {"wait_for_switch", ishoalc_wait_for_switch, METH_NOARGS, NULL},
     {"on_switch_chg_threadfn", ishoalc_on_switch_chg_threadfn, METH_VARARGS, NULL},
+    {"get_public_host_ip", ishoalc_get_public_host_ip, METH_NOARGS, NULL},
     {"get_switch_ip", ishoalc_get_switch_ip, METH_NOARGS, NULL},
     {"get_vpn_port", ishoalc_get_vpn_port, METH_NOARGS, NULL},
     {"set_remote_addr", ishoalc_set_remote_addr, METH_VARARGS, NULL},
