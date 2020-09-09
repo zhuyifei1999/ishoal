@@ -115,10 +115,8 @@ popd
 
 make -C kernel -j"$(nproc)"
 
-emerge -v -n sys-apps/bpftool
-
 emerge -v -n "dev-lang/python:${PY_VER}" dev-util/dialog dev-libs/userspace-rcu
-ACCEPT_KEYWORDS='~amd64' emerge -v dev-libs/libbpf
+ACCEPT_KEYWORDS='~amd64' emerge -v dev-libs/libbpf sys-apps/bpftool
 
 "python${PY_VER}" -m ensurepip
 
@@ -136,7 +134,7 @@ emerge --root rootfs -v sys-process/htop sys-process/lsof dev-util/strace
 ACCEPT_KEYWORDS='~amd64' emerge --root rootfs -v dev-libs/libbpf sys-apps/bpftool
 unset USE
 
-make -C kernel -j"$(nproc)" modules_install INSTALL_MOD_PATH=rootfs
+make -C kernel -j"$(nproc)" modules_install INSTALL_MOD_PATH="$(realpath rootfs)"
 
 GCC_PATH="$(gcc -print-search-dirs | grep install | cut -d\  -f2)"
 mkdir -p rootfs/"${GCC_PATH}"
