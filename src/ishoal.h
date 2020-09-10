@@ -42,6 +42,9 @@ extern char *progname;
 extern char *iface;
 extern int ifindex;
 
+struct bpf_kern;
+
+extern struct bpf_kern *obj;
 extern macaddr_t switch_mac;
 extern macaddr_t host_mac;
 extern macaddr_t gateway_mac;
@@ -118,6 +121,9 @@ void bpf_set_fake_gateway_ip(ipaddr_t addr);
 
 struct xsk_socket *xsk_configure_socket(char *iface, int queue,
 	void (*handler)(void *pkt, size_t length));
+
+void tx(void *pkt, size_t length);
+void xdpemu(void *pkt, size_t length);
 
 struct thread;
 extern __thread struct thread *current;

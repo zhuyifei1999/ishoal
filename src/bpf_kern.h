@@ -10,6 +10,8 @@ typedef uint32_t ipaddr_t;
 
 #define MAX_XSKS 64
 
+#define SECOND_NS 1000000000ULL
+
 struct remote_addr {
 	ipaddr_t ip;
 	uint16_t port;

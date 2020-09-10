@@ -4,8 +4,6 @@
 
 #include "ishoal.h"
 
-#define SECOND_NS 1000000000ULL
-
 int timespec_cmp(const struct timespec *x, const struct timespec *y)
 {
 	return x->tv_sec - y->tv_sec ? : x->tv_nsec - y->tv_nsec;

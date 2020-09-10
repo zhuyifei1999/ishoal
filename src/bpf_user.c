@@ -12,7 +12,7 @@
 #include "ishoal.h"
 #include "bpf_kern.skel.h"
 
-static struct bpf_kern *obj;
+struct bpf_kern *obj;
 
 macaddr_t switch_mac;
 ipaddr_t switch_ip;
@@ -118,6 +118,9 @@ void bpf_set_fake_gateway_ip(ipaddr_t addr)
 
 static void on_xsk_pkt(void *ptr, size_t length)
 {
+	xdpemu(ptr, length);
+	return;
+
 	if (obj->bss->switch_ip != switch_ip ||
 	    memcmp(obj->bss->switch_mac, switch_mac, sizeof(macaddr_t))) {
 		switch_ip = obj->bss->switch_ip;

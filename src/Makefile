@@ -26,6 +26,7 @@ all: ishoal
 include $(SRC:.c=.d)
 
 bpf_user.d: bpf_kern.skel.h
+pkt.d: bpf_kern.skel.h
 
 .PHONY: clean
 
@@ -37,6 +38,10 @@ clean:
 
 %.d: %.c
 	$(CC) -M $< $(shell $(PYTHON_CONFIG) --includes) $(CFLAGS) | \
+		sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' > $@
+
+bpf_kern.d: bpf_kern.c pkt.impl.h
+	$(CLANG) -M $< $(CFLAGS) $(CLANGFLAGS) -target bpf | \
 		sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' > $@
 
 bpf_kern.o: bpf_kern.c bpf_kern.d
