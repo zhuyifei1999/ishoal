@@ -88,7 +88,6 @@ along with this program.  If not, see &lt;https://www.gnu.org/licenses/&gt;.</Li
         <rasd:Connection>Bridged</rasd:Connection>
         <rasd:ElementName>Ethernet adapter on 'Bridged'</rasd:ElementName>
         <rasd:InstanceID>5</rasd:InstanceID>
-        <rasd:ResourceSubType>E1000</rasd:ResourceSubType>
         <rasd:ResourceType>10</rasd:ResourceType>
       </Item>
     </VirtualHardwareSection>
@@ -106,7 +105,7 @@ along with this program.  If not, see &lt;https://www.gnu.org/licenses/&gt;.</Li
         <VideoCapture screens="1" file="." fps="25"/>
         <RemoteDisplay enabled="false"/>
         <Network>
-          <Adapter slot="0" enabled="true" cable="true" promiscuousModePolicy="AllowAll" type="82540EM">
+          <Adapter slot="0" enabled="true" cable="true" promiscuousModePolicy="AllowAll" type="virtio">
             <DisabledModes>
               <InternalNetwork name="intnet"/>
               <NATNetwork name="NatNetwork"/>
