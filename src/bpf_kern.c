@@ -29,6 +29,7 @@
 
 struct track_entry {
 	ipaddr_t saddr;
+	uint16_t sport_real;
 	macaddr_t h_source;
 	uint64_t ktime_ns;
 } __attribute__((packed));
@@ -36,6 +37,8 @@ struct track_entry {
 struct conntrack_key {
 	uint8_t  protocol;
 	uint16_t sport;
+	ipaddr_t daddr;
+	uint16_t dport;
 } __attribute__((packed));
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
@@ -233,18 +236,6 @@ static __always_inline bool mac_eq(macaddr_t a, macaddr_t b)
 		a[5] == b[5]);
 }
 
-static __always_inline void memcpy_dyn(void *dst, void *src, void *end, size_t len)
-{
-	char *dst_c = dst;
-	char *src_c = src;
-	char *end_c = end;
-
-	#pragma unroll
-	for (size_t i = 0; i < len; i++)
-		if (src_c + 2 < end_c)
-			*(dst_c++) = *(src_c++);
-}
-
 // source: samples/bpf/xdp_adjust_tail_kern.c
 static __always_inline int send_icmp4_timeout_exceeded(struct xdp_md *xdp)
 {
@@ -413,38 +404,28 @@ int xdp_prog(struct xdp_md *ctx)
 			};
 
 			if (icmp_type == NOT_ICMP) {
+				// if (iph->protocol == IPPROTO_UDP && dst_port != bpf_htons(53))
+				// 	return XDP_DROP;
+
+				if (iph->protocol == IPPROTO_UDP) {
+					track_entry.sport_real = src_port;
+					src_port = src_port + track_entry.ktime_ns % 0xFF;
+
+					struct udphdr *udph = (void *)(iph + 1);
+					udph->check = onec_add(udph->check, track_entry.sport_real);
+					udph->check = onec_add(udph->check, ~src_port);
+					udph->source = src_port;
+				}
+
 				struct conntrack_key conntrack_key = {
 					.protocol = iph->protocol,
 					.sport = src_port,
+					.daddr = iph->daddr,
+					.dport = dst_port,
 				};
 				memcpy(track_entry.h_source, eth->h_source, sizeof(macaddr_t));
 
 				bpf_map_update_elem(&conntrack_map, &conntrack_key,
-						    &track_entry, BPF_ANY);
-			} else if (icmp_type == ICMP_TYPE_REQUEST) {
-				struct icmphdr *icmph_old = (void *)(iph + 1);
-				struct icmphdr *icmph_new;
-
-				struct icmp_echotrack_key icmp_echotrack_key = {
-					.length = data_end - (void *)icmph_old,
-				};
-
-				icmph_new = (void *)icmp_echotrack_key.data;
-				memcpy_dyn(icmph_new, icmph_old, data_end, ICMP_ECHOTRACK_SIZE);
-
-				if (icmph_new->type != ICMP_ECHO)
-					return XDP_DROP;
-				icmph_new->type = ICMP_ECHOREPLY;
-
-				uint32_t check = (uint32_t)icmph_new->checksum;
-				check += (uint32_t)bpf_htons(0x0800);
-				icmph_new->checksum = (uint16_t)(check + (check >= 0xFFFF));
-
-				memcpy(track_entry.h_source, eth->h_source, sizeof(macaddr_t));
-
-				bpf_map_update_elem(&icmp_echotrack_map, &icmp_echotrack_key,
-						    &track_entry, BPF_ANY);
-				bpf_map_update_elem(&icmp_echoerrtrack_map, icmph_old,
 						    &track_entry, BPF_ANY);
 			} else
 				return XDP_PASS;
@@ -622,6 +603,8 @@ int xdp_prog(struct xdp_md *ctx)
 					struct conntrack_key conntrack_key = {
 						.protocol = iph->protocol,
 						.sport = dst_port,
+						.daddr = iph->saddr,
+						.dport = src_port,
 					};
 					track_entry =
 						bpf_map_lookup_elem(&conntrack_map, &conntrack_key);
@@ -635,105 +618,13 @@ int xdp_prog(struct xdp_md *ctx)
 						return XDP_PASS;
 					}
 					track_entry->ktime_ns = bpf_ktime_get_ns();
-				} else if (icmp_type == ICMP_TYPE_RESP) {
-					struct icmphdr *icmph_old = (void *)(iph + 1);
-					struct icmphdr *icmph_new;
 
-					struct icmp_echotrack_key icmp_echotrack_key = {
-						.length = data_end - (void *)icmph_old,
-					};
-
-					icmph_new = (void *)icmp_echotrack_key.data;
-					memcpy_dyn(icmph_new, icmph_old, data_end, ICMP_ECHOTRACK_SIZE);
-
-					if (icmph_new->type != ICMP_ECHOREPLY)
-						return XDP_DROP;
-
-					track_entry =
-						bpf_map_lookup_elem(&icmp_echotrack_map, &icmp_echotrack_key);
-
-					if (!track_entry)
-						return XDP_PASS;
-					// 5 minutes expiry
-					if (bpf_ktime_get_ns() - track_entry->ktime_ns
-					    > 5 * 60 * SECOND_NS) {
-						bpf_map_delete_elem(&icmp_echotrack_map, &icmp_echotrack_key);
-						return XDP_PASS;
+					if (iph->protocol == IPPROTO_UDP) {
+						struct udphdr *udph = (void *)(iph + 1);
+						udph->check = onec_add(udph->check, udph->dest);
+						udph->check = onec_add(udph->check, ~track_entry->sport_real);
+						udph->dest = track_entry->sport_real;
 					}
-					track_entry->ktime_ns = bpf_ktime_get_ns();
-				} else if (icmp_type == ICMP_TYPE_ERROR) {
-					struct icmphdr *icmph = (void *)(iph + 1);
-					struct icmperrpl *icmp_pl = (void *)(icmph + 1);
-
-					if ((void *)(icmp_pl + 1) > data_end)
-						return XDP_PASS;
-
-					struct icmperrpl icmp_pl_copy = *icmp_pl;
-
-					if (icmp_pl->iph.protocol == IPPROTO_ICMP) {
-						track_entry =
-							bpf_map_lookup_elem(&icmp_echoerrtrack_map, &icmp_pl->ipdat);
-
-						if (!track_entry)
-							return XDP_PASS;
-						// 5 minutes expiry
-						if (bpf_ktime_get_ns() - track_entry->ktime_ns
-						    > 5 * 60 * SECOND_NS) {
-							bpf_map_delete_elem(&icmp_echoerrtrack_map, &icmp_pl->ipdat);
-							return XDP_PASS;
-						}
-					} else {
-						uint16_t port;
-
-						if (icmp_pl->iph.protocol == IPPROTO_TCP) {
-							struct tcphdr *tcph = (void *)&icmp_pl->ipdat;
-							static_assert(__builtin_offsetof(struct tcphdr, source) +
-								      sizeof(tcph->source) <=
-								      sizeof(icmp_pl->ipdat),
-								      "Bad TCP port offset");
-							port = tcph->source;
-						} else if (icmp_pl->iph.protocol == IPPROTO_UDP) {
-							struct tcphdr *udph = (void *)&icmp_pl->ipdat;
-							static_assert(__builtin_offsetof(struct udphdr, source) +
-								      sizeof(udph->source) <=
-								      sizeof(icmp_pl->ipdat),
-								      "Bad UDP port offset");
-							port = udph->source;
-						} else
-							return XDP_PASS;
-
-						struct conntrack_key conntrack_key = {
-							.protocol = icmp_pl->iph.protocol,
-							.sport = port,
-						};
-
-						track_entry =
-							bpf_map_lookup_elem(&conntrack_map, &conntrack_key);
-
-						if (!track_entry)
-							return XDP_PASS;
-						// 5 minutes expiry
-						if (bpf_ktime_get_ns() - track_entry->ktime_ns
-						    > 5 * 60 * SECOND_NS) {
-							bpf_map_delete_elem(&conntrack_map, &conntrack_key);
-							return XDP_PASS;
-						}
-					}
-					track_entry->ktime_ns = bpf_ktime_get_ns();
-
-					struct iph_pseudo inner_iphp_orig;
-					ipv4_mk_pheader(&icmp_pl->iph, &inner_iphp_orig);
-
-					icmp_pl->iph.saddr = track_entry->saddr;
-					recompute_iph_csum(&icmp_pl->iph);
-
-					uint32_t csum = 0;
-					csum = bpf_csum_diff((void *)&icmp_pl_copy.iph, sizeof(icmp_pl_copy.iph),
-							     (void *)&icmp_pl->iph, sizeof(icmp_pl->iph),
-							     ~icmph->checksum);
-					csum = csum_fold_helper(csum);
-					csum = onec_add(~csum, recompute_l4_csum_fast(ctx, &icmp_pl->iph, &inner_iphp_orig));
-					icmph->checksum = ~csum;
 				} else
 					return XDP_PASS;
 

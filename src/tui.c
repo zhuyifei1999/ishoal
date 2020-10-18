@@ -256,6 +256,7 @@ static void tui_clear(void)
 
 static void detect_switch_online(void)
 {
+	return;
 	is_online = false;
 
 	dialog_vars.begin_set = false;
@@ -277,6 +278,7 @@ static void detect_switch_online(void)
 
 static void detect_local_switch(void)
 {
+	return;
 	bpf_set_switch_ip(0);
 	bpf_set_switch_mac((macaddr_t){0});
 
@@ -451,6 +453,8 @@ out:
 
 static void switch_information_dialog(void)
 {
+	return;
+
 	char ip[IP_STR_BULEN];
 	char mac[MAC_STR_BULEN];
 	int res;
@@ -613,14 +617,14 @@ void tui_thread(void *arg)
 		dialog_vars.nocancel = true;
 
 		DIALOG_LISTITEM choices[] = {
-			{"1", "Refresh state", dlg_strempty()},
-			{"2", "Re-detect Switch", dlg_strempty()},
+			{"1", "Refresh state (UNSUPPORTED)", dlg_strempty()},
+			{"2", "Re-detect Switch (UNSUPPORTED)", dlg_strempty()},
 			{"3", "Shutdown the VM", dlg_strempty()},
 			{"4", fake_gateway_ip ?
 				"Advanced: Setup VM as Gateway (currently enabled)" :
 				"Advanced: Setup VM as Gateway (currently disabled)",
 			      dlg_strempty()},
-			{"5", "Advanced: Enter Switch information manually",
+			{"5", "Advanced: Enter Switch information manually (UNSUPPORTED)",
 			      dlg_strempty()},
 			{"6", "Advanced: Start a Shell", dlg_strempty()},
 			{"7", "Advanced: Reboot the VM", dlg_strempty()},
