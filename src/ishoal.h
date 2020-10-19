@@ -42,17 +42,17 @@ extern char *progname;
 extern char *iface;
 extern int ifindex;
 
-extern macaddr_t switch_mac;
 extern macaddr_t host_mac;
 extern macaddr_t gateway_mac;
 
-extern ipaddr_t switch_ip;
 extern ipaddr_t public_host_ip;
 extern ipaddr_t real_subnet_mask;
 extern ipaddr_t fake_gateway_ip;
 
+extern ipaddr_t ikiwi_ip;
+extern uint16_t ikiwi_port;
+
 extern uint16_t vpn_port;
-extern uint16_t public_vpn_port;
 
 extern int remotes_fd;
 
@@ -75,11 +75,7 @@ struct broadcast_event;
 
 extern int stop_broadcast_primary;
 
-extern int xsk_broadcast_evt_broadcast_primary;
-extern struct broadcast_event *xsk_broadcast_evt_broadcast;
-
-extern int switch_change_broadcast_primary;
-extern struct broadcast_event *switch_change_broadcast;
+extern struct broadcast_event *ikiwi_addr_set_broadcast;
 
 void free_rcu_init(void);
 void *free_rcu_get_cb(size_t offset);
@@ -112,12 +108,8 @@ void start_endpoint(void);
 void load_conf(void);
 void save_conf(void);
 
-void bpf_set_switch_ip(ipaddr_t addr);
-void bpf_set_switch_mac(macaddr_t addr);
+void bpf_set_ikiwi_addr(ipaddr_t arg_ikiwi_ip, uint16_t arg_ikiwi_port);
 void bpf_set_fake_gateway_ip(ipaddr_t addr);
-
-struct xsk_socket *xsk_configure_socket(char *iface, int queue,
-	void (*handler)(void *pkt, size_t length));
 
 struct thread;
 extern __thread struct thread *current;
@@ -127,6 +119,7 @@ void thread_stop(struct thread *thread);
 bool thread_should_stop(struct thread *thread);
 int thread_stop_eventfd(struct thread *thread);
 bool thread_is_main(struct thread *thread);
+void thread_signal(struct thread *thread, int sig);
 void thread_join(struct thread *thread);
 void thread_release(struct thread *thread);
 void thread_all_stop(void);
@@ -169,8 +162,6 @@ void broadcast_replica_del(struct broadcast_event *bce, int fd);
 int inotifyeventfd_add(char *pathname, uint32_t mask);
 void inotifyeventfd_rm(int fd);
 
-void do_stun(int sockfd, ipaddr_t *address, uint16_t *port);
-
 struct resolve_arp_user {
 	ipaddr_t ipaddr;
 	macaddr_t *macaddr;
@@ -181,12 +172,4 @@ struct resolve_arp_user {
 
 __async
 void resolve_arp_user(struct resolve_arp_user *ctx);
-
-__async
-void set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip, uint16_t remote_port);
-void delete_remote_addr(ipaddr_t local_ip);
-void broadcast_all_remotes(void *buf, size_t len);
-
-void bpf_set_remote_addr(ipaddr_t local_ip, struct remote_addr *remote_addr);
-void bpf_delete_remote_addr(ipaddr_t local_ip);
 #endif

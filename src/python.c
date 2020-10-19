@@ -3,6 +3,7 @@
 #include <arpa/inet.h>
 #include <poll.h>
 #include <pthread.h>
+#include <signal.h>
 #include <sys/eventfd.h>
 #include <urcu.h>
 
@@ -66,167 +67,54 @@ ishoalc_sleep(PyObject *self, PyObject *args)
 }
 
 static PyObject *
-ishoalc_wait_for_switch(PyObject *self, PyObject *args)
+ishoalc_set_ikiwi_addr(PyObject *self, PyObject *args)
 {
-    Py_BEGIN_ALLOW_THREADS
+    const char *str_ikiwi_ip;
+    uint16_t arg_ikiwi_port;
 
-    int replica_fd = broadcast_replica(switch_change_broadcast);
-    struct eventloop *el = eventloop_new();
+    ipaddr_t arg_ikiwi_ip;
 
-    eventloop_install_break(el, thread_stop_eventfd(python_main_thread));
-    eventloop_install_event_sync(el, &(struct event){
-        .fd = replica_fd,
-        .eventfd_ack = true,
-        .handler_type = EVT_BREAK,
-    });
-
-    while ((!switch_ip ||
-            !memcmp(switch_mac, (macaddr_t){}, sizeof(macaddr_t))) &&
-           !thread_should_stop(python_main_thread)) {
-        eventloop_enter(el, -1);
-    }
-
-    eventloop_destroy(el);
-    broadcast_replica_del(switch_change_broadcast, replica_fd);
-
-    Py_END_ALLOW_THREADS
-
-    Py_RETURN_NONE;
-}
-
-struct ishoalc_on_switch_chg_threadfn_ctx {
-    PyObject *handler;
-    PyThreadState *tssave;
-    int breakfd;
-};
-
-static void ishoalc_on_switch_chg_threadfn_cb(int fd, void *_ctx, bool expired)
-{
-    struct ishoalc_on_switch_chg_threadfn_ctx *ctx = _ctx;
-
-    PyEval_RestoreThread(ctx->tssave);
-
-    PyObject *res = PyObject_CallFunctionObjArgs(ctx->handler, NULL);
-    if (!res)
-        if (eventfd_write(ctx->breakfd, 1))
-            perror_exit("eventfd_write");
-
-    Py_DECREF(res);
-
-    ctx->tssave = PyEval_SaveThread();
-}
-
-static PyObject *
-ishoalc_on_switch_chg_threadfn(PyObject *self, PyObject *args)
-{
-    struct ishoalc_on_switch_chg_threadfn_ctx ctx;
-
-    if (!PyArg_ParseTuple(args, "O:on_switch_chg_threadfn", &ctx.handler))
+    if (!PyArg_ParseTuple(args, "sH:set_ikiwi_addr",
+                          &str_ikiwi_ip,
+                          &arg_ikiwi_port))
         return NULL;
 
-    if (!PyCallable_Check(ctx.handler)) {
-        PyErr_SetString(PyExc_ValueError,
-                        "on_switch_chg_threadfn argument 1 is not callable");
-        return NULL;
-    }
-
-    ctx.tssave = PyEval_SaveThread();
-    ctx.breakfd = eventfd(0, EFD_CLOEXEC);
-    if (ctx.breakfd < 0)
-        perror_exit("eventfd");
-
-    int replica_fd = broadcast_replica(switch_change_broadcast);
-    struct eventloop *el = eventloop_new();
-
-    eventloop_install_break(el, thread_stop_eventfd(python_main_thread));
-    eventloop_install_break(el, ctx.breakfd);
-    eventloop_install_event_sync(el, &(struct event){
-        .fd = replica_fd,
-        .eventfd_ack = true,
-        .handler_type = EVT_CALL_FN,
-        .handler_fn = ishoalc_on_switch_chg_threadfn_cb,
-        .handler_ctx = &ctx,
-    });
-
-    eventloop_enter(el, -1);
-
-    eventloop_destroy(el);
-    broadcast_replica_del(switch_change_broadcast, replica_fd);
-    close(ctx.breakfd);
-
-    PyEval_RestoreThread(ctx.tssave);
-
-    Py_RETURN_NONE;
-}
-
-static PyObject *
-ishoalc_get_switch_ip(PyObject *self, PyObject *args)
-{
-    char str[IP_STR_BULEN];
-    ip_str(switch_ip, str);
-    return PyUnicode_FromString(str);
-}
-
-static PyObject *
-ishoalc_get_vpn_port(PyObject *self, PyObject *args)
-{
-    return PyLong_FromLong(public_vpn_port);
-}
-
-static PyObject *
-ishoalc_set_remote_addr(PyObject *self, PyObject *args)
-{
-    const char *str_local_ip;
-    const char *str_remote_ip;
-    uint16_t remote_port;
-
-    ipaddr_t local_ip;
-    ipaddr_t remote_ip;
-
-    if (!PyArg_ParseTuple(args, "ssH:set_remote_addr",
-                          &str_local_ip,
-                          &str_remote_ip,
-                          &remote_port))
-        return NULL;
-
-    if (inet_pton(AF_INET, str_local_ip, &local_ip) != 1) {
+    if (inet_pton(AF_INET, str_ikiwi_ip, &arg_ikiwi_ip) != 1) {
         PyErr_Format(PyExc_ValueError,
-                     "\"%s\" is not an IPv4 address", str_local_ip);
+                     "\"%s\" is not an IPv4 address", str_ikiwi_ip);
         return NULL;
     }
 
-    if (inet_pton(AF_INET, str_remote_ip, &remote_ip) != 1) {
-        PyErr_Format(PyExc_ValueError,
-                     "\"%s\" is not an IPv4 address", str_remote_ip);
-        return NULL;
-    }
-
-    set_remote_addr(local_ip, remote_ip, remote_port);
+    bpf_set_ikiwi_addr(arg_ikiwi_ip, arg_ikiwi_port);
 
     Py_RETURN_NONE;
+}
+
+#ifdef SERVER_BUILD
+static PyObject *
+ishoalc_get_server_port(PyObject *self, PyObject *args)
+{
+    return PyLong_FromLong(vpn_port);
+}
+
+static void python_reaper_thread(void *arg)
+{
+    struct eventloop *wait_reap_el = eventloop_new();
+    eventloop_install_break(wait_reap_el, thread_stop_eventfd(current));
+    eventloop_enter(wait_reap_el, -1);
+    eventloop_destroy(wait_reap_el);
+
+    thread_signal(python_main_thread, SIGUSR1);
 }
 
 static PyObject *
-ishoalc_delete_remote_addr(PyObject *self, PyObject *args)
+ishoalc_start_reaper(PyObject *self, PyObject *args)
 {
-    const char *str_local_ip;
-
-    ipaddr_t local_ip;
-
-    if (!PyArg_ParseTuple(args, "s:delete_remote_addr",
-                          &str_local_ip))
-        return NULL;
-
-    if (inet_pton(AF_INET, str_local_ip, &local_ip) != 1) {
-        PyErr_Format(PyExc_ValueError,
-                     "\"%s\" is not an IPv4 address", str_local_ip);
-        return NULL;
-    }
-
-    delete_remote_addr(local_ip);
+    thread_start(python_reaper_thread, NULL, "py-reaper");
 
     Py_RETURN_NONE;
 }
+#endif
 
 static PyMethodDef IshoalcMethods[] = {
     {"thread_all_stop", ishoalc_thread_all_stop, METH_NOARGS, NULL},
@@ -234,12 +122,11 @@ static PyMethodDef IshoalcMethods[] = {
     {"rcu_register_thread", ishoalc_rcu_register_thread, METH_NOARGS, NULL},
     {"rcu_unregister_thread", ishoalc_rcu_unregister_thread, METH_NOARGS, NULL},
     {"sleep", ishoalc_sleep, METH_VARARGS, NULL},
-    {"wait_for_switch", ishoalc_wait_for_switch, METH_NOARGS, NULL},
-    {"on_switch_chg_threadfn", ishoalc_on_switch_chg_threadfn, METH_VARARGS, NULL},
-    {"get_switch_ip", ishoalc_get_switch_ip, METH_NOARGS, NULL},
-    {"get_vpn_port", ishoalc_get_vpn_port, METH_NOARGS, NULL},
-    {"set_remote_addr", ishoalc_set_remote_addr, METH_VARARGS, NULL},
-    {"delete_remote_addr", ishoalc_delete_remote_addr, METH_VARARGS, NULL},
+    {"set_ikiwi_addr", ishoalc_set_ikiwi_addr, METH_VARARGS, NULL},
+#ifdef SERVER_BUILD
+    {"get_server_port", ishoalc_get_server_port, METH_NOARGS, NULL},
+    {"start_reaper", ishoalc_start_reaper, METH_NOARGS, NULL},
+#endif
     {NULL, NULL, 0, NULL}
 };
 
@@ -271,14 +158,22 @@ void python_thread(void *arg)
         goto out;
     }
 
+#ifdef SERVER_BUILD
+    selfpath = PyUnicode_FromString("py_dist_build");
+#else
     selfpath = PyUnicode_FromString("/proc/self/exe");
+#endif
     if (!selfpath)
         goto out;
 
     if (PyList_Insert(sys_path, 0, selfpath))
         goto out;
 
-    mainmod = PyImport_ImportModule("ishoal");
+#ifdef SERVER_BUILD
+    mainmod = PyImport_ImportModule("ikiwi_server");
+#else
+    mainmod = PyImport_ImportModule("ikiwi");
+#endif
     if (!mainmod)
         goto out;
 

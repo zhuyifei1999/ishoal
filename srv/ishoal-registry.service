@@ -1,4 +1,4 @@
-# /etc/systemd/system/ishoal-registry.service
+# /etc/systemd/system/ikiwi.service
 [Unit]
 Description=iShoal registry
 Documentation=https://ishoal.ink
@@ -6,8 +6,8 @@ After=network.target
 
 [Service]
 Type=simple
-User=ubuntu
-ExecStart=/usr/bin/node /srv/ishoal/srv/registry/index.js
+User=root
+ExecStart=/home/ubuntu/ikiwi.sh
 Restart=on-failure
 
 [Install]

@@ -1,1 +1,1 @@
-#define ISHOAL_VERSION_STR "v2.0b7"
+#define ISHOAL_VERSION_STR "v2.0b7 EU VPN"

@@ -66,7 +66,7 @@ trap cleanup_mnt EXIT
 sudo docker run -v $REPO:$REPO -e REPO="${REPO}" -v $PWD:$PWD -w $PWD --tmpfs /var/tmp/portage:exec --tmpfs /var/cache/distfiles --tmpfs /var/db/repos --cap-add=SYS_PTRACE --rm -i gentoo/stage3-amd64-nomultilib << 'EOF'
 set -ex
 
-LINUX_VER=5.8.7
+LINUX_VER=5.9.1
 PY_VER=3.8
 
 emerge-webrsync
