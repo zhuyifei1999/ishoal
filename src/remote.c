@@ -11,86 +11,100 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <urcu.h>
-#include <urcu/rculist.h>
+#include <urcu/rculfhash.h>
 
 #include "ishoal.h"
+#include "jhash.h"
 
-uint16_t vpn_port;
-uint16_t public_vpn_port;
-
-static int endpoint_fd;
-
-struct remote_switch {
-	struct cds_list_head list;
+struct userspace_connection {
+	struct cds_lfht_node node;
 	struct rcu_head rcu;
-	ipaddr_t local;
-	struct remote_addr remote;
+	struct connection conn;
+	int endpoint_fd;
 };
 
-static pthread_mutex_t remotes_lock = PTHREAD_MUTEX_INITIALIZER;
-static CDS_LIST_HEAD(remotes);
+static int match_ip(struct cds_lfht_node *ht_node, const void *_key)
+{
+	struct userspace_connection *conn =
+		caa_container_of(ht_node, struct userspace_connection, node);
+	const ipaddr_t *key = _key;
 
-int remotes_fd;
+	return *key == conn->conn.local_ip;
+}
+
+static uint32_t seed;
+
+static pthread_mutex_t remotes_lock = PTHREAD_MUTEX_INITIALIZER;
+static struct cds_lfht *ht_by_ip;
+
+int remotes_log_fd;
 static FILE *remotes_log;
+
+static struct thread *keepalive_thread;
+
+static void keepalive_thread_fn(void *arg)
+{
+	struct eventloop *el = eventloop_new();
+	eventloop_install_break(el, thread_stop_eventfd(current));
+
+	while (!thread_should_stop(current)) {
+		eventloop_enter(el, 2000);
+
+		char buf[] = "\xFF\xFEISHOAL KEEPALIVE";
+
+		struct userspace_connection *conn;
+		struct cds_lfht_iter iter;
+
+		rcu_read_lock();
+		cds_lfht_for_each_entry(ht_by_ip, &iter, conn, node) {
+			struct sockaddr_in addr = {
+				.sin_family = AF_INET,
+				.sin_port = htons(conn->conn.remote.port),
+				.sin_addr = { conn->conn.remote.ip },
+			};
+			sendto(conn->endpoint_fd, buf, sizeof(buf), 0,
+			       (struct sockaddr *)&addr, sizeof(addr));
+		}
+		rcu_read_unlock();
+	}
+
+	eventloop_destroy(el);
+}
 
 void start_endpoint(void)
 {
-	remotes_fd = open(".", O_TMPFILE | O_RDWR, S_IRUSR | S_IWUSR);
-	if (remotes_fd < 0)
+	remotes_log_fd = open(".", O_TMPFILE | O_RDWR, S_IRUSR | S_IWUSR);
+	if (remotes_log_fd < 0)
 		perror_exit("open(O_TMPFILE)");
 
-	remotes_log = fdopen(remotes_fd, "a");
+	remotes_log = fdopen(remotes_log_fd, "a");
 	if (!remotes_log)
 		perror_exit("fdopen");
 
-	setvbuf(remotes_log, NULL, _IONBF, 0);
+	setbuf(remotes_log, NULL);
 
-	endpoint_fd = socket(AF_INET, SOCK_DGRAM, 0);
-	if (endpoint_fd < 0)
-		perror_exit("socket(AF_INET, SOCK_DGRAM, 0)");
+	seed = (uint32_t) time(NULL);
 
-	struct ifreq ifr;
+	ht_by_ip = cds_lfht_new(1, 1, 0,
+		CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+	if (!ht_by_ip)
+		perror_exit("cds_lfht_new");
 
-	ifr.ifr_addr.sa_family = AF_INET;
-	strncpy(ifr.ifr_name, iface, IFNAMSIZ-1);
-
-	if (setsockopt(endpoint_fd, SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof(ifr)) < 0)
-		perror_exit("setsockopt");
-
-	struct sockaddr_in addr = {
-		.sin_family = AF_INET,
-		.sin_port = 0,
-		.sin_addr = { public_host_ip },
-	};
-	socklen_t addrlen = sizeof(addr);
-	if (bind(endpoint_fd, (struct sockaddr *)&addr, addrlen) < 0)
-		perror_exit("bind");
-
-	if (getsockname(endpoint_fd, (struct sockaddr *)&addr, &addrlen) == -1)
-		perror_exit("bind");
-
-	vpn_port = ntohs(addr.sin_port);
-	assert(vpn_port);
-
-	ipaddr_t public_ip;
-	do_stun(endpoint_fd, &public_ip, &public_vpn_port);
-
-	if (public_vpn_port == vpn_port)
-		fprintf(remotes_log, "Endpoint UDP port: %d\n", vpn_port);
-	else
-		fprintf(remotes_log, "Endpoint UDP port: %d, STUN resolved to: %d\n",
-			vpn_port, public_vpn_port);
+	keepalive_thread = thread_start(keepalive_thread_fn, NULL, "keepalive");
 }
 
 struct remotes_arp_ctx {
 	ipaddr_t local_ip;
+	uint16_t local_port;
 	ipaddr_t remote_ip;
 	uint16_t remote_port;
+	int endpoint_fd;
 	struct resolve_arp_user rau;
 };
 
-static void __set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip,
-			      uint16_t remote_port, bool checked);
+static void __add_connection(ipaddr_t local_ip, uint16_t local_port,
+			     ipaddr_t remote_ip, uint16_t remote_port,
+			     int endpoint_fd, bool checked);
 
 static void remotes_arp_cb(bool solved, void *_ctx)
 {
@@ -104,8 +118,11 @@ static void remotes_arp_cb(bool solved, void *_ctx)
 			"x Remote IP %s -- Detected IP collision. "
 			"Not adding.\n",
 			str);
+		close(ctx->endpoint_fd);
 	} else {
-		__set_remote_addr(ctx->local_ip, ctx->remote_ip, ctx->remote_port, true);
+		__add_connection(ctx->local_ip, ctx->local_port,
+				  ctx->remote_ip, ctx->remote_port,
+				  ctx->endpoint_fd, true);
 	}
 
 	free(ctx);
@@ -121,43 +138,55 @@ static int remotes_arp_rpc_cb(void *_ctx)
 }
 
 
-static void __set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip,
-			      uint16_t remote_port, bool checked)
+static void __add_connection(ipaddr_t local_ip, uint16_t local_port,
+			     ipaddr_t remote_ip, uint16_t remote_port,
+			     int endpoint_fd, bool checked)
 {
 	char str[IP_STR_BULEN];
 
 	if (local_ip == switch_ip)
 		return;
 
-	struct remote_switch *remote;
-	pthread_mutex_lock(&remotes_lock);
-	cds_list_for_each_entry(remote, &remotes, list) {
-		if (remote->local == local_ip) {
-			remote->remote.ip = remote_ip;
-			remote->remote.port = remote_port;
+	struct userspace_connection *conn;
+	struct cds_lfht_iter iter;
+	struct cds_lfht_node *ht_node;
 
-			pthread_mutex_unlock(&remotes_lock);
-			ip_str(local_ip, str);
-			fprintf(remotes_log, "* Remote IP %s\n", str);
-			bpf_set_remote_addr(local_ip, &remote->remote);
-			return;
-		}
+	unsigned long hash;
+
+	pthread_mutex_lock(&remotes_lock);
+
+	hash = jhash(&local_ip, sizeof(local_ip), seed);
+	cds_lfht_lookup(ht_by_ip, hash, match_ip, &local_ip, &iter);
+	ht_node = cds_lfht_iter_get_node(&iter);
+	if (ht_node) {
+		pthread_mutex_unlock(&remotes_lock);
+		fprintf(remotes_log, "Assertion error on remote addition -- "
+			"Connection already exists.\n");
+		close(endpoint_fd);
+		return;
 	}
 
 	if (checked) {
-		remote = calloc(1, sizeof(*remote));
-		if (!remote)
+		conn = calloc(1, sizeof(*conn));
+		if (!conn)
 			perror_exit("calloc");
-		remote->local = local_ip;
-		remote->remote.ip = remote_ip;
-		remote->remote.port = remote_port;
 
-		cds_list_add_rcu(&remote->list, &remotes);
+		cds_lfht_node_init(&conn->node);
+
+		conn->conn.local_ip = local_ip;
+		conn->conn.local_port = local_port;
+		conn->conn.remote.ip = remote_ip;
+		conn->conn.remote.port = remote_port;
+		conn->endpoint_fd = endpoint_fd;
+
+		hash = jhash(&local_ip, sizeof(local_ip), seed);
+		cds_lfht_add(ht_by_ip, hash, &conn->node);
 
 		pthread_mutex_unlock(&remotes_lock);
 		ip_str(local_ip, str);
-		fprintf(remotes_log, "+ Remote IP %s\n", str);
-		bpf_set_remote_addr(local_ip, &remote->remote);
+		fprintf(remotes_log, "+ Remote IP %s, handled by port %d -> %d\n",
+			str, local_port, remote_port);
+		bpf_add_connection(&conn->conn);
 	} else {
 		pthread_mutex_unlock(&remotes_lock);
 
@@ -167,8 +196,10 @@ static void __set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip,
 
 		*rpc_ctx = (struct remotes_arp_ctx) {
 			.local_ip = local_ip,
+			.local_port = local_port,
 			.remote_ip = remote_ip,
 			.remote_port = remote_port,
+			.endpoint_fd = endpoint_fd,
 			.rau = {
 				.ipaddr = local_ip,
 				.el = worker_el,
@@ -181,52 +212,130 @@ static void __set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip,
 	}
 }
 
-void set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip, uint16_t remote_port)
+void add_connection(ipaddr_t local_ip, uint16_t local_port,
+		    ipaddr_t remote_ip, uint16_t remote_port,
+		    int endpoint_fd)
 {
-	__set_remote_addr(local_ip, remote_ip, remote_port, false);
+	int _endpoint_fd = dup(endpoint_fd);
+	if (endpoint_fd < 0)
+		perror_exit("dup");
+
+	__add_connection(local_ip, local_port, remote_ip, remote_port,
+			 _endpoint_fd, false);
 }
 
+static void _delete_connection_rcu_cb(struct rcu_head *head)
+{
+	struct userspace_connection *conn = caa_container_of(head,
+		struct userspace_connection, rcu);
 
-void delete_remote_addr(ipaddr_t local_ip)
+	close(conn->endpoint_fd);
+	free(conn);
+}
+
+void delete_connection(ipaddr_t local_ip)
 {
 	char str[IP_STR_BULEN];
 
 	if (local_ip == switch_ip)
 		return;
 
-	struct remote_switch *remote;
-	pthread_mutex_lock(&remotes_lock);
-	cds_list_for_each_entry(remote, &remotes, list) {
-		if (remote->local == local_ip) {
-			cds_list_del_rcu(&remote->list);
-			free_rcu(remote, rcu);
-			goto found;
-		}
-	}
-	pthread_mutex_unlock(&remotes_lock);
-	return;
+	struct userspace_connection *conn;
+	struct cds_lfht_iter iter;
+	struct cds_lfht_node *ht_node;
 
-found:
+	unsigned long hash;
+
+	pthread_mutex_lock(&remotes_lock);
+
+	hash = jhash(&local_ip, sizeof(local_ip), seed);
+	cds_lfht_lookup(ht_by_ip, hash, match_ip, &local_ip, &iter);
+	ht_node = cds_lfht_iter_get_node(&iter);
+	if (!ht_node)
+		goto out_unlock;
+
+	int ret = cds_lfht_del(ht_by_ip, ht_node);
+	if (ret)
+		goto out_unlock;
+
+	conn = caa_container_of(ht_node,
+		struct userspace_connection, node);
+	uint16_t local_port = conn->conn.local_port;
+
+	call_rcu(&conn->rcu, _delete_connection_rcu_cb);
+
 	pthread_mutex_unlock(&remotes_lock);
 
 	ip_str(local_ip, str);
 	fprintf(remotes_log, "- Remote IP %s\n", str);
 
-	bpf_delete_remote_addr(local_ip);
+	bpf_delete_connection(local_ip, local_port);
+	return;
+
+out_unlock:
+	pthread_mutex_unlock(&remotes_lock);
+}
+
+void update_connection_remote_port(ipaddr_t local_ip, uint16_t new_port)
+{
+	char str[IP_STR_BULEN];
+
+	if (local_ip == switch_ip)
+		return;
+
+	struct userspace_connection *conn;
+	struct cds_lfht_iter iter;
+	struct cds_lfht_node *ht_node;
+
+	unsigned long hash;
+
+	rcu_read_lock();
+
+	hash = jhash(&local_ip, sizeof(local_ip), seed);
+	cds_lfht_lookup(ht_by_ip, hash, match_ip, &local_ip, &iter);
+	ht_node = cds_lfht_iter_get_node(&iter);
+	if (!ht_node)
+		goto out_unlock;
+
+	int ret = cds_lfht_del(ht_by_ip, ht_node);
+	if (ret)
+		goto out_unlock;
+
+	conn = caa_container_of(ht_node,
+		struct userspace_connection, node);
+
+	uint16_t old_port = conn->conn.remote.port;
+	conn->conn.remote.port = new_port;
+	rcu_read_unlock();
+
+	ip_str(local_ip, str);
+	fprintf(remotes_log, "* Remote IP %s, updated port %d -> %d\n",
+		str, old_port, new_port);
+
+	return;
+
+out_unlock:
+	rcu_read_unlock();
 }
 
 void broadcast_all_remotes(void *buf, size_t len)
 {
-	struct remote_switch *remote;
+	char buf_clone[sizeof(uint16_t) + len];
+
+	*(uint16_t *)buf_clone = 0xFFFF;
+	memcpy(buf_clone + sizeof(uint16_t), buf, len);
+
+	struct userspace_connection *conn;
+	struct cds_lfht_iter iter;
 
 	rcu_read_lock();
-	cds_list_for_each_entry_rcu(remote, &remotes, list) {
+	cds_lfht_for_each_entry(ht_by_ip, &iter, conn, node) {
 		struct sockaddr_in addr = {
 			.sin_family = AF_INET,
-			.sin_port = htons(remote->remote.port),
-			.sin_addr = { remote->remote.ip },
+			.sin_port = htons(conn->conn.remote.port),
+			.sin_addr = { conn->conn.remote.ip },
 		};
-		sendto(endpoint_fd, buf, len, 0,
+		sendto(conn->endpoint_fd, buf_clone, sizeof(uint16_t) + len, 0,
 		       (struct sockaddr *)&addr, sizeof(addr));
 	}
 	rcu_read_unlock();

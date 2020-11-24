@@ -54,10 +54,7 @@ extern ipaddr_t public_host_ip;
 extern ipaddr_t real_subnet_mask;
 extern ipaddr_t fake_gateway_ip;
 
-extern uint16_t vpn_port;
-extern uint16_t public_vpn_port;
-
-extern int remotes_fd;
+extern int remotes_log_fd;
 
 enum event_handler {
 	EVT_CALL_FN,
@@ -144,9 +141,7 @@ int invoke_rpc_sync(int call_send_fd, int (*fn)(void *ctx), void *ctx);
 __async
 void invoke_rpc_async(int call_send_fd, int (*fn)(void *ctx), void *ctx);
 
-extern int worker_rpc;
 extern struct eventloop *worker_el;
-extern struct thread *worker_thread;
 
 void worker_start(void);
 int worker_sync(int (*fn)(void *ctx), void *ctx);
@@ -175,8 +170,6 @@ void broadcast_replica_del(struct broadcast_event *bce, int fd);
 int inotifyeventfd_add(char *pathname, uint32_t mask);
 void inotifyeventfd_rm(int fd);
 
-void do_stun(int sockfd, ipaddr_t *address, uint16_t *port);
-
 struct resolve_arp_user {
 	ipaddr_t ipaddr;
 	macaddr_t *macaddr;
@@ -189,10 +182,14 @@ __async
 void resolve_arp_user(struct resolve_arp_user *ctx);
 
 __async
-void set_remote_addr(ipaddr_t local_ip, ipaddr_t remote_ip, uint16_t remote_port);
-void delete_remote_addr(ipaddr_t local_ip);
+void add_connection(ipaddr_t local_ip, uint16_t local_port,
+		    ipaddr_t remote_ip, uint16_t remote_port,
+		    int endpoint_fd);
+void delete_connection(ipaddr_t local_ip);
+void update_connection_remote_port(ipaddr_t local_ip, uint16_t new_port);
+
 void broadcast_all_remotes(void *buf, size_t len);
 
-void bpf_set_remote_addr(ipaddr_t local_ip, struct remote_addr *remote_addr);
-void bpf_delete_remote_addr(ipaddr_t local_ip);
+void bpf_add_connection(struct connection *conn);
+void bpf_delete_connection(ipaddr_t local_ip, uint16_t local_port);
 #endif

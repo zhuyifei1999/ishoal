@@ -170,7 +170,7 @@ out:
 	return result;
 }
 
-uint32_t csum_partial(const void *buff, int len, uint32_t wsum)
+static uint32_t csum_partial(const void *buff, int len, uint32_t wsum)
 {
 	unsigned int sum = (unsigned int)wsum;
 	unsigned int result = do_csum(buff, len);
@@ -427,14 +427,8 @@ int xdp_prog(context_t *ctx)
 	 * EMU needs zero extension to make sure it's all 0s.
 	 * Annoying, ikr.
 	 */
-#ifdef __BPF__
 	void *data_start = DATA(ctx);
 	void *data_end = DATA_END(ctx);
-#else
-	void *data_start = (void *)(uintptr_t)ctx->data;
-	void *data_end = (void *)(uintptr_t)ctx->data_end;
-#endif
-
 	void *data = data_start;
 
 	struct ethhdr *eth = data;
@@ -592,19 +586,20 @@ int xdp_prog(context_t *ctx)
 #ifdef __BPF__
 				return redirect_to_userspace(ctx);
 #else
-				// TODO: broadcast all remotes
-				// BROADCAST_ALL_REMOTES();
+				broadcast_all_remotes(iph, data_end - (void *)iph);
 				return XDP_DROP;
 #endif
 			}
 
-			DECLARE_MAP_LOOKUP_VAR(struct remote_addr, remote_addr);
-			if (pkt_map_lookup_elem(remote_addrs, &iph->daddr, remote_addr))
+			DECLARE_MAP_LOOKUP_VAR(struct connection, conn);
+			if (pkt_map_lookup_elem(conn_by_ip, &iph->daddr, conn))
 				return XDP_PASS;
 
 			/* VPN route */
-			if (bpf_xdp_adjust_head(ctx, 0 - (int)(sizeof(struct iphdr) +
-						sizeof(struct udphdr))))
+			if (bpf_xdp_adjust_head(ctx, 0 - (int)(
+						sizeof(struct iphdr) +
+						sizeof(struct udphdr) +
+						sizeof(uint16_t))))
 				return XDP_DROP;
 
 			data_start = DATA(ctx);
@@ -626,13 +621,20 @@ int xdp_prog(context_t *ctx)
 			if (data > data_end)
 				return XDP_DROP;
 
+			uint16_t *ishoal_ord = data;
+			data = ishoal_ord + 1;
+			if (data > data_end)
+				return XDP_DROP;
+
 			struct iphdr *iph_o = data;
 			data = iph_o + 1;
 			if (data > data_end)
 				return XDP_DROP;
 
-			udph->source = bpf_htons(vpn_port);
-			udph->dest = bpf_htons(MAP_LOOKUP_DEREF(remote_addr).port);
+			*ishoal_ord = 0xFFFF;
+
+			udph->source = bpf_htons(MAP_LOOKUP_DEREF(conn).local_port);
+			udph->dest = bpf_htons(MAP_LOOKUP_DEREF(conn).remote.port);
 			udph->len = bpf_htons((char *)data_end - (char *)udph);
 			udph->check = 0;
 
@@ -645,7 +647,7 @@ int xdp_prog(context_t *ctx)
 			iph->ttl = 64;
 			iph->protocol = IPPROTO_UDP;
 			iph->saddr = public_host_ip;
-			iph->daddr = MAP_LOOKUP_DEREF(remote_addr).ip;
+			iph->daddr = MAP_LOOKUP_DEREF(conn).remote.ip;
 
 			recompute_iph_csum(iph);
 
@@ -677,11 +679,41 @@ int xdp_prog(context_t *ctx)
 		}
 
 		if (iph->daddr == public_host_ip) {
-			if (iph->protocol == IPPROTO_UDP &&
-			    dst_port == bpf_htons(vpn_port)) {
+			if (iph->protocol == IPPROTO_UDP) {
+				DECLARE_MAP_LOOKUP_VAR(struct connection, conn);
+				uint16_t dst_port_key = bpf_ntohs(dst_port);
+				if (pkt_map_lookup_elem(conn_by_port, &dst_port_key, conn))
+					return XDP_PASS;
+
+				if (iph->saddr != MAP_LOOKUP_DEREF(conn).remote.ip)
+					return XDP_DROP;
+
+				uint16_t *ishoal_ord = data;
+				data = ishoal_ord + 1;
+				if (data > data_end)
+					return XDP_DROP;
+
+				if (*ishoal_ord != 0xFFFF)
+					return XDP_DROP;
+
+				if (src_port != bpf_htons(MAP_LOOKUP_DEREF(conn).remote.port)) {
+#ifdef __BPF__
+					return redirect_to_userspace(ctx);
+#else
+					update_connection_remote_port(
+						MAP_LOOKUP_DEREF(conn).local_ip, bpf_ntohl(src_port));
+
+					MAP_LOOKUP_DEREF(conn).remote.port = bpf_ntohl(src_port);
+					pkt_map_update_lookup(conn_by_port, &dst_port_key, conn);
+					pkt_map_update_lookup(conn_by_ip, &MAP_LOOKUP_DEREF(conn).local_ip, conn);
+#endif
+				}
+
 				/* VPN route */
-				if (bpf_xdp_adjust_head(ctx, sizeof(struct iphdr) +
-							sizeof(struct udphdr)))
+				if (bpf_xdp_adjust_head(ctx,
+							sizeof(struct iphdr) +
+							sizeof(struct udphdr) +
+							sizeof(uint16_t)))
 					return XDP_DROP;
 
 				data_start = DATA(ctx);
@@ -709,8 +741,7 @@ int xdp_prog(context_t *ctx)
 				    (bpf_ntohl(iph->daddr) & 0xF0000000UL) != 0xE0000000UL)
 					return XDP_DROP;
 
-				DECLARE_MAP_LOOKUP_VAR(struct remote_addr, remote_addr);
-				if (pkt_map_lookup_elem(remote_addrs, &iph->saddr, remote_addr))
+				if (iph->saddr != MAP_LOOKUP_DEREF(conn).local_ip)
 					return XDP_DROP;
 
 				memcpy(eth->h_dest, switch_mac, sizeof(macaddr_t));
@@ -875,9 +906,9 @@ int xdp_prog(context_t *ctx)
 		if (data > data_end)
 			return XDP_DROP;
 
-		DECLARE_MAP_LOOKUP_VAR(struct remote_addr, remote_addr);
+		DECLARE_MAP_LOOKUP_VAR(struct connection, conn);
 		if (arppl->ar_tip != fake_gateway_ip &&
-		    !pkt_map_lookup_elem(remote_addrs, &arppl->ar_tip, remote_addr))
+		    pkt_map_lookup_elem(conn_by_ip, &arppl->ar_tip, conn))
 			return XDP_PASS;
 
 		ipaddr_t tmp_ip;

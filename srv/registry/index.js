@@ -43,11 +43,21 @@ io.on('connection', function(socket) {
         socket.join('p2');
 
         const [switchIP] = args;
-        // if (typeof switchIP !== 'string')
-        //   return;
-        //
-        // if (!IPV4_REGEXP.test(switchIP))
-        //   return;
+        if (typeof switchIP !== 'string')
+          return;
+
+        if (!IPV4_REGEXP.test(switchIP))
+          return;
+
+        if (!switchIP.startsWith('192.168.1.'))
+          return;
+
+        for (const [, [, switchIPOther]] of P2data.allSwitches) {
+          if (switchIP == switchIPOther) {
+            socket.emit('ip_collision');
+            return;
+          }
+        }
 
         socket.on('disconnect', function() {
           socket.in('p2').emit('del_remote', socket.id, publicIP, switchIP);

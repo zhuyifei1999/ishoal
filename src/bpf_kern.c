@@ -39,9 +39,16 @@ struct {
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__type(key, ipaddr_t);
-	__type(value, struct remote_addr);
+	__type(value, struct connection);
 	__uint(max_entries, 256);
-} remote_addrs SEC(".maps");
+} conn_by_ip SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, uint16_t);
+	__type(value, struct connection);
+	__uint(max_entries, 256);
+} conn_by_port SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_XSKMAP);
@@ -59,8 +66,6 @@ ipaddr_t public_host_ip;
 ipaddr_t fake_gateway_ip;
 
 ipaddr_t subnet_mask;
-
-uint16_t vpn_port;
 
 char _license[] SEC("license") = "GPL";
 

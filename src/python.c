@@ -55,10 +55,10 @@ ishoalc_sleep(PyObject *self, PyObject *args)
 
     Py_BEGIN_ALLOW_THREADS
 
-    struct eventloop *wait_for_stun = eventloop_new();
-    eventloop_install_break(wait_for_stun, thread_stop_eventfd(python_main_thread));
-    eventloop_enter(wait_for_stun, millis);
-    eventloop_destroy(wait_for_stun);
+    struct eventloop *el = eventloop_new();
+    eventloop_install_break(el, thread_stop_eventfd(python_main_thread));
+    eventloop_enter(el, millis);
+    eventloop_destroy(el);
 
     Py_END_ALLOW_THREADS
 
@@ -160,6 +160,12 @@ ishoalc_on_switch_chg_threadfn(PyObject *self, PyObject *args)
 }
 
 static PyObject *
+ishoalc_get_remotes_log_fd(PyObject *self, PyObject *args)
+{
+    return PyLong_FromLong(remotes_log_fd);
+}
+
+static PyObject *
 ishoalc_get_public_host_ip(PyObject *self, PyObject *args)
 {
     char str[IP_STR_BULEN];
@@ -176,25 +182,23 @@ ishoalc_get_switch_ip(PyObject *self, PyObject *args)
 }
 
 static PyObject *
-ishoalc_get_vpn_port(PyObject *self, PyObject *args)
-{
-    return PyLong_FromLong(public_vpn_port);
-}
-
-static PyObject *
-ishoalc_set_remote_addr(PyObject *self, PyObject *args)
+ishoalc_add_connection(PyObject *self, PyObject *args)
 {
     const char *str_local_ip;
     const char *str_remote_ip;
+    uint16_t local_port;
     uint16_t remote_port;
+    int endpoint_fd;
 
     ipaddr_t local_ip;
     ipaddr_t remote_ip;
 
-    if (!PyArg_ParseTuple(args, "ssH:set_remote_addr",
+    if (!PyArg_ParseTuple(args, "sHsHi:add_connection",
                           &str_local_ip,
+                          &local_port,
                           &str_remote_ip,
-                          &remote_port))
+                          &remote_port,
+                          &endpoint_fd))
         return NULL;
 
     if (inet_pton(AF_INET, str_local_ip, &local_ip) != 1) {
@@ -209,19 +213,19 @@ ishoalc_set_remote_addr(PyObject *self, PyObject *args)
         return NULL;
     }
 
-    set_remote_addr(local_ip, remote_ip, remote_port);
+    add_connection(local_ip, local_port, remote_ip, remote_port, endpoint_fd);
 
     Py_RETURN_NONE;
 }
 
 static PyObject *
-ishoalc_delete_remote_addr(PyObject *self, PyObject *args)
+ishoalc_delete_connection(PyObject *self, PyObject *args)
 {
     const char *str_local_ip;
 
     ipaddr_t local_ip;
 
-    if (!PyArg_ParseTuple(args, "s:delete_remote_addr",
+    if (!PyArg_ParseTuple(args, "s:delete_connection",
                           &str_local_ip))
         return NULL;
 
@@ -231,7 +235,7 @@ ishoalc_delete_remote_addr(PyObject *self, PyObject *args)
         return NULL;
     }
 
-    delete_remote_addr(local_ip);
+    delete_connection(local_ip);
 
     Py_RETURN_NONE;
 }
@@ -246,9 +250,9 @@ static PyMethodDef IshoalcMethods[] = {
     {"on_switch_chg_threadfn", ishoalc_on_switch_chg_threadfn, METH_VARARGS, NULL},
     {"get_public_host_ip", ishoalc_get_public_host_ip, METH_NOARGS, NULL},
     {"get_switch_ip", ishoalc_get_switch_ip, METH_NOARGS, NULL},
-    {"get_vpn_port", ishoalc_get_vpn_port, METH_NOARGS, NULL},
-    {"set_remote_addr", ishoalc_set_remote_addr, METH_VARARGS, NULL},
-    {"delete_remote_addr", ishoalc_delete_remote_addr, METH_VARARGS, NULL},
+    {"get_remotes_log_fd", ishoalc_get_remotes_log_fd, METH_NOARGS, NULL},
+    {"add_connection", ishoalc_add_connection, METH_VARARGS, NULL},
+    {"delete_connection", ishoalc_delete_connection, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL}
 };
 
@@ -292,6 +296,8 @@ void python_thread(void *arg)
         goto out;
 
 out:
+    thread_all_stop();
+
     if (PyErr_Occurred()) {
         PyErr_Print();
         exitcode = 1;
@@ -301,6 +307,4 @@ out:
     Py_XDECREF(selfpath);
 
     Py_Finalize();
-
-    thread_all_stop();
 }

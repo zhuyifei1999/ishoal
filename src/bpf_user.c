@@ -59,16 +59,20 @@ static void clear_map(void)
 	}
 }
 
-void bpf_set_remote_addr(ipaddr_t local_ip, struct remote_addr *remote_addr)
+void bpf_add_connection(struct connection *conn)
 {
-	if (bpf_map_update_elem(bpf_map__fd(obj->maps.remote_addrs), &local_ip,
-				remote_addr, BPF_ANY))
+	if (bpf_map_update_elem(bpf_map__fd(obj->maps.conn_by_ip), &conn->local_ip,
+				conn, BPF_ANY))
+		perror_exit("bpf_map_update_elem");
+	if (bpf_map_update_elem(bpf_map__fd(obj->maps.conn_by_port), &conn->local_port,
+				conn, BPF_ANY))
 		perror_exit("bpf_map_update_elem");
 }
 
-void bpf_delete_remote_addr(ipaddr_t local_ip)
+void bpf_delete_connection(ipaddr_t local_ip, uint16_t local_port)
 {
-	bpf_map_delete_elem(bpf_map__fd(obj->maps.remote_addrs), &local_ip);
+	bpf_map_delete_elem(bpf_map__fd(obj->maps.conn_by_ip), &local_ip);
+	bpf_map_delete_elem(bpf_map__fd(obj->maps.conn_by_port), &local_port);
 }
 
 static void __on_switch_change(void)
@@ -118,9 +122,6 @@ void bpf_set_fake_gateway_ip(ipaddr_t addr)
 
 static void on_xsk_pkt(void *ptr, size_t length)
 {
-	xdpemu(ptr, length);
-	return;
-
 	if (obj->bss->switch_ip != switch_ip ||
 	    memcmp(obj->bss->switch_mac, switch_mac, sizeof(macaddr_t))) {
 		switch_ip = obj->bss->switch_ip;
@@ -132,14 +133,7 @@ static void on_xsk_pkt(void *ptr, size_t length)
 	if (eventfd_write(xsk_broadcast_evt_broadcast_primary, 1))
 		perror_exit("eventfd_write");
 
-	if (length <= sizeof(struct ethhdr))
-		return;
-
-	char *buf = ptr;
-	buf += sizeof(struct ethhdr);
-	length -= sizeof(struct ethhdr);
-
-	broadcast_all_remotes(buf, length);
+	xdpemu(ptr, length);
 }
 
 void bpf_load_thread(void *arg)
@@ -159,8 +153,6 @@ void bpf_load_thread(void *arg)
 
 	obj->bss->fake_gateway_ip = fake_gateway_ip;
 	update_subnet_mask();
-
-	obj->bss->vpn_port = vpn_port;
 
 	if (bpf_set_link_xdp_fd(ifindex, bpf_program__fd(obj->progs.xdp_prog), 0) < 0)
 		perror_exit("bpf_set_link_xdp_fd");

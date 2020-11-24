@@ -66,8 +66,8 @@ trap cleanup_mnt EXIT
 sudo docker run -v $REPO:$REPO -e REPO="${REPO}" -v $PWD:$PWD -w $PWD --tmpfs /var/tmp/portage:exec --tmpfs /var/cache/distfiles --tmpfs /var/db/repos --cap-add=SYS_PTRACE --rm -i gentoo/stage3-amd64-nomultilib << 'EOF'
 set -ex
 
-LINUX_VER=5.8.7
-PY_VER=3.8
+LINUX_VER=5.9.9
+PY_VER=3.9
 
 emerge-webrsync
 
@@ -96,9 +96,14 @@ pushd /var/db/repos/localrepo/sys-apps/bpftool/
 repoman manifest
 popd
 
+# https://bugs.gentoo.org/756034
+cat > /etc/portage/package.mask << 'INNEREOF'
+=dev-util/cmake-3.19.0
+INNEREOF
+
 export LLVM_TARGETS=BPF ACCEPT_KEYWORDS='~amd64'
-emerge -v -o sys-devel/llvm:10
-MAKEOPTS="-j$(( $(nproc) < 4 ? $(nproc) : 4 ))" emerge -v -n sys-devel/llvm:10 sys-devel/clang:10
+emerge -v -o sys-devel/llvm
+MAKEOPTS="-j$(( $(nproc) < 4 ? $(nproc) : 4 ))" emerge -v -n sys-devel/llvm sys-devel/clang
 unset LLVM_TARGETS ACCEPT_KEYWORDS
 
 emerge -v -o gentoo-sources

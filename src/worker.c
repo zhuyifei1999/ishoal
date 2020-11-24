@@ -6,9 +6,13 @@
 #include "ishoal.h"
 
 static int worker_rpc_recv;
-int worker_rpc;
+static int worker_rpc;
 struct eventloop *worker_el;
-struct thread *worker_thread;
+static struct thread *worker_thread;
+
+// This is both constructor and atomic-guarded because we have a chicken-egg
+// problem. When other constructors create broadcasts they create an async
+// call to the worker, which we must initialize before their call.
 
 __attribute__((constructor))
 static void init_worker(void)

@@ -1,5 +1,5 @@
 CFLAGS ?= -O2 -pipe -g -Wall
-LDFLAGS ?= $(CFLAGS) -lbpf -lurcu -lpthread
+LDFLAGS ?= $(CFLAGS) -lbpf -lurcu-cds -lurcu -lpthread
 
 # Define this to build on a system without multilib
 # CLANGFLAGS ?= -D__x86_64__
@@ -63,7 +63,7 @@ tui.o: tui.c
 ishoal_native: $(OBJ)
 	$(CC) $^ -o $@ $(PYTHON_LDFLAGS) $(DIALOG_LDFLAGS) $(LDFLAGS)
 
-py_dist_build: py_dist py_dist/** py-requirements.txt
+py_dist_build: py_dist py_dist/**/* py-requirements.txt
 	mkdir -p py_dist_build && \
 	cp -a py_dist/* py_dist_build && \
 	$(PYTHON) -m pip install -Ur py-requirements.txt --target py_dist_build && \
@@ -71,7 +71,7 @@ py_dist_build: py_dist py_dist/** py-requirements.txt
 	(rm -rf py_dist_build; exit 1)
 
 ishoal_py: py_dist_build
-	$(PYTHON) -m zipapp py_dist_build -o $@
+	$(PYTHON) -m zipapp --compress py_dist_build -o $@
 
 ishoal: ishoal_native ishoal_py
 	cat $^ > $@ && chmod a+x $@

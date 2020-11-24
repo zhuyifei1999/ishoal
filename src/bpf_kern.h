@@ -17,4 +17,10 @@ struct remote_addr {
 	uint16_t port;
 };
 
+struct connection {
+	ipaddr_t local_ip;
+	uint16_t local_port;
+	struct remote_addr remote;
+};
+
 #endif

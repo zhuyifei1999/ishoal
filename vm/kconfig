@@ -20,7 +20,9 @@ CONFIG_KVM_GUEST=y
 
 CONFIG_VIRTIO_PCI=y
 CONFIG_VIRTIO_MMIO=y
-CONFIG_VIRTIO_NET=y
+
+# VirtualBox enable host LRO and partial CSUM, can't enable XDP
+# CONFIG_VIRTIO_NET is not set
 
 CONFIG_BNX2=m
 CONFIG_E1000=y

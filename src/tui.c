@@ -104,7 +104,7 @@ static void wgetch_el()
 		if (p->input) {
 			int fd = fileno(p->input);
 
-			if (same_file(fd, remotes_fd))
+			if (same_file(fd, remotes_log_fd))
 				eventloop_install_event_sync(tui_el, &(struct event){
 					.fd = remotes_inotifyeventfd,
 					.eventfd_ack = true,
@@ -501,6 +501,9 @@ static void switch_information_dialog(void)
 		     new_switch_mac[4] & new_switch_mac[5]) == 0xff)
 			goto invalid_mac;
 
+		if (new_switch_mac[0] & 1)
+			goto invalid_mac;
+
 		break;
 
 invalid_mac:
@@ -566,7 +569,7 @@ void tui_thread(void *arg)
 
 	tui_el = eventloop_new();
 
-	snprintf(remotes_path, PATH_MAX, "/proc/self/fd/%d", remotes_fd);
+	snprintf(remotes_path, PATH_MAX, "/proc/self/fd/%d", remotes_log_fd);
 	remotes_inotifyeventfd = inotifyeventfd_add(remotes_path, IN_MODIFY);
 
 	tui_global_events[0].fd = thread_stop_eventfd(current);
