@@ -67,6 +67,7 @@ py_dist_build: py_dist py_dist/**/* py-requirements.txt
 	mkdir -p py_dist_build && \
 	cp -a py_dist/* py_dist_build && \
 	$(PYTHON) -m pip install -Ur py-requirements.txt --target py_dist_build && \
+	find py_dist_build -name '__pycache__' -prune -exec rm -r {} \; && \
 	rm -rf py_dist_build/*.dist-info || \
 	(rm -rf py_dist_build; exit 1)
 
