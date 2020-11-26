@@ -683,10 +683,10 @@ int xdp_prog(context_t *ctx)
 				DECLARE_MAP_LOOKUP_VAR(struct connection, conn);
 				uint16_t dst_port_key = bpf_ntohs(dst_port);
 				if (pkt_map_lookup_elem(conn_by_port, &dst_port_key, conn))
-					return XDP_PASS;
+					goto gateway_return;
 
 				if (iph->saddr != MAP_LOOKUP_DEREF(conn).remote.ip)
-					return XDP_DROP;
+					goto gateway_return;
 
 				uint16_t *ishoal_ord = data;
 				data = ishoal_ord + 1;
@@ -751,6 +751,7 @@ int xdp_prog(context_t *ctx)
 				return XDP_TX;
 			}
 
+gateway_return:
 			if (fake_gateway_ip &&
 			    !same_subnet(iph->saddr, fake_gateway_ip, BSS(subnet_mask))) {
 				/* NAT return route */
