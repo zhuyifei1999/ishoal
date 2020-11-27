@@ -75,7 +75,11 @@ done
 
 # shellcheck disable=SC2087
 ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i sshkey ubuntu@127.0.0.1 -p "${PORT}" << EOF
-sudo -i << 'INNEREOF'
+set -ex
+
+SCRIPT=$(mktemp)
+
+cat > \$SCRIPT << 'INNEREOF'
 set -ex
 
 mkdir -p /mnt/{source,output,tmp}
@@ -93,6 +97,8 @@ apt install -y docker.io qemu-utils
 cp "${REPO}/vm/ishoal.ova" /mnt/output/ishoal.ova
 sync
 INNEREOF
+
+sudo bash \$SCRIPT
 EOF
 
 ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i sshkey ubuntu@127.0.0.1 -p "${PORT}" sudo poweroff || true
