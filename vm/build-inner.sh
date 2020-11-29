@@ -19,6 +19,12 @@ if [[ -r "${REPO}/vm/ishoal_ink_portage_bin.id_rsa" ]]; then
   export FEATURES='buildpkg getbinpkg' PORTAGE_BINHOST='ssh://ubuntu@ishoal.ink/srv/binpkgs'
 fi
 
+emerge -vuk sys-apps/portage
+emerge -vuDNk --with-bdeps=y @world
+emerge -c
+
+source /etc/profile
+
 emerge -vnk app-portage/repoman
 
 mkdir -p /var/db/repos/localrepo/{metadata,profiles}
@@ -85,13 +91,16 @@ fi
 
 unset FEATURES PORTAGE_BINHOST
 
-export USE='-* make-symlinks unicode ssl ncurses readline' CFLAGS='-Os -pipe'
+export USE='-* make-symlinks unicode ssl ncurses readline'
+export CFLAGS='-Os -pipe -flto -fipa-pta -fno-semantic-interposition -fdevirtualize-at-ltrans -fuse-linker-plugin'
+export LDFLAGS='-Wl,-O1 -Wl,--as-needed -Wl,--hash-style=gnu'
 emerge --root rootfs -v sys-apps/baselayout
 emerge --root rootfs -v sys-apps/busybox
 emerge --root rootfs -v "dev-lang/python:${PY_VER}" dev-util/dialog dev-libs/userspace-rcu
 emerge --root rootfs -v sys-process/htop sys-process/lsof dev-util/strace
+unset CFLAGS LDFLAGS
 ACCEPT_KEYWORDS='~amd64' emerge --root rootfs -v dev-libs/libbpf sys-apps/bpftool
-unset USE CFLAGS
+unset USE
 
 make -C kernel -j"$(nproc)" modules_install INSTALL_MOD_PATH="$(realpath rootfs)"
 
@@ -116,6 +125,7 @@ rm -r rootfs/usr/share/misc/magic*
 rm -r rootfs/usr/lib/python*/test
 rm -r rootfs/usr/lib/python*/unittest
 find rootfs/usr/lib/python*/ -name '__pycache__' -prune -exec rm -r {} \;
+find rootfs/usr/lib{,64}/ -name '*.a' -delete
 
 rm -r rootfs/var/db/pkg/
 rm -r rootfs/var/cache/edb/
@@ -165,7 +175,7 @@ mount -n -t tmpfs -o mode=1777,nosuid,nodev tmpfs /tmp
 mount -n -t debugfs debugfs /sys/kernel/debug
 
 mkdir -p /dev/pts
-mount -n -t devpts -o gid=tty,mode=620,noexec,nosuid devpts /dev/pts
+mount -n -t devpts -o gid=5,mode=620,noexec,nosuid devpts /dev/pts
 mkdir -p /dev/shm
 mount -n -t tmpfs -o mode=1777,nosuid,nodev tmpfs /dev/shm
 
