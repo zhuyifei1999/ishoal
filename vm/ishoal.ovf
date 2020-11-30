@@ -56,12 +56,12 @@ along with this program.  If not, see &lt;https://www.gnu.org/licenses/&gt;.</Li
       </Item>
       <Item>
         <rasd:AllocationUnits>MegaBytes</rasd:AllocationUnits>
-        <rasd:Caption>512 MB of memory</rasd:Caption>
+        <rasd:Caption>128 MB of memory</rasd:Caption>
         <rasd:Description>Memory Size</rasd:Description>
-        <rasd:ElementName>512 MB of memory</rasd:ElementName>
+        <rasd:ElementName>128 MB of memory</rasd:ElementName>
         <rasd:InstanceID>2</rasd:InstanceID>
         <rasd:ResourceType>4</rasd:ResourceType>
-        <rasd:VirtualQuantity>512</rasd:VirtualQuantity>
+        <rasd:VirtualQuantity>128</rasd:VirtualQuantity>
       </Item>
       <Item>
         <rasd:Address>0</rasd:Address>
@@ -99,7 +99,7 @@ along with this program.  If not, see &lt;https://www.gnu.org/licenses/&gt;.</Li
           <PAE enabled="true"/>
           <HardwareVirtExLargePages enabled="false"/>
         </CPU>
-        <Memory RAMSize="512"/>
+        <Memory RAMSize="128"/>
         <Firmware type="EFI"/>
         <Paravirt provider="Default"/>
         <Display controller="VMSVGA" VRAMSize="16"/>

@@ -7,21 +7,16 @@ PY_VER=3.9
 
 emerge-webrsync
 
-if [[ -r "${REPO}/vm/ishoal_ink_portage_bin.id_rsa" ]]; then
-  mkdir -p /root/.ssh
-  cp "${REPO}/vm/ishoal_ink_portage_bin.id_rsa" /root/.ssh/id_rsa
-  chmod 600 /root/.ssh/id_rsa
+shopt -s expand_aliases
+alias emerge='emerge --color=y --quiet-build'
 
-  emerge -vn net-misc/openssh net-misc/rsync
-
-  ssh -o StrictHostKeyChecking=no -v ubuntu@ishoal.ink true
-
-  export FEATURES='buildpkg getbinpkg' PORTAGE_BINHOST='ssh://ubuntu@ishoal.ink/srv/binpkgs'
-fi
+export FEATURES='buildpkg'
 
 emerge -vuk sys-apps/portage
 emerge -vuDNk --with-bdeps=y @world
 emerge -c
+
+emerge -vn app-portage/portage-utils
 
 source /etc/profile
 
@@ -85,13 +80,53 @@ make -B -C "${REPO}/src/" PYTHON="python${PY_VER}" CLANGFLAGS='-D__x86_64__' CFL
 emerge -vnk sys-boot/gnu-efi
 make -B -C "${REPO}/vm/efi_fb_res"
 
-if [[ -r /root/.ssh/id_rsa ]]; then
-  rsync -avz --delete /var/cache/binpkgs ubuntu@ishoal.ink:/srv/
+qpkg -c
+
+unset FEATURES
+
+# Busybox will invoke its own commands internally, and its retty good, so why bother
+mkdir -p /etc/portage/profile/
+cat > /etc/portage/profile/package.provided << 'EOF'
+sys-apps/coreutils-9999
+sys-apps/util-linux-9999
+sys-apps/sed-9999
+sys-apps/grep-9999
+sys-apps/gentoo-functions-9999
+sys-apps/debianutils-9999
+sys-apps/file-9999
+app-arch/gzip-9999
+app-arch/bzip2-9999
+app-arch/xz-utils-9999
+EOF
+
+cat > /etc/portage/bashrc << 'EOF'
+if [ "${EBUILD_PHASE}" == "preinst" ]; then
+  find "$ED"/usr/share/i18n/locales/ -mindepth 1 -maxdepth 1 ! -name 'C' ! -name 'i18n' -delete
+  find "$ED"/usr/share/i18n/charmaps/ -mindepth 1 -maxdepth 1 -name '*.gz' ! -name 'UTF*' ! -name 'LATIN*' -delete
+  find "$ED"/usr/lib64/gconv/ -mindepth 1 -maxdepth 1 -name '*.so' ! -name 'UTF*' ! -name 'LATIN*' ! -name 'UNICODE*' -delete
+  find "$ED"/usr/share/locale/ -mindepth 1 -maxdepth 1 -type d ! -name 'C' -exec rm -r {} \;
+  find "$ED"/usr/share/terminfo/ -mindepth 2 -maxdepth 2 ! -name 'ansi*' ! -name 'linux*' -delete
+  find "$ED"/usr/share/terminfo/ -empty -type d -delete
+  find "$ED"/usr/lib/python*/ -name '__pycache__' -prune -exec rm -r {} \;
+
+  rm -r "$ED"/usr/share/doc/
+  rm -r "$ED"/usr/share/man/
+  rm -r "$ED"/usr/share/info/
+  rm -r "$ED"/usr/include/
+
+  rm -r "$ED"/usr/lib/python*/test
+  rm -r "$ED"/usr/lib/python*/unittest
+  rm -r "$ED"/usr/lib/python*/ensurepip
+  find "$ED"/usr/lib/python*/ -name 'test' -prune -exec rm -r {} \;
+  find "$ED"/usr/lib/python*/ -name 'tests' -prune -exec rm -r {} \;
+
+  find "$ED"/usr/lib{,64}/ -name '*.a' -delete
+  find "$ED"/usr/lib{,64}/ -name '*.o' -delete
+  find "$ED"/usr/lib{,64}/ -name '*.la' -delete
 fi
+EOF
 
-unset FEATURES PORTAGE_BINHOST
-
-export USE='-* make-symlinks unicode ssl ncurses readline'
+export USE='-* make-symlinks unicode ssl ncurses readline bindist'
 export CFLAGS='-Os -pipe -flto -fipa-pta -fno-semantic-interposition -fdevirtualize-at-ltrans -fuse-linker-plugin'
 export LDFLAGS='-Wl,-O1 -Wl,--as-needed -Wl,--hash-style=gnu'
 emerge --root rootfs -v sys-apps/baselayout
@@ -99,8 +134,10 @@ emerge --root rootfs -v sys-apps/busybox
 emerge --root rootfs -v "dev-lang/python:${PY_VER}" dev-util/dialog dev-libs/userspace-rcu
 emerge --root rootfs -v sys-process/htop sys-process/lsof dev-util/strace
 unset CFLAGS LDFLAGS
+
 ACCEPT_KEYWORDS='~amd64' emerge --root rootfs -v dev-libs/libbpf sys-apps/bpftool
-unset USE
+
+unset USE INSTALL_MASK
 
 make -C kernel -j"$(nproc)" modules_install INSTALL_MOD_PATH="$(realpath rootfs)"
 
@@ -110,33 +147,20 @@ cp -a "${GCC_PATH}"/libgcc_s.so* rootfs/"${GCC_PATH}"
 echo "${GCC_PATH}" > rootfs/etc/ld.so.conf
 ldconfig -C rootfs/etc/ld.so.cache -f rootfs/etc/ld.so.conf
 
-find rootfs/usr/share/i18n/locales/ -mindepth 1 -maxdepth 1 ! -name 'en_US' ! -name 'en_GB' ! -name 'C' ! -name 'i18n*' ! -name 'iso*' ! -name 'translit*' -delete
-find rootfs/usr/share/i18n/charmaps/ -mindepth 1 -maxdepth 1 -name '*.gz' ! -name 'UTF*' ! -name 'LATIN*' -delete
-find rootfs/usr/lib64/gconv/ -mindepth 1 -maxdepth 1 -name '*.so' ! -name 'UTF*' ! -name 'LATIN*' ! -name 'UNICODE*' -delete
-find rootfs/usr/share/locale/ -mindepth 1 -maxdepth 1 -type d ! -name 'en_US' ! -name 'en_GB' ! -name 'C' -exec rm -r {} \;
-find rootfs/usr/share/terminfo/ -mindepth 2 -maxdepth 2 ! -name 'ansi*' ! -name 'linux*' ! -name 'vt*' ! -name 'xterm*' ! -name 'screen*' ! -name 'gnome*' -delete
-find rootfs/usr/share/terminfo/ -empty -type d -delete
-
-rm -r rootfs/usr/share/doc/
-rm -r rootfs/usr/share/man/
-rm -r rootfs/usr/share/info/
-rm -r rootfs/usr/include/
-rm -r rootfs/usr/share/misc/magic*
-rm -r rootfs/usr/lib/python*/test
-rm -r rootfs/usr/lib/python*/unittest
-find rootfs/usr/lib/python*/ -name '__pycache__' -prune -exec rm -r {} \;
-find rootfs/usr/lib{,64}/ -name '*.a' -delete
+set +e
 
 rm -r rootfs/var/db/pkg/
 rm -r rootfs/var/cache/edb/
 rm -r rootfs/etc/portage/
 
-rm -r rootfs/lib/gentoo/ || true
-rm -r rootfs/var/lib/gentoo/ || true
-rm -r rootfs/var/lib/portage/ || true
+rm -r rootfs/lib/gentoo/
+rm -r rootfs/var/lib/gentoo/
+rm -r rootfs/var/lib/portage/
 
-rm -r rootfs/usr/share/gdb/ || true
-rm -r rootfs/usr/share/baselayout/ || true
+rm -r rootfs/usr/share/gdb/
+rm -r rootfs/usr/share/baselayout/
+
+set -e
 
 mkdir -p rootfs/{boot,dev,proc,root,run,sys}
 

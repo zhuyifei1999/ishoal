@@ -38,6 +38,7 @@ EOF
 cloud-utils/bin/cloud-localds user-data.img user-data -f vfat
 
 mkdir output
+mkdir -p "${REPO}/vm/binpkgs"
 
 setsid qemu-system-x86_64 \
   -no-reboot \
@@ -54,6 +55,8 @@ setsid qemu-system-x86_64 \
   -device virtio-9p-pci,fsdev=vfs1,mount_tag=/dev/source \
   -fsdev "local,multidevs=remap,id=vfs2,path=$(pwd)/output,security_model=none" \
   -device virtio-9p-pci,fsdev=vfs2,mount_tag=/dev/output \
+  -fsdev "local,multidevs=remap,id=vfs3,path=${REPO}/vm/binpkgs,security_model=none" \
+  -device virtio-9p-pci,fsdev=vfs3,mount_tag=/dev/binpkgs \
   -drive file=cloudimg.img \
   -drive file=user-data.img,format=raw &
   QEMU_PID=$!
@@ -90,6 +93,8 @@ mkdir -p /mnt/tmp/{upper,work}
 mkdir -p "${REPO}"
 mount -t overlay overlay -o lowerdir=/mnt/source,upperdir=/mnt/tmp/upper,workdir=/mnt/tmp/work "${REPO}"
 
+mount -t 9p /dev/binpkgs -o version=9p2000.L,trans=virtio,access=any "${REPO}/vm/binpkgs"
+
 sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
 apt update
 apt install -y docker.io qemu-utils
@@ -105,4 +110,4 @@ ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i sshkey ubuntu
 wait "$QEMU_PID"
 RUNNING=false
 
-cp output/ishoal.ova "${DIR}/ishoal.ova"
+cp output/ishoal.ova "${REPO}/vm/ishoal.ova"

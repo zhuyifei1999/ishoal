@@ -21,25 +21,25 @@ trap cleanup_tmp EXIT
 
 mkdir rootfs
 
-truncate -s $((256 * 1048576)) disk.img
+truncate -s $((128 * 1048576)) disk.img
 fdisk disk.img << EOF
 g
 n
 1
 2048
-65535
+32767
 n
 2
-65536
-524254
+32768
+262110
 w
 EOF
 
-BOOT="$(sudo losetup --offset $(( 2048 * 512 )) --sizelimit $(( 63488 * 512 )) --show --find disk.img)"
-ROOT="$(sudo losetup --offset $(( 65536 * 512 )) --sizelimit $(( 458719 * 512 )) --show --find disk.img)"
+BOOT="$(sudo losetup --offset $(( 2048 * 512 )) --sizelimit $(( 30720 * 512 )) --show --find disk.img)"
+ROOT="$(sudo losetup --offset $(( 32768 * 512 )) --sizelimit $(( 229343 * 512 )) --show --find disk.img)"
 
 sudo mkfs.fat "$BOOT"
-sudo mkfs.btrfs "$ROOT"
+sudo mkfs.btrfs -M "$ROOT"
 
 sudo mount -o compress,discard "$ROOT" rootfs
 sudo mkdir -p rootfs/boot
@@ -63,12 +63,29 @@ function cleanup_mnt {
 
 trap cleanup_mnt EXIT
 
-sudo docker run -v $REPO:$REPO -e REPO="${REPO}" -v $PWD:$PWD -w $PWD --tmpfs /var/tmp/portage:exec --tmpfs /var/cache/distfiles --tmpfs /var/db/repos --cap-add=SYS_PTRACE --rm -i gentoo/stage3-amd64-nomultilib bash "${REPO}/vm/build-inner.sh"
+mkdir -p "${REPO}/vm/binpkgs"
+
+sudo docker run \
+  -v $REPO:$REPO \
+  -v $PWD:$PWD \
+  -v "${REPO}/vm/binpkgs":/var/cache/binpkgs \
+  -w $PWD \
+  -e REPO="${REPO}" \
+  --tmpfs /var/tmp/portage:exec \
+  --tmpfs /var/cache/distfiles \
+  --tmpfs /var/db/repos \
+  --security-opt seccomp=unconfined \
+  --cap-add=SYS_PTRACE \
+  --rm -i \
+  gentoo/stage3-amd64-nomultilib \
+  bash "${REPO}/vm/build-inner.sh"
+
+fstrim -v rootfs
 
 do_cleanup_mnt
 MOUNTED=false
 
-qemu-img convert disk.img -O vmdk -o subformat=streamOptimized ishoal-disk001.vmdk
+qemu-img convert disk.img -S 4k -O vmdk -o subformat=streamOptimized ishoal-disk001.vmdk
 cp "${DIR}/ishoal.ovf" ishoal.ovf
 
 echo "SHA1 (ishoal-disk001.vmdk) = $(sha1sum ishoal-disk001.vmdk | cut -d\  -f 1 )" >> ishoal.mf
@@ -76,4 +93,4 @@ echo "SHA1 (ishoal.ovf) = $(sha1sum ishoal.ovf | cut -d\  -f 1 )" >> ishoal.mf
 
 tar cvf ishoal.ova ishoal.ovf ishoal-disk001.vmdk ishoal.mf
 
-cp -a ishoal.ova "${DIR}/ishoal.ova"
+cp -a ishoal.ova "${REPO}/vm/ishoal.ova"
