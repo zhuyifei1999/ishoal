@@ -255,7 +255,7 @@ tty1::respawn:/root/ishoal-wrapper
 tty2::respawn:-/bin/sh
 ::restart:/sbin/init
 ::ctrlaltdel:/sbin/reboot
-::shutdown:/bin/umount -a -r
+::shutdown:/bin/umount -a -n -r
 EOF
 
 cp "${REPO}/src/ishoal" rootfs/root/ishoal
