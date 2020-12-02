@@ -4,6 +4,7 @@ set -ex
 
 LINUX_VER=5.9.9
 PY_VER=3.9
+EDKII_VER=202011
 
 emerge-webrsync
 
@@ -39,10 +40,19 @@ EOF
 
 mkdir -p /var/db/repos/localrepo/sys-apps/bpftool/
 cp "${REPO}/vm/bpftool.ebuild" "/var/db/repos/localrepo/sys-apps/bpftool/bpftool-${LINUX_VER}.ebuild"
+
+mkdir -p /var/db/repos/localrepo/sys-boot/edk2/files/
+cp "${REPO}/vm/edk2.ebuild" "/var/db/repos/localrepo/sys-boot/edk2/edk2-${EDKII_VER}.ebuild"
+cp "${REPO}/vm/edk2-workspace.template" /var/db/repos/localrepo/sys-boot/edk2/files/
+
 chown -R portage:portage /var/db/repos/localrepo
 
 pushd /var/db/repos/localrepo/sys-apps/bpftool/
-repoman manifest
+repoman manifest -q
+popd
+
+pushd /var/db/repos/localrepo/sys-boot/edk2/
+repoman manifest -q
 popd
 
 # https://bugs.gentoo.org/756034
@@ -50,16 +60,16 @@ cat > /etc/portage/package.mask << 'EOF'
 =dev-util/cmake-3.19.0
 EOF
 
-export LLVM_TARGETS=BPF ACCEPT_KEYWORDS='~amd64'
+export LLVM_TARGETS=BPF
 emerge -vok sys-devel/llvm
 MAKEOPTS="-j$(( $(nproc) < 4 ? $(nproc) : 4 ))" emerge -vnk sys-devel/llvm sys-devel/clang
-unset LLVM_TARGETS ACCEPT_KEYWORDS
+unset LLVM_TARGETS
 
 emerge -vok gentoo-sources
 
 source /etc/profile
 
-wget "https://cdn.kernel.org/pub/linux/kernel/v${LINUX_VER%.*.*}.x/linux-${LINUX_VER}.tar.xz"
+wget -nv "https://cdn.kernel.org/pub/linux/kernel/v${LINUX_VER%.*.*}.x/linux-${LINUX_VER}.tar.xz"
 tar xf "linux-${LINUX_VER}.tar.xz"
 mv "linux-${LINUX_VER}" kernel
 
@@ -77,8 +87,8 @@ ACCEPT_KEYWORDS='~amd64' emerge -vnk dev-libs/libbpf sys-apps/bpftool
 rm "${REPO}/src/"*.d || true
 make -B -C "${REPO}/src/" PYTHON="python${PY_VER}" CLANGFLAGS='-D__x86_64__' CFLAGS='-Os -pipe -g -Wall'
 
-emerge -vnk sys-boot/gnu-efi
-make -B -C "${REPO}/vm/efi_fb_res"
+ACCEPT_KEYWORDS='~amd64' emerge -vnk sys-boot/edk2
+bash "${REPO}/vm/EfiFbResPkg/build.sh"
 
 qpkg -c
 
@@ -263,4 +273,4 @@ chmod a+x rootfs/root/ishoal
 
 mkdir -p rootfs/boot/EFI/Boot/
 cp kernel/arch/x86/boot/bzImage rootfs/boot/linux.efi
-cp "${REPO}/vm/efi_fb_res/efi_fb_res.efi" rootfs/boot/EFI/Boot/bootx64.efi
+cp "${REPO}/vm/EfiFbResPkg/EfiFbRes.efi" rootfs/boot/EFI/Boot/bootx64.efi

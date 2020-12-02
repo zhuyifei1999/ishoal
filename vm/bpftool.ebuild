@@ -24,11 +24,11 @@ KBUILD_OUTPUT=
 ARCH=$(tc-arch-kernel)
 
 src_compile() {
-	local myconf=( )
+	local make_flags=( )
 
-	use caps || myconf+=( feature-libcap=0 )
+	use caps || make_flags+=( feature-libcap=0 )
 
-	emake CC="$(tc-getCC)" "${myconf[@]}"
+	emake CC="$(tc-getCC)" "${make_flags[@]}"
 }
 
 src_install() {
