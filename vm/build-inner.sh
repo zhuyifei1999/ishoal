@@ -88,7 +88,7 @@ rm "${REPO}/src/"*.d || true
 make -B -C "${REPO}/src/" PYTHON="python${PY_VER}" CLANGFLAGS='-D__x86_64__' CFLAGS='-Os -pipe -g -Wall'
 
 ACCEPT_KEYWORDS='~amd64' emerge -vnk sys-boot/edk2
-bash "${REPO}/vm/EfiFbResPkg/build.sh"
+bash "${REPO}/vm/IShoalPkg/build.sh"
 
 qpkg -c
 
@@ -235,7 +235,7 @@ chmod a+x rootfs/etc/init.d/rcS
 cat > rootfs/root/ishoal-wrapper << 'EOF'
 #! /bin/sh
 while true; do
-  echo 'Booting iShoal ...'
+  echo 'Starting IShoal ...'
   /root/ishoal eth0
   EXITCODE=$?
 
@@ -273,4 +273,4 @@ chmod a+x rootfs/root/ishoal
 
 mkdir -p rootfs/boot/EFI/Boot/
 cp kernel/arch/x86/boot/bzImage rootfs/boot/linux.efi
-cp "${REPO}/vm/EfiFbResPkg/EfiFbRes.efi" rootfs/boot/EFI/Boot/bootx64.efi
+cp "${REPO}/vm/IShoalPkg/IShoal.efi" rootfs/boot/EFI/Boot/bootx64.efi

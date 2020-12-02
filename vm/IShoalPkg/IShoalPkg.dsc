@@ -1,10 +1,10 @@
 [Defines]
-  PLATFORM_NAME                  = EfiFbResPkg
+  PLATFORM_NAME                  = IShoalPkg
   PLATFORM_GUID                  = C0AB8177-55CB-4E4E-B11E-A3F6753C795C
   PLATFORM_VERSION               = 0.1
   DSC_SPECIFICATION              = 0x00010005
   SUPPORTED_ARCHITECTURES        = IA32|X64
-  OUTPUT_DIRECTORY               = Build/EfiFbResPkg
+  OUTPUT_DIRECTORY               = Build/IShoalPkg
   BUILD_TARGETS                  = DEBUG|RELEASE|NOOPT
   SKUID_IDENTIFIER               = DEFAULT
 
@@ -25,4 +25,4 @@
   UefiRuntimeServicesTableLib|MdePkg/Library/UefiRuntimeServicesTableLib/UefiRuntimeServicesTableLib.inf
 
 [Components]
-  EfiFbResPkg/EfiFbRes.inf
+  IShoalPkg/IShoal.inf

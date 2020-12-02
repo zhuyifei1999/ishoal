@@ -21,8 +21,8 @@ source edk2-workspace edk2-workspace
 
 cd edk2-workspace
 ln -s /usr/lib/edk2/MdePkg .
-ln -s "${DIR}" EfiFbResPkg
+ln -s "${DIR}" IShoalPkg
 
-build -b RELEASE -p EfiFbResPkg/EfiFbResPkg.dsc -s
+build -b RELEASE -p IShoalPkg/IShoalPkg.dsc -s
 
-cp -a Build/EfiFbResPkg/RELEASE_GCC5/X64/EfiFbRes.efi "${DIR}"
+cp -a Build/IShoalPkg/RELEASE_GCC5/X64/IShoal.efi "${DIR}"

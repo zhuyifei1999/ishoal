@@ -1,13 +1,17 @@
 [Defines]
   INF_VERSION                    = 0x00010005
-  BASE_NAME                      = EfiFbRes
+  BASE_NAME                      = IShoal
   FILE_GUID                      = 2B698AD4-6C76-4722-BF10-1A11AD34172B
   MODULE_TYPE                    = UEFI_APPLICATION
   VERSION_STRING                 = 0.1
   ENTRY_POINT                    = UefiMain
 
+  UEFI_HII_RESOURCE_SECTION      = TRUE
+
 [Sources]
-  EfiFbRes.c
+  Main.c
+  BootImg.bmp
+  BootImg.idf
 
 [Packages]
   MdePkg/MdePkg.dec
@@ -17,8 +21,12 @@
   UefiApplicationEntryPoint
   DebugLib
   DevicePathLib
+  MemoryAllocationLib
   UefiBootServicesTableLib
 
 [Protocols]
   gEfiGraphicsOutputProtocolGuid
   gEfiLoadedImageProtocolGuid
+  gEfiHiiDatabaseProtocolGuid
+  gEfiHiiImageExProtocolGuid
+  gEfiHiiPackageListProtocolGuid

@@ -1,5 +1,5 @@
 [Defines]
   DEC_SPECIFICATION              = 0x00010005
-  PACKAGE_NAME                   = EfiFbResPkg
+  PACKAGE_NAME                   = IShoalPkg
   PACKAGE_GUID                   = D3A4C953-9F85-43ED-ADA0-1952D7E29A46
   PACKAGE_VERSION                = 0.1
