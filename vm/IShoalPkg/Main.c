@@ -93,6 +93,10 @@ ShowImg(
   if (EFI_ERROR(Status))
     return Status;
 
+  Status = HiiDatabase->RemovePackageList(HiiDatabase, HiiHandle);
+  if (EFI_ERROR(Status))
+    return Status;
+
   Status = gBS->HandleProtocol(gST->ConsoleOutHandle,
                                &gEfiGraphicsOutputProtocolGuid,
                                (VOID **)&GraphicsOutput);
@@ -129,6 +133,8 @@ Chainload(
   Status = gBS->LoadImage(FALSE, ImageHandle, Path, NULL, 0, &InnerHandle);
   if (EFI_ERROR(Status))
     return Status;
+
+  FreePool(Path);
 
   return gBS->StartImage(InnerHandle, NULL, NULL);
 }
