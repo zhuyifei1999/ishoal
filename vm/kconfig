@@ -29,7 +29,7 @@ CONFIG_E1000=y
 CONFIG_E1000E=y
 
 CONFIG_CMDLINE_BOOL=y
-CONFIG_CMDLINE="root=/dev/sda2"
+CONFIG_CMDLINE="root=/dev/sda2 earlycon=ohlawdhecomin"
 # CONFIG_CMDLINE_OVERRIDE is not set
 CONFIG_EFI_STUB=y
 

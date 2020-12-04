@@ -2,7 +2,7 @@
 
 set -ex
 
-LINUX_VER=5.9.9
+LINUX_VER=5.9.12
 PY_VER=3.9
 EDKII_VER=202011
 
@@ -76,6 +76,9 @@ mv "linux-${LINUX_VER}" kernel
 pushd kernel
 ./scripts/kconfig/merge_config.sh ./arch/x86/configs/x86_64_defconfig "${REPO}/vm/kconfig"
 popd
+
+ln -s "${REPO}/vm/ohlawdhecomin" kernel/drivers/firmware/efi
+echo 'obj-$(CONFIG_EFI_EARLYCON) += ohlawdhecomin/ohlawdhecomin.o' >> kernel/drivers/firmware/efi/Makefile
 
 make -C kernel -j"$(nproc)"
 
