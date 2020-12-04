@@ -14,6 +14,7 @@
 #include <Protocol/LoadedImage.h>
 
 EFI_IMAGE_ID mBootImageId = IMAGE_TOKEN(IMG_BOOTIMG);
+EFI_GRAPHICS_OUTPUT_PROTOCOL *mGraphicsOutput;
 
 EFI_STATUS
 SetRes(
@@ -22,22 +23,14 @@ SetRes(
   )
 {
   EFI_STATUS Status;
-  EFI_GRAPHICS_OUTPUT_PROTOCOL *GraphicsOutput;
   INT32 SetModeNumber = -1;
 
-  Status = gBS->HandleProtocol(gST->ConsoleOutHandle,
-                               &gEfiGraphicsOutputProtocolGuid,
-                               (VOID **) &GraphicsOutput);
-
-  if (EFI_ERROR(Status))
-    return Status;
-
-  for (INT32 ModeNumber = 0; ModeNumber < GraphicsOutput->Mode->MaxMode; ModeNumber++) {
+  for (INT32 ModeNumber = 0; ModeNumber < mGraphicsOutput->Mode->MaxMode; ModeNumber++) {
     UINTN SizeOfInfo;
     EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *Info;
 
-    Status = GraphicsOutput->QueryMode(GraphicsOutput, ModeNumber,
-                                       &SizeOfInfo, &Info);
+    Status = mGraphicsOutput->QueryMode(mGraphicsOutput, ModeNumber,
+                                        &SizeOfInfo, &Info);
     if (EFI_ERROR(Status))
       continue;
 
@@ -49,12 +42,11 @@ SetRes(
   if (SetModeNumber < 0)
     return EFI_UNSUPPORTED;
 
-  return GraphicsOutput->SetMode(GraphicsOutput, SetModeNumber);
+  return mGraphicsOutput->SetMode(mGraphicsOutput, SetModeNumber);
 }
 
 EFI_STATUS
 ShowImg(
-  IN EFI_HANDLE ImageHandle,
   IN EFI_IMAGE_ID ImageId,
   IN UINTN CoordinateX,
   IN UINTN CoordinateY
@@ -64,12 +56,11 @@ ShowImg(
   EFI_HII_DATABASE_PROTOCOL *HiiDatabase;
   EFI_HII_IMAGE_EX_PROTOCOL *HiiImageEx;
   EFI_HII_PACKAGE_LIST_HEADER *PackageList;
-  EFI_GRAPHICS_OUTPUT_PROTOCOL *GraphicsOutput;
   EFI_HII_HANDLE HiiHandle;
   EFI_IMAGE_INPUT Image;
 
   Status = gBS->LocateProtocol(&gEfiHiiDatabaseProtocolGuid, NULL,
-                               (VOID **) &HiiDatabase);
+                               (VOID **)&HiiDatabase);
   if (EFI_ERROR(Status))
     return Status;
 
@@ -78,8 +69,8 @@ ShowImg(
   if (EFI_ERROR(Status))
     return Status;
 
-  Status = gBS->OpenProtocol(ImageHandle, &gEfiHiiPackageListProtocolGuid,
-                             (VOID **)&PackageList, ImageHandle,
+  Status = gBS->OpenProtocol(gImageHandle, &gEfiHiiPackageListProtocolGuid,
+                             (VOID **)&PackageList, gImageHandle,
                              NULL, EFI_OPEN_PROTOCOL_GET_PROTOCOL);
   if (EFI_ERROR(Status))
     return Status;
@@ -97,22 +88,15 @@ ShowImg(
   if (EFI_ERROR(Status))
     return Status;
 
-  Status = gBS->HandleProtocol(gST->ConsoleOutHandle,
-                               &gEfiGraphicsOutputProtocolGuid,
-                               (VOID **)&GraphicsOutput);
-  if (EFI_ERROR(Status))
-    return Status;
-
-  Status = GraphicsOutput->Blt(GraphicsOutput, Image.Bitmap, EfiBltBufferToVideo,
-                               0, 0, CoordinateX, CoordinateY,
-                               Image.Width, Image.Height, 0);
+  Status = mGraphicsOutput->Blt(mGraphicsOutput, Image.Bitmap, EfiBltBufferToVideo,
+                                0, 0, CoordinateX, CoordinateY,
+                                Image.Width, Image.Height, 0);
 
   return Status;
 }
 
 EFI_STATUS
 Chainload(
-  IN EFI_HANDLE ImageHandle,
   IN CONST CHAR16 *FileName
   )
 {
@@ -121,7 +105,7 @@ Chainload(
   EFI_DEVICE_PATH *Path;
   EFI_HANDLE InnerHandle;
 
-  Status = gBS->HandleProtocol(ImageHandle, &gEfiLoadedImageProtocolGuid,
+  Status = gBS->HandleProtocol(gImageHandle, &gEfiLoadedImageProtocolGuid,
                                (VOID **)&LoadedImage);
   if (EFI_ERROR(Status))
     return Status;
@@ -130,7 +114,7 @@ Chainload(
   if (!Path)
     return EFI_INVALID_PARAMETER;
 
-  Status = gBS->LoadImage(FALSE, ImageHandle, Path, NULL, 0, &InnerHandle);
+  Status = gBS->LoadImage(FALSE, gImageHandle, Path, NULL, 0, &InnerHandle);
   if (EFI_ERROR(Status))
     return Status;
 
@@ -148,14 +132,22 @@ UefiMain(
 {
   EFI_STATUS Status;
 
-  Status = SetRes(640, 480);
-  if (!EFI_ERROR(Status)) {
-    // To trim:
-    // $ convert bootimg-untrimmed.bmp -trim +repage BootImg.bmp
-    // To get bounding box info:
-    // $ convert bootimg-untrimmed.bmp -format "%@" info:
-    ShowImg(ImageHandle, mBootImageId, 246, 169);
-  }
+  Status = gBS->HandleProtocol(gST->ConsoleOutHandle,
+                               &gEfiGraphicsOutputProtocolGuid,
+                               (VOID **)&mGraphicsOutput);
+  if (EFI_ERROR(Status))
+    goto out;
 
-  return Chainload(ImageHandle, L"\\linux.efi");
+  Status = SetRes(640, 480);
+  if (EFI_ERROR(Status))
+    goto out;
+
+  // To trim:
+  // $ convert bootimg-untrimmed.bmp -trim +repage BootImg.bmp
+  // To get bounding box info:
+  // $ convert bootimg-untrimmed.bmp -format "%@" info:
+  ShowImg(mBootImageId, 246, 169);
+
+out:
+  return Chainload(L"\\linux.efi");
 }
