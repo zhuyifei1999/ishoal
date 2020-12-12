@@ -77,8 +77,11 @@ pushd kernel
 ./scripts/kconfig/merge_config.sh ./arch/x86/configs/x86_64_defconfig "${REPO}/vm/kconfig"
 popd
 
+python -m venv venv
+venv/bin/pip install pillow
+
 pushd "${REPO}/vm/ohlawdhecomin"
-python generate_data.py
+"$(dirs +1)"/venv/bin/python generate_data.py
 popd
 
 ln -s "${REPO}/vm/ohlawdhecomin" kernel/drivers/firmware/efi
