@@ -77,6 +77,10 @@ pushd kernel
 ./scripts/kconfig/merge_config.sh ./arch/x86/configs/x86_64_defconfig "${REPO}/vm/kconfig"
 popd
 
+pushd "${REPO}/vm/ohlawdhecomin"
+python generate_data.py
+popd
+
 ln -s "${REPO}/vm/ohlawdhecomin" kernel/drivers/firmware/efi
 echo 'obj-$(CONFIG_EFI_EARLYCON) += ohlawdhecomin/ohlawdhecomin.o' >> kernel/drivers/firmware/efi/Makefile
 

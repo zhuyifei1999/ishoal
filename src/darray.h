@@ -14,12 +14,12 @@
 #define darray_head(darray) darray_idx(darray, 0)
 #define darray_tail(darray) darray_idx(darray, darray_nmemb(darray) - 1)
 
-#define darray_resize(darray, new_nmemb) do {                 \
-	(darray).arr = reallocarray(darray_head(darray), new_nmemb,  \
-				    sizeof((darray).arr[0])); \
-	if ((new_nmemb) && !(darray).arr)                       \
-		perror_exit("darray_resize");                 \
-	darray_nmemb(darray) = (new_nmemb);                           \
+#define darray_resize(darray, new_nmemb) do {                       \
+	(darray).arr = reallocarray(darray_head(darray), new_nmemb, \
+				    sizeof((darray).arr[0]));       \
+	if ((new_nmemb) && !(darray).arr)                           \
+		perror_exit("darray_resize");                       \
+	darray_nmemb(darray) = (new_nmemb);                         \
 } while (0)
 
 #define darray_inc(darray) darray_resize(darray, darray_nmemb(darray) + 1)
@@ -35,12 +35,12 @@
 #define darray_idx_rcu(darray, idx) &rcu_dereference((darray).aref)->arr[idx]
 
 #define darray_head_rcu(darray) darray_idx_rcu(darray, 0)
-#define darray_tail_rcu(darray) darray_idx_rcu(darray, darray_nmemb_rcu(darray) - 1)\
+#define darray_tail_rcu(darray) darray_idx_rcu(darray, darray_nmemb_rcu(darray) - 1)
 
 #define darray_resize_rcu(darray, new_nmemb) do {                                   \
-	size_t newsize = (new_nmemb) * sizeof((darray).aref->arr[0]);                 \
-	if (newsize / sizeof((darray).aref->arr[0]) != (new_nmemb))                   \
-		fprintf_exit("darray_resize_rcu: Overflow\n");                        \
+	size_t newsize = (new_nmemb) * sizeof((darray).aref->arr[0]);               \
+	if (newsize / sizeof((darray).aref->arr[0]) != (new_nmemb))                 \
+		fprintf_exit("darray_resize_rcu: Overflow\n");                      \
 	newsize += sizeof(struct rcu_head);                                         \
 	typeof ((darray).aref) newaref = calloc(1, newsize);                        \
 	if (newaref)                                                                \

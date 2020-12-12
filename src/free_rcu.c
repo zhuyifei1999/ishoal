@@ -1,7 +1,5 @@
 #include "features.h"
 
-#define UNW_LOCAL_ONLY
-
 #include <assert.h>
 #include <pthread.h>
 #include <stdio.h>
