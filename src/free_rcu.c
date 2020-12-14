@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <pthread.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <urcu.h>
@@ -27,30 +28,28 @@ static size_t trampoline_data_len;
 static struct DARRAY_RCU(void *) trampolines;
 static pthread_mutex_t trampolines_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static void *offset_start, *offset_stop;
-
 __attribute__ ((section("free_rcu_trampoline_data"), used))
 static void (*free_ptr)(void *ptr) = free;
+__attribute__ ((section("free_rcu_trampoline_data"), used))
+static void (*abort_ptr)(void) = abort;
+__attribute__ ((section("free_rcu_trampoline_data"), used))
+static volatile uint32_t magic = MAGIC;
 
-__attribute__ ((section("free_rcu_trampoline"), used, noinline, noclone, optimize(0)))
+
+__attribute__ ((section("free_rcu_trampoline"), used, noinline, noclone))
 static void free_rcu_trampoline_fn(struct rcu_head *rcu)
 {
-	volatile uint32_t offset;
-
-lbl_offset_start:
-	offset = MAGIC;
-lbl_offset_stop:
-
-	if (caa_likely(offset != MAGIC))
-		free_ptr((void *)rcu - offset);
-	else {
-		offset_start = &&lbl_offset_start;
-		offset_stop = &&lbl_offset_stop;
+	if (caa_unlikely(magic == MAGIC)) {
+		abort_ptr();
+		__builtin_unreachable();
 	}
+	free_ptr((void *)rcu - magic);
 }
 
 void *free_rcu_get_cb(size_t offset)
 {
+	assert(offset != MAGIC);
+
 	void *res;
 
 	rcu_read_lock();
@@ -117,6 +116,7 @@ fill:
 
 out:
 	rcu_read_unlock();
+	cmm_rmb();
 
 	return res;
 }
@@ -126,8 +126,6 @@ void free_rcu_init(void)
 	page_size = sysconf(_SC_PAGESIZE);
 	if (page_size <= 0)
 		perror_exit("sysconf(_SC_PAGESIZE)");
-
-	free_rcu_trampoline_fn((void *)MAGIC);
 
 	extern void *__start_free_rcu_trampoline;
 	extern void *__stop_free_rcu_trampoline;
@@ -141,9 +139,9 @@ void free_rcu_init(void)
 		&__stop_free_rcu_trampoline_data);
 
 	assert(trampoline_start <= (void *)&free_rcu_trampoline_fn);
-	assert((void *)&free_rcu_trampoline_fn < offset_start);
-	assert(offset_start < offset_stop);
-	assert(offset_stop < trampoline_stop);
+	assert((void *)&free_rcu_trampoline_fn < trampoline_stop);
+	assert(trampoline_start <= (void *)&magic);
+	assert((void *)&magic < trampoline_stop);
 
 	trampoline = trampoline_start;
 	trampoline_len = trampoline_stop - trampoline;
@@ -157,18 +155,7 @@ void free_rcu_init(void)
 	trampoline_data_len =
 		(void *)&__stop_free_rcu_trampoline_data - (void *)&__start_free_rcu_trampoline_data;
 
-	uint32_t magic = MAGIC;
-
-	void *magic_ptr =
-		memmem(offset_start, offset_stop - offset_start,
-		       &magic, sizeof(magic));
-
-	assert(magic_ptr);
-	assert(!memmem(magic_ptr + 1, offset_stop - magic_ptr - 1,
-		       &magic, sizeof(magic)));
-
-	trampoline_magic_offset = (void *)&free_rcu_trampoline_fn - trampoline;
-	trampoline_magic_offset = magic_ptr - trampoline;
+	trampoline_magic_offset = (void *)&magic - trampoline;
 
 	// Test this against a few cases
 	{
