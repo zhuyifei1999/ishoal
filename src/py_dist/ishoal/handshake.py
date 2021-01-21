@@ -59,20 +59,20 @@ class Endpoint:
 
     def send(self, data, addr):
         if self._closed:
-            raise IOError('Enpoint is closed')
+            raise IOError('Endpoint is closed')
         self._transport.sendto(data, addr)
 
     async def receive(self):
         if self._queue.empty() and self._closed:
-            raise IOError('Enpoint is closed')
+            raise IOError('Endpoint is closed')
         data, addr = await self._queue.get()
         if data is None:
-            raise IOError('Enpoint is closed')
+            raise IOError('Endpoint is closed')
         return data, addr
 
     def abort(self):
         if self._closed:
-            raise IOError('Enpoint is closed')
+            raise IOError('Endpoint is closed')
         self._transport.abort()
         self.close()
 
@@ -182,7 +182,15 @@ async def _do_handshake(remoteid, remoteip, switchip, cb):
             endpoint.send(data, remoteaddr)
 
         send(1)
-        loop.call_later(1, lambda: send(2))
+
+        # After a second, this function may have already returned and
+        # closed the endpoint due to super fast handshake. Put a guard before
+        # sending to not make spurious IOError('Endpoint is closed')
+        def second_exchange():
+            if not endpoint._closed:
+                send(2)
+
+        loop.call_later(1, second_exchange)
 
         while True:
             data, addr = await endpoint.receive()
