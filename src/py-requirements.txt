@@ -1,2 +1,2 @@
-python-socketio
+python-socketio ~= 4.6
 requests

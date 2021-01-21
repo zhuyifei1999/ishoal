@@ -149,29 +149,33 @@ def main():
     global loop
     loop = handshake.start_handshaker()
 
-    sio.connect('https://ishoal.ink/')
-
-    def on_switch_change():
-        sio.disconnect()
-        ishoalc.sleep(100)
-
-        for switchip in all_connections:
-            ishoalc.delete_connection(switchip)
-        all_connections.clear()
-
+    try:
         sio.connect('https://ishoal.ink/')
+    except Exception:
+        # Why can't I omit this?
+        raise
+    else:
+        def on_switch_change():
+            sio.disconnect()
+            ishoalc.sleep(100)
 
-    threading.Thread(target=ishoalc.on_switch_chg_threadfn,
-                     args=(on_switch_change,), name='py_switch_chg').start()
+            for switchip in all_connections:
+                ishoalc.delete_connection(switchip)
+            all_connections.clear()
 
-    # Python is dumb that signal handlers must execute on main thread :(
-    # if we ishoalc.sleep(-1) then signal handler will never execute
-    # wake up every 100ms to check for signals
-    while not ishoalc.should_stop():
-        ishoalc.sleep(100)
+            sio.connect('https://ishoal.ink/')
 
-    sio.disconnect()
-    loop.call_soon_threadsafe(loop.stop)
+        threading.Thread(target=ishoalc.on_switch_chg_threadfn,
+                         args=(on_switch_change,), name='py_switch_chg').start()
+
+        # Python is dumb that signal handlers must execute on main thread :(
+        # if we ishoalc.sleep(-1) then signal handler will never execute
+        # wake up every 100ms to check for signals
+        while not ishoalc.should_stop():
+            ishoalc.sleep(100)
+    finally:
+        sio.disconnect()
+        loop.call_soon_threadsafe(loop.stop)
 
 
 main()

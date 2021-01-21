@@ -99,7 +99,7 @@ async def open_datagram_endpoint(
     return endpoint
 
 
-async def open_local_endpoint(host='0.0.0.0', port=0, **kwargs):
+async def open_local_endpoint(host, port=0, **kwargs):
     return await open_datagram_endpoint(
         host, port, remote=False,
         **kwargs)
