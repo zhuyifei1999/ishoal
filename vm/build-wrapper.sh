@@ -45,7 +45,7 @@ setsid qemu-system-x86_64 \
   -cpu max \
   -machine accel=kvm:xen:hax:hvf:whpx:tcg \
   -smp "$(nproc)" \
-  -m 8G \
+  -m 10G \
   -display none \
   -serial mon:stdio \
   -device virtio-rng-pci \
