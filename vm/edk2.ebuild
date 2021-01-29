@@ -1,6 +1,8 @@
 # Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+# Somewhat adapted from https://github.com/gentoo/gentoo/pull/17627/files
+
 EAPI=7
 
 inherit multiprocessing toolchain-funcs
@@ -27,7 +29,6 @@ fi
 
 LICENSE="BSD-2"
 SLOT="0"
-IUSE="custom-cflags"
 REQUIRED_USE=""
 RESTRICT="strip"
 
@@ -37,26 +38,9 @@ DEPEND="${RDEPEND}"
 BDEPEND="app-arch/unzip"
 
 # EFI pre-build libs
-# usr/lib/${P}/BeagleBoardPkg/Debugger_scripts/rvi_dummy.axf
 QA_PREBUILT="
 	usr/lib/${P}/ArmPkg/Library/GccLto/*.a
 "
-# # GenBiosId is built upstream
-# # VfrCompile does not use LDFLAGS but next upsteam version should change this
-# QA_FLAGS_IGNORED="
-# 	usr/lib/edk2-2018/BaseTools/Source/C/bin/VfrCompile
-# 	usr/lib/${P}/Vlv2TbltDevicePkg/GenBiosId
-# "
-
-pkg_pretend() {
-	if use custom-cflags; then
-		ewarn
-		ewarn "You have enabled building with USE=custom-cflags. Be aware that"
-		ewarn "using this can result in EFI binaries that fail to run and may"
-		ewarn "fail to build at all."
-		ewarn
-	fi
-}
 
 pkg_setup() {
 	if use x86; then
@@ -89,13 +73,12 @@ src_unpack() {
 }
 
 src_configure() {
-	if use custom-cflags; then
-		sed -e "s|^\(BUILD_CFLAGS\s*=\).*$|\1 ${CFLAGS} -MD -fshort-wchar -fno-strict-aliasing -nostdlib -c -fPIC|" \
-			-e "s|^\(BUILD_LFLAGS\s*=\).*$|\1 ${LDFLAGS}|" \
-			-e "s|^\(BUILD_CXXFLAGS\s*=\).*$|\1 ${CXXFLAGS} -Wno-unused-result|" \
-			-i "BaseTools/Source/C/Makefiles/header.makefile" \
-			|| die "Failed to update makefile header"
-	fi
+	sed -e '/^.*\\\s*$/{:cont;N;/^.*\\\s*$/b cont}' \
+		-e "s|^\(BUILD_CFLAGS\s*=\).*$|\1 ${CFLAGS} -MD -fshort-wchar -fno-strict-aliasing -nostdlib -c -fPIC|" \
+		-e "s|^\(BUILD_LFLAGS\s*=\).*$|\1 ${LDFLAGS}|" \
+		-e "s|^\(BUILD_CXXFLAGS\s*=\).*$|\1 ${CXXFLAGS} -Wno-unused-result|" \
+		-i "BaseTools/Source/C/Makefiles/header.makefile" \
+		|| die "Failed to update makefile header"
 }
 
 src_compile() {
