@@ -73,7 +73,7 @@ static void keepalive_thread_fn(void *arg)
 
 void start_endpoint(void)
 {
-	remotes_log_fd = open(".", O_TMPFILE | O_RDWR, S_IRUSR | S_IWUSR);
+	remotes_log_fd = open(".", O_TMPFILE | O_RDWR | O_CLOEXEC, S_IRUSR | S_IWUSR);
 	if (remotes_log_fd < 0)
 		perror_exit("open(O_TMPFILE)");
 

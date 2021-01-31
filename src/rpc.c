@@ -1,6 +1,7 @@
 #include "features.h"
 
 #include <assert.h>
+#include <fcntl.h>
 #include <unistd.h>
 
 #include "ishoal.h"
@@ -16,7 +17,7 @@ struct pipe_data {
 void make_fd_pair(int *send_fd, int *recv_fd)
 {
 	int pipefd[2];
-	if (pipe(pipefd) == -1)
+	if (pipe2(pipefd, O_CLOEXEC) == -1)
 		perror_exit("pipe");
 
 	*recv_fd = pipefd[0];
