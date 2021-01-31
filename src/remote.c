@@ -216,8 +216,8 @@ void add_connection(ipaddr_t local_ip, uint16_t local_port,
 		    ipaddr_t remote_ip, uint16_t remote_port,
 		    int endpoint_fd)
 {
-	int _endpoint_fd = dup(endpoint_fd);
-	if (endpoint_fd < 0)
+	int _endpoint_fd = fcntl(endpoint_fd, F_DUPFD_CLOEXEC);
+	if (_endpoint_fd < 0)
 		perror_exit("dup");
 
 	__add_connection(local_ip, local_port, remote_ip, remote_port,
