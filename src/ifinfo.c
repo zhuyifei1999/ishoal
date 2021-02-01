@@ -23,7 +23,7 @@ static void get_if_ipaddr(char *iface, ipaddr_t *addr)
 {
 	struct ifreq ifr;
 
-	int sock = socket(AF_INET, SOCK_DGRAM, 0);
+	int sock = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sock < 0)
 		perror_exit("socket(AF_INET, SOCK_DGRAM, 0)");
 
@@ -41,7 +41,7 @@ static void get_if_netmask(char *iface, ipaddr_t *addr)
 {
 	struct ifreq ifr;
 
-	int sock = socket(AF_INET, SOCK_DGRAM, 0);
+	int sock = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sock < 0)
 		perror_exit("socket(AF_INET, SOCK_DGRAM, 0)");
 
@@ -59,7 +59,7 @@ static void get_if_macaddr(char *iface, macaddr_t *addr)
 {
 	struct ifreq ifr;
 
-	int sock = socket(AF_INET, SOCK_DGRAM, 0);
+	int sock = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sock < 0)
 		perror_exit("socket(AF_INET, SOCK_DGRAM, 0)");
 
