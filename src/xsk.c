@@ -1,16 +1,61 @@
 #include "features.h"
 
 #include <assert.h>
+#include <link.h>
+#include <linux/limits.h>
 #include <pthread.h>
 #include <stdatomic.h>
+#include <string.h>
 #include <sys/eventfd.h>
 #include <sys/mman.h>
+#include <sys/socket.h>
 #include <unistd.h>
 
 #include <bpf/xsk.h>
 
+#include "extern/plthook/plthook.h"
+
 #include "ishoal.h"
 #include "darray.h"
+
+static int wrapper_socket(int domain, int type, int protocol)
+{
+	return socket(domain, type | SOCK_CLOEXEC, protocol);
+}
+
+struct dl_iterate_phdr_ctx {
+	char libbpf_path[PATH_MAX];
+};
+
+static int
+dl_iterate_phdr_cb(struct dl_phdr_info *info, size_t size, void *_ctx)
+{
+	struct dl_iterate_phdr_ctx *ctx = _ctx;
+
+	if (strstr(info->dlpi_name, "libbpf"))
+		strncpy(ctx->libbpf_path, info->dlpi_name, PATH_MAX - 1);
+
+	return 0;
+}
+
+static void monkey_patch()
+{
+	struct dl_iterate_phdr_ctx ctx = {0};
+	dl_iterate_phdr(dl_iterate_phdr_cb, &ctx);
+
+	if (!strlen(ctx.libbpf_path))
+		fprintf_exit("failed to locate libbpf library path\n");
+
+	plthook_t *plthook;
+
+	if (plthook_open(&plthook, ctx.libbpf_path) != 0)
+		fprintf_exit("plthook_open error: %s\n", plthook_error());
+
+	if (!plthook_replace(plthook, "socket", wrapper_socket, NULL))
+		fprintf_exit("failed to hook libbpf\n");
+
+	plthook_close(plthook);
+}
 
 /* This file is massively copied from Kernel samples/bpf/xdpsock_user.c
  * And lots of trial and error. Not much idea how it works.
