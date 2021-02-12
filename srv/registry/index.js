@@ -2,7 +2,7 @@ const PORT = 5000;
 // regex credit: https://stackoverflow.com/a/26445549/13673228
 const IPV4_REGEXP = /^(?!0)(?!.*\.$)((1?\d?\d|25[0-5]|2[0-4]\d)(\.|$)){4}$/;
 
-const io = require('socket.io')(PORT);
+const io = require('socket.io')(PORT, {allowEIO3: true});
 
 const P2data = {
   allSwitches: new Map(),
