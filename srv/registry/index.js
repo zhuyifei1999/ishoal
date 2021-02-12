@@ -53,7 +53,7 @@ io.on('connection', function(socket) {
           return;
 
         for (const [, [, switchIPOther]] of P2data.allSwitches) {
-          if (switchIP == switchIPOther) {
+          if (switchIP === switchIPOther) {
             socket.emit('ip_collision');
             return;
           }
