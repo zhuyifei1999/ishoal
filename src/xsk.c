@@ -51,7 +51,7 @@ static void monkey_patch()
 	if (plthook_open(&plthook, ctx.libbpf_path) != 0)
 		fprintf_exit("plthook_open error: %s\n", plthook_error());
 
-	if (!plthook_replace(plthook, "socket", wrapper_socket, NULL))
+	if (plthook_replace(plthook, "socket", wrapper_socket, NULL))
 		fprintf_exit("failed to hook libbpf\n");
 
 	plthook_close(plthook);
@@ -130,6 +130,8 @@ struct xsk_socket *xsk_configure_socket(char *iface, int queue,
 {
 	static atomic_flag init_done;
 	if (!atomic_flag_test_and_set(&init_done)) {
+		monkey_patch();
+
 		atexit(del_socket);
 
 		int xsk_rx_rpc_recv;
