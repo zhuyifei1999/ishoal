@@ -69,29 +69,108 @@ signal.signal(signal.SIGINT, sig_handler)
 IPV4_REGEXP = re.compile(
     r'^(?!0)(?!.*\.$)((1?\d?\d|25[0-5]|2[0-4]\d)(\.|$)){4}$')
 
-sio = socketio.Client()
 
 remotes_log = os.fdopen(os.dup(ishoalc.get_remotes_log_fd()), 'a', buffering=1)
 
-all_connections = set()
+finalizing = False
 
 
-def handshake_cb(typ, args):
-    if typ == 'port_exchange':
-        sio.emit('handshake', args)
+def new_socketio():
+    ishoalc.wait_for_switch()
+    if ishoalc.should_stop():
+        return
 
-    if typ == 'complete':
-        switchip,  *_ = args
-        all_connections.add(switchip)
-        ishoalc.add_connection(*args)
+    all_connections = set()
 
-    if typ == 'timeout':
-        switchip, = args
-        print(f'* Remote IP {switchip}, handshake time out', file=remotes_log)
+    sio = socketio.Client(reconnection=False)
 
-    if typ == 'error':
-        switchip, e = args
-        print(f'* Remote IP {switchip}, handshake error: '
+    def handshake_cb(typ, args):
+        if typ == 'port_exchange':
+            sio.emit('handshake', args)
+
+        if typ == 'complete':
+            switchip,  *_ = args
+            all_connections.add(switchip)
+            ishoalc.add_connection(*args)
+
+        if typ == 'timeout':
+            switchip, = args
+            print(f'* Remote IP {switchip}, handshake time out',
+                  file=remotes_log)
+
+        if typ == 'error':
+            switchip, e = args
+            print(f'* Remote IP {switchip}, handshake error: '
+                  f'{type(e).__qualname__}: {e}', file=remotes_log)
+
+            try:
+                with open('/var/log/ishoal-error.log', 'a') as f:
+                    traceback.print_exc(file=f)
+            except Exception:
+                pass
+
+    @sio.on('disconnect')
+    def on_disconnect():
+        for switchip in all_connections:
+            ishoalc.delete_connection(switchip)
+
+        global g_sio
+        g_sio = None
+
+        all_connections.clear()
+        print('Disconnected', file=remotes_log)
+
+        ishoalc.sleep(100)
+
+        if not finalizing:
+            new_socketio()
+
+    @sio.on('connected')
+    def on_connected():
+        sio.emit('protocol', (2, ishoalc.get_switch_ip()))
+
+        global g_sio
+        g_sio = sio
+
+        print('Joined iShoal network', file=remotes_log)
+
+    @sio.on('ip_collision')
+    def on_ip_collision():
+        print(f'Cannot join iShoal network, '
+              f'{ishoalc.get_switch_ip()} collision',
+              file=remotes_log)
+
+    @sio.on('add_remote')
+    def on_add_remote(remoteid, remoteip, switchip):
+        if not isinstance(remoteip, str) or not IPV4_REGEXP.match(remoteip):
+            return
+        if not isinstance(switchip, str) or not IPV4_REGEXP.match(switchip):
+            return
+
+        handshake.do_handshake(loop, remoteid, remoteip,
+                               switchip, handshake_cb)
+
+    @sio.on('handshake')
+    def on_handshake(remoteid, exchangeid, port):
+        if not isinstance(port, int) or not (0 < port < 65536):
+            return
+        if exchangeid not in (0, 1):
+            return
+
+        handshake.on_handshake_msg(loop, remoteid, exchangeid, port)
+
+    @sio.on('del_remote')
+    def on_del_remote(remoteid, remoteip, switchip):
+        if not isinstance(switchip, str) or not IPV4_REGEXP.match(switchip):
+            return
+
+        all_connections.discard(switchip)
+        ishoalc.delete_connection(switchip)
+
+    try:
+        sio.connect('https://ishoal.ink/')
+    except Exception as e:
+        print(f'Failed to join iShoal network, check connection? Error:\n'
               f'{type(e).__qualname__}: {e}', file=remotes_log)
 
         try:
@@ -101,81 +180,32 @@ def handshake_cb(typ, args):
             pass
 
 
-@sio.on('connected')
-def on_connected():
-    sio.emit('protocol', (2, ishoalc.get_switch_ip()))
-
-
-@sio.on('ip_collision')
-def on_ip_collision():
-    print(f'Cannot join iShoal network, {ishoalc.get_switch_ip()} collision',
-          file=remotes_log)
-
-
-@sio.on('add_remote')
-def on_add_remote(remoteid, remoteip, switchip):
-    if not isinstance(remoteip, str) or not IPV4_REGEXP.match(remoteip):
-        return
-    if not isinstance(switchip, str) or not IPV4_REGEXP.match(switchip):
-        return
-
-    handshake.do_handshake(loop, remoteid, remoteip, switchip, handshake_cb)
-
-
-@sio.on('handshake')
-def on_handshake(remoteid, exchangeid, port):
-    if not isinstance(port, int) or not (0 < port < 65536):
-        return
-    if exchangeid not in (0, 1):
-        return
-
-    handshake.on_handshake_msg(loop, remoteid, exchangeid, port)
-
-
-@sio.on('del_remote')
-def on_del_remote(remoteid, remoteip, switchip):
-    if not isinstance(switchip, str) or not IPV4_REGEXP.match(switchip):
-        return
-
-    all_connections.discard(switchip)
-    ishoalc.delete_connection(switchip)
-
-
 def main():
-    ishoalc.wait_for_switch()
-    if ishoalc.should_stop():
-        return
-
     global loop
     loop = handshake.start_handshaker()
 
-    try:
-        sio.connect('https://ishoal.ink/')
-    except Exception:
-        # Why can't I omit this?
-        raise
-    else:
-        def on_switch_change():
-            sio.disconnect()
-            ishoalc.sleep(100)
+    new_socketio()
 
-            for switchip in all_connections:
-                ishoalc.delete_connection(switchip)
-            all_connections.clear()
+    def on_switch_change():
+        if g_sio:
+            g_sio.disconnect()
 
-            sio.connect('https://ishoal.ink/')
+    threading.Thread(target=ishoalc.on_switch_chg_threadfn,
+                     args=(on_switch_change,),
+                     name='py_switch_chg').start()
 
-        threading.Thread(target=ishoalc.on_switch_chg_threadfn,
-                         args=(on_switch_change,), name='py_switch_chg').start()
+    # Python is dumb that signal handlers must execute on main thread :(
+    # if we ishoalc.sleep(-1) then signal handler will never execute
+    # wake up every 100ms to check for signals
+    while not ishoalc.should_stop():
+        ishoalc.sleep(100)
 
-        # Python is dumb that signal handlers must execute on main thread :(
-        # if we ishoalc.sleep(-1) then signal handler will never execute
-        # wake up every 100ms to check for signals
-        while not ishoalc.should_stop():
-            ishoalc.sleep(100)
-    finally:
-        sio.disconnect()
-        loop.call_soon_threadsafe(loop.stop)
+    global finalizing
+    finalizing = True
+
+    if g_sio:
+        g_sio.disconnect()
+    loop.call_soon_threadsafe(loop.stop)
 
 
 main()
