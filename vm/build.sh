@@ -77,7 +77,7 @@ sudo docker run \
   --security-opt seccomp=unconfined \
   --cap-add=SYS_PTRACE \
   --rm -i \
-  gentoo/stage3-amd64-nomultilib \
+  ksmanis/stage3:amd64-nomultilib \
   bash "${REPO}/vm/build-inner.sh"
 
 fstrim -v rootfs

@@ -55,11 +55,6 @@ pushd /var/db/repos/localrepo/sys-boot/edk2/
 repoman manifest -q
 popd
 
-# https://bugs.gentoo.org/756034
-cat > /etc/portage/package.mask << 'EOF'
-=dev-util/cmake-3.19.0
-EOF
-
 export LLVM_TARGETS=BPF
 emerge -vok sys-devel/llvm
 MAKEOPTS="-j$(( $(nproc) < 4 ? $(nproc) : 4 ))" emerge -vnk sys-devel/llvm sys-devel/clang
