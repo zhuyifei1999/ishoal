@@ -1,1 +1,1 @@
-#define ISHOAL_VERSION_STR "v2.1b5"
+#define ISHOAL_VERSION_STR "v2.1b6"

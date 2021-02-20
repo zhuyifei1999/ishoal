@@ -2,7 +2,7 @@
 
 set -ex
 
-LINUX_VER=5.10.15
+LINUX_VER=5.11.1
 PY_VER=3.9
 EDKII_VER=202011
 
@@ -17,7 +17,7 @@ emerge -vuk sys-apps/portage
 emerge -vuDNk --with-bdeps=y @world
 emerge -c
 
-emerge -vn app-portage/portage-utils
+emerge -vnk app-portage/portage-utils
 
 source /etc/profile
 
@@ -56,7 +56,7 @@ repoman manifest -q
 popd
 
 export LLVM_TARGETS=BPF
-emerge -vok sys-devel/llvm
+emerge -vok --with-bdeps=y sys-devel/llvm
 MAKEOPTS="-j$(( $(nproc) < 4 ? $(nproc) : 4 ))" emerge -vnk sys-devel/llvm sys-devel/clang
 unset LLVM_TARGETS
 
@@ -64,7 +64,8 @@ emerge -vok gentoo-sources
 
 source /etc/profile
 
-wget -nv "https://cdn.kernel.org/pub/linux/kernel/v${LINUX_VER%.*.*}.x/linux-${LINUX_VER}.tar.xz"
+# wget -nv "https://cdn.kernel.org/pub/linux/kernel/v${LINUX_VER%.*.*}.x/linux-${LINUX_VER}.tar.xz"
+cp "/var/cache/distfiles/linux-${LINUX_VER}.tar.xz" .
 tar xf "linux-${LINUX_VER}.tar.xz"
 mv "linux-${LINUX_VER}" kernel
 
@@ -72,15 +73,16 @@ pushd kernel
 ./scripts/kconfig/merge_config.sh ./arch/x86/configs/x86_64_defconfig "${REPO}/vm/kconfig"
 popd
 
-python -m venv venv
-venv/bin/pip install pillow
+if $BUILD_LOGO; then
+  emerge -vnk dev-python/pillow
 
-pushd "${REPO}/vm/ohlawdhecomin"
-"$(dirs +1)"/venv/bin/python generate_data.py
-popd
+  pushd "${REPO}/vm/ohlawdhecomin"
+  python generate_data.py
+  popd
 
-ln -s "${REPO}/vm/ohlawdhecomin" kernel/drivers/firmware/efi
-echo 'obj-$(CONFIG_EFI_EARLYCON) += ohlawdhecomin/ohlawdhecomin.o' >> kernel/drivers/firmware/efi/Makefile
+  ln -s "${REPO}/vm/ohlawdhecomin" kernel/drivers/firmware/efi
+  echo 'obj-$(CONFIG_EFI_EARLYCON) += ohlawdhecomin/ohlawdhecomin.o' >> kernel/drivers/firmware/efi/Makefile
+fi
 
 make -C kernel -j"$(nproc)"
 
@@ -91,6 +93,28 @@ ACCEPT_KEYWORDS='~amd64' emerge -vnk dev-libs/libbpf sys-apps/bpftool
 
 rm "${REPO}/src/"*.d || true
 make -B -C "${REPO}/src/" PYTHON="python${PY_VER}" CLANGFLAGS='-D__x86_64__' CFLAGS='-Os -pipe -g -Wall'
+
+pushd "${REPO}/vm/IShoalPkg/"
+if $BUILD_LOGO; then
+  USE='fontconfig truetype' emerge -vnk media-gfx/imagemagick media-fonts/inconsolata
+  magick-script BootImg.magick
+
+  magick convert BootImgUntrimmed.bmp -trim +repage BootImg.bmp
+  BOOTIMG_INFO="$(magick BootImgUntrimmed.bmp -format "%@" info:)"
+
+  [[ $BOOTIMG_INFO =~ [0-9]+x[0-9]+\+([0-9]+)\+([0-9]+) ]]
+  BOOTIMG_XOFF="${BASH_REMATCH[1]}"
+  BOOTIMG_YOFF="${BASH_REMATCH[2]}"
+
+  cat > BootImgOffsets.h << EOF
+#define BOOTIMG_XOFF $BOOTIMG_XOFF
+#define BOOTIMG_YOFF $BOOTIMG_YOFF
+EOF
+  cp IShoal.image.inf IShoal.inf
+else
+  cp IShoal.noimage.inf IShoal.inf
+fi
+popd
 
 ACCEPT_KEYWORDS='~amd64' emerge -vnk sys-boot/edk2
 bash "${REPO}/vm/IShoalPkg/build.sh"

@@ -4,7 +4,7 @@ set -ex
 
 # https://stackoverflow.com/a/246128
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-
+BUILD_LOGO="${BUILD_LOGO:-true}"
 REPO="$(realpath -s ${DIR}/..)"
 
 # https://stackoverflow.com/a/34676160
@@ -98,7 +98,7 @@ mount -t 9p /dev/binpkgs -o version=9p2000.L,trans=virtio,access=any "${REPO}/vm
 sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
 apt update
 apt install -y docker.io qemu-utils
-"${REPO}/vm/build.sh"
+BUILD_LOGO='$BUILD_LOGO' "${REPO}/vm/build.sh"
 cp "${REPO}/vm/ishoal.ova" /mnt/output/ishoal.ova
 sync
 INNEREOF

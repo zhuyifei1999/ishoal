@@ -8,7 +8,11 @@
 /src/ishoal
 /src/py_dist_build/
 /src/extern/
-/node_modules/
-/package-lock.json
+/srv/registry/node_modules/
+/srv/registry/package-lock.json
 /vm/ishoal.ova
 /vm/binpkgs
+/vm/IShoalPkg/BootImg.bmp
+/vm/IShoalPkg/BootImgOffsets.h
+/vm/IShoalPkg/BootImgUntrimmed.bmp
+/vm/IShoalPkg/IShoal.inf
