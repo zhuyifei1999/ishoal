@@ -73,6 +73,7 @@ IPV4_REGEXP = re.compile(
 remotes_log = os.fdopen(os.dup(ishoalc.get_remotes_log_fd()), 'a', buffering=1)
 
 finalizing = False
+g_sio = None
 
 
 def new_socketio():
