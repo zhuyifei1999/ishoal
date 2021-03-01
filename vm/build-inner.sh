@@ -2,7 +2,7 @@
 
 set -ex
 
-LINUX_VER=5.10.15
+LINUX_VER=5.11.2
 PY_VER=3.9
 EDKII_VER=202011
 
@@ -17,7 +17,7 @@ emerge -vuk sys-apps/portage
 emerge -vuDNk --with-bdeps=y @world
 emerge -c
 
-emerge -vn app-portage/portage-utils
+emerge -vnk app-portage/portage-utils
 
 source /etc/profile
 
@@ -47,6 +47,7 @@ cp "${REPO}/vm/edk2-workspace.template" /var/db/repos/localrepo/sys-boot/edk2/fi
 
 chown -R portage:portage /var/db/repos/localrepo
 
+export FETCHCOMMAND='wget -q -c -t 3 -T 60 --passive-ftp -O "${DISTDIR}/${FILE}" "${URI}"'
 pushd /var/db/repos/localrepo/sys-apps/bpftool/
 repoman manifest -q
 popd
@@ -54,9 +55,10 @@ popd
 pushd /var/db/repos/localrepo/sys-boot/edk2/
 repoman manifest -q
 popd
+unset FETCHCOMMAND
 
 export LLVM_TARGETS=BPF
-emerge -vok sys-devel/llvm
+emerge -vok --with-bdeps=y sys-devel/llvm
 MAKEOPTS="-j$(( $(nproc) < 4 ? $(nproc) : 4 ))" emerge -vnk sys-devel/llvm sys-devel/clang
 unset LLVM_TARGETS
 
@@ -64,7 +66,8 @@ emerge -vok gentoo-sources
 
 source /etc/profile
 
-wget -nv "https://cdn.kernel.org/pub/linux/kernel/v${LINUX_VER%.*.*}.x/linux-${LINUX_VER}.tar.xz"
+# wget -nv "https://cdn.kernel.org/pub/linux/kernel/v${LINUX_VER%.*.*}.x/linux-${LINUX_VER}.tar.xz"
+cp "/var/cache/distfiles/linux-${LINUX_VER}.tar.xz" .
 tar xf "linux-${LINUX_VER}.tar.xz"
 mv "linux-${LINUX_VER}" kernel
 
