@@ -12,7 +12,7 @@
 #include <linux/ipv6.h>
 #include <linux/udp.h>
 
-#include "bpf_kern.h"
+#include "xdpfilter.h"
 #include "pkt.h"
 
 struct {

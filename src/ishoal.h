@@ -6,7 +6,7 @@
 #include <time.h>
 
 #include "version.h"
-#include "bpf_kern.h"
+#include "xdpfilter.h"
 
 #define container_of(ptr, type, member) ({ \
 	void *__mptr = (void *)(ptr);      \
@@ -42,9 +42,9 @@ extern char *progname;
 extern char *iface;
 extern int ifindex;
 
-struct bpf_kern;
+struct xdpfilter_bpf;
 
-extern struct bpf_kern *obj;
+extern struct xdpfilter_bpf *obj;
 extern macaddr_t switch_mac;
 extern macaddr_t host_mac;
 extern macaddr_t gateway_mac;

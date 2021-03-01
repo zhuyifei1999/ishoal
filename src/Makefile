@@ -22,7 +22,7 @@ LLVM_STRIP ?= llvm-strip
 
 BPFTOOL ?= bpftool
 
-SRC = $(filter-out bpf_kern.c, $(wildcard *.c) $(wildcard extern/**/*.c))
+SRC = $(filter-out xdpfilter.bpf.c, $(wildcard *.c) $(wildcard extern/**/*.c))
 OBJ = $(patsubst %.c, %.o, $(SRC))
 
 ifeq ($(V),1)
@@ -42,11 +42,12 @@ all: ishoal
 
 include $(SRC:.c=.d)
 
-bpf_user.d: bpf_kern.skel.h
-pkt.d: bpf_kern.skel.h
+xdpfilter.d: xdpfilter.skel.h
+pkt.d: xdpfilter.skel.h
+xdpfilter.bpf.d: pkt.impl.h
 
 .PHONY: clean
-
+.SECONDARY:
 .DELETE_ON_ERROR:
 
 clean:
@@ -58,17 +59,17 @@ clean:
 	$(Q)$(CC) -M $< $(shell $(PYTHON_CONFIG) --includes) $(CFLAGS) | \
 		sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' > $@
 
-bpf_kern.d: bpf_kern.c pkt.impl.h
+%.bpf.d: %.bpf.c
 	$(Q)$(CLANG) -M $< $(CFLAGS) $(CLANGFLAGS) -target bpf | \
 		sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' > $@
 
-bpf_kern.o: bpf_kern.c bpf_kern.d
+%.bpf.o: %.bpf.c %.bpf.d
 	$(call msg,CLNG-BPF,$@)
 	$(Q)$(CLANG) -c $< -o - -fno-common $(CFLAGS) $(CLANGFLAGS) -target bpf -emit-llvm | \
 		llc -o $@ -march=bpf -mcpu=v2 -filetype=obj
 	$(Q)$(LLVM_STRIP) -g $@
 
-bpf_kern.skel.h: bpf_kern.o
+%.skel.h: %.bpf.o
 	$(call msg,GEN-SKEL,$@)
 	$(Q)$(BPFTOOL) gen skeleton $< > $@
 

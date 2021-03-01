@@ -66,7 +66,7 @@ static int redirect_to_userspace(context_t *ctx)
 #include <bpf/libbpf.h>
 
 #include "ishoal.h"
-#include "bpf_kern.skel.h"
+#include "xdpfilter.skel.h"
 
 static int bpf_xdp_adjust_head(context_t *xdp_md, int delta);
 static int bpf_xdp_adjust_tail(context_t *xdp_md, int delta);
@@ -209,7 +209,7 @@ static uint32_t bpf_csum_diff(uint32_t *from, uint32_t from_size,
 
 #endif
 
-#include "bpf_kern.h"
+#include "xdpfilter.h"
 
 enum icmp_type {
 	NOT_ICMP,

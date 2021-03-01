@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 
-#include "bpf_kern.h"
+#include "xdpfilter.h"
 
 struct arp_ipv4_payload {
 	macaddr_t	ar_sha;

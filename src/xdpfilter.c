@@ -10,9 +10,9 @@
 #include <bpf/xsk.h>
 
 #include "ishoal.h"
-#include "bpf_kern.skel.h"
+#include "xdpfilter.skel.h"
 
-struct bpf_kern *obj;
+struct xdpfilter_bpf *obj;
 
 macaddr_t switch_mac;
 ipaddr_t switch_ip;
@@ -43,7 +43,7 @@ static void switch_change_broadcast_init(void)
 
 static void close_obj(void)
 {
-	bpf_kern__destroy(obj);
+	xdpfilter_bpf__destroy(obj);
 }
 
 static void detach_obj(void)
@@ -138,7 +138,7 @@ static void on_xsk_pkt(void *ptr, size_t length)
 
 void bpf_load_thread(void *arg)
 {
-	obj = bpf_kern__open_and_load();
+	obj = xdpfilter_bpf__open_and_load();
 	if (!obj)
 		exit(1);
 
