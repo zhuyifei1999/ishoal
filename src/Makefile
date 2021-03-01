@@ -18,44 +18,43 @@ CLANG ?= clang
 
 BPFTOOL ?= bpftool
 
-SRC = $(filter-out ./c/bpf_kern.c, $(shell find . -type f -name '*.c'))
+SRC = $(filter-out bpf_kern.c, $(wildcard *.c) $(wildcard extern/**/*.c))
 OBJ = $(patsubst %.c, %.o, $(SRC))
 
 all: ishoal
 
 include $(SRC:.c=.d)
 
-c/bpf_user.d: c/bpf_kern.skel.h
-c/pkt.d: c/bpf_kern.skel.h
+bpf_user.d: bpf_kern.skel.h
+pkt.d: bpf_kern.skel.h
 
 .PHONY: clean
 
 .DELETE_ON_ERROR:
 
 clean:
-	find . \( -name '*.o' -o -name '*.d' -o -name '*.skel.h' \) -delete
-	rm -f ishoal_native ishoal_py ishoal
-	rm -rf python_build
+	rm -f *.o *.d *.skel.h ishoal_native ishoal_py ishoal
+	rm -rf py_dist_build
 
 %.d: %.c
 	$(CC) -M $< $(shell $(PYTHON_CONFIG) --includes) $(CFLAGS) | \
 		sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' > $@
 
-c/bpf_kern.d: c/bpf_kern.c c/pkt.impl.h
+bpf_kern.d: bpf_kern.c pkt.impl.h
 	$(CLANG) -M $< $(CFLAGS) $(CLANGFLAGS) -target bpf | \
 		sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' > $@
 
-c/bpf_kern.o: c/bpf_kern.c c/bpf_kern.d
+bpf_kern.o: bpf_kern.c bpf_kern.d
 	$(CLANG) -c $< -o - -fno-common $(CFLAGS) $(CLANGFLAGS) -target bpf -emit-llvm | \
 		llc -o $@ -march=bpf -mcpu=v2 -filetype=obj
 
-c/bpf_kern.skel.h: c/bpf_kern.o
+bpf_kern.skel.h: bpf_kern.o
 	$(BPFTOOL) gen skeleton $< > $@
 
-c/python.o: c/python.c
+python.o: python.c
 	$(CC) -c $< -o $@ $(PYTHON_CFLAGS) $(CFLAGS)
 
-c/tui.o: c/tui.c
+tui.o: tui.c
 	$(CC) -c $< -o $@ $(DIALOG_CFLAGS) $(CFLAGS)
 
 %.o: %.c
@@ -64,16 +63,16 @@ c/tui.o: c/tui.c
 ishoal_native: $(OBJ)
 	$(CC) $^ -o $@ $(PYTHON_LDFLAGS) $(DIALOG_LDFLAGS) $(LDFLAGS)
 
-python_build: python/**/* py-requirements.txt
-	mkdir -p python_build && \
-	cp -a python/* python_build && \
-	$(PYTHON) -m pip install -Ur py-requirements.txt --target python_build && \
-	find python_build -name '__pycache__' -prune -exec rm -r {} \; && \
-	rm -rf python_build/*.dist-info || \
-	(rm -rf python_build; exit 1)
+py_dist_build: py_dist py_dist/**/* py-requirements.txt
+	mkdir -p py_dist_build && \
+	cp -a py_dist/* py_dist_build && \
+	$(PYTHON) -m pip install -Ur py-requirements.txt --target py_dist_build && \
+	find py_dist_build -name '__pycache__' -prune -exec rm -r {} \; && \
+	rm -rf py_dist_build/*.dist-info || \
+	(rm -rf py_dist_build; exit 1)
 
-ishoal_py: python_build
-	$(PYTHON) -m zipapp --compress python_build -o $@
+ishoal_py: py_dist_build
+	$(PYTHON) -m zipapp --compress py_dist_build -o $@
 
 ishoal: ishoal_native ishoal_py
 	cat $^ > $@ && chmod a+x $@
