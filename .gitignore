@@ -6,8 +6,8 @@
 /src/ishoal_native
 /src/ishoal_py
 /src/ishoal
-/src/py_dist_build/
-/src/extern/
+/src/python_build/
+/src/c/extern/
 /node_modules/
 /package-lock.json
 /vm/ishoal.ova
