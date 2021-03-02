@@ -93,7 +93,7 @@ ACCEPT_KEYWORDS='~amd64' emerge -vnk dev-libs/libbpf sys-apps/bpftool
 "python${PY_VER}" -m ensurepip
 
 bash "${REPO}/src/extern/get.sh"
-make -B -C "${REPO}/src/" PYTHON="python${PY_VER}" CLANGFLAGS='-D__x86_64__' CFLAGS='-Os -pipe -g -Wall'
+make -B -C "${REPO}/src/" PYTHON="python${PY_VER}" CFLAGS='-Os -pipe -flto -fno-semantic-interposition -Wall' CLANGFLAGS='-fno-lto -g -D__x86_64__' DO_STRIP=1
 
 ACCEPT_KEYWORDS='~amd64' emerge -vnk sys-boot/edk2
 bash "${REPO}/vm/IShoalPkg/build.sh"

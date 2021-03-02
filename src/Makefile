@@ -21,6 +21,7 @@ DIALOG_LDFLAGS := $(shell $(DIALOG_CONFIG) --libs)
 LLC ?= llc
 CLANG ?= clang
 
+STRIP ?= strip
 LLVM_STRIP ?= llvm-strip
 
 BPFTOOL ?= bpftool
@@ -87,13 +88,21 @@ $(OUTPUT)/%.o: %.c | $(OUTPUT)
 $(OUTPUT)/ishoal_native: $(OBJ) | $(OUTPUT)
 	$(call msg,LD,$@)
 	$(Q)$(CC) $^ -o $@ $(PYTHON_LDFLAGS) $(DIALOG_LDFLAGS) $(LDFLAGS)
+ifeq ($(DO_STRIP),1)
+	$(call msg,STRIP,$@)
+	$(Q)$(STRIP) $@
+endif
 
 $(OUTPUT)/py_dist_build: py_dist py_dist/**/* py-requirements.txt | $(OUTPUT)
-	$(call msg,PIP,$@)
+	$(call msg,BUILD,$@)
 	$(Q)mkdir -p $(OUTPUT)/py_dist_build && \
 	cp -a py_dist/* $(OUTPUT)/py_dist_build && \
-	$(PYTHON) -m pip install $(PIPFLAGS) -Ur py-requirements.txt --target $(OUTPUT)/py_dist_build && \
-	find $(OUTPUT)/py_dist_build -name '__pycache__' -prune -exec rm -r {} \; && \
+	$(PYTHON) -m pip install --no-binary :all: --no-compile $(PIPFLAGS) -Ur py-requirements.txt --target $(OUTPUT)/py_dist_build && \
+	find $(OUTPUT)/py_dist_build -name '*.egg-info' -prune -exec rm -r {} \; && \
+	find $(OUTPUT)/py_dist_build -name 'tests' -prune -exec rm -r {} \; && \
+	find $(OUTPUT)/py_dist_build/chardet -mindepth 1 ! -path $(OUTPUT)/py_dist_build/chardet/version.py -prune -exec rm -r {} \; && \
+	mv $(OUTPUT)/py_dist_build/chardet/{version.py,__init__.py} && \
+	$(PYTHON) py-trimmer.py $(OUTPUT)/py_dist_build && \
 	rm -rf $(OUTPUT)/py_dist_build/*.dist-info || \
 	(rm -rf $(OUTPUT)/py_dist_build; exit 1)
 
