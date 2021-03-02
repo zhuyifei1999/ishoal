@@ -1,6 +1,6 @@
-OUTPUT := .
+O := .
 
-INCLUDES := -iquote $(abspath $(OUTPUT))
+INCLUDES := -iquote $(abspath $(O))
 CFLAGS := -O2 -pipe -g -Wall
 LDFLAGS := $(CFLAGS) -lbpf -lurcu-cds -lurcu -lpthread
 
@@ -27,7 +27,7 @@ LLVM_STRIP ?= llvm-strip
 BPFTOOL ?= bpftool
 
 SRC := $(filter-out xdpfilter.bpf.c, $(wildcard *.c) $(wildcard extern/**/*.c))
-OBJ := $(SRC:%.c=$(OUTPUT)/%.o)
+OBJ := $(SRC:%.c=$(O)/%.o)
 
 ifeq ($(V),1)
 	Q =
@@ -36,56 +36,56 @@ else
 	Q = @
 	msg = @printf '  %-8s %s%s\n'					\
 		      "$(1)"						\
-		      "$(patsubst $(OUTPUT)/%,%,$(2))"	\
+		      "$(patsubst $(O)/%,%,$(2))"	\
 		      "$(if $(3), $(3))";
 	MAKEFLAGS += --no-print-directory
 	PIPFLAGS += -qq
 endif
 
-all: $(OUTPUT)/ishoal
+all: $(O)/ishoal
 
--include $(SRC:%.c=$(OUTPUT)/%.d)
+-include $(SRC:%.c=$(O)/%.d)
 
-$(OUTPUT)/xdpfilter.o: $(OUTPUT)/xdpfilter.skel.h
-$(OUTPUT)/pkt.o: $(OUTPUT)/xdpfilter.skel.h
+$(O)/xdpfilter.o: $(O)/xdpfilter.skel.h
+$(O)/pkt.o: $(O)/xdpfilter.skel.h
 
 .PHONY: clean
 .SECONDARY:
 .DELETE_ON_ERROR:
 
 clean:
-	$(call msg,CLEAN,$(OUTPUT))
-	$(Q)test -d $(OUTPUT) && find $(OUTPUT) \( -name '*.o' -o -name '*.d' -o -name '*.skel.h' \) -delete || true
-	$(Q)test -d $(OUTPUT) && cd $(OUTPUT) && rm -f ishoal_native ishoal_py ishoal || true
-	$(Q)test -d $(OUTPUT) && rm -rf $(OUTPUT)/py_dist_build || true
-	$(Q)test -d $(OUTPUT) && find $(OUTPUT) -type d -empty -delete || true
+	$(call msg,CLEAN,$(O))
+	$(Q)test -d $(O) && find $(O) \( -name '*.o' -o -name '*.d' -o -name '*.skel.h' \) -delete || true
+	$(Q)test -d $(O) && cd $(O) && rm -f ishoal_native ishoal_py ishoal || true
+	$(Q)test -d $(O) && rm -rf $(O)/py_dist_build || true
+	$(Q)test -d $(O) && find $(O) -type d -empty -delete || true
 
-$(OUTPUT):
+$(O):
 	$(Q)mkdir -p $@
 
-$(OUTPUT)/%.bpf.o: %.bpf.c | $(OUTPUT)
+$(O)/%.bpf.o: %.bpf.c | $(O)
 	$(call msg,CLNG-BPF,$@)
 	$(Q)$(CLANG) -c $< -o $@ -MD -MP $(CFLAGS) $(INCLUDES) $(CLANGFLAGS) -target bpf
 	$(Q)$(LLVM_STRIP) -g $@
 
-$(OUTPUT)/%.skel.h: $(OUTPUT)/%.bpf.o | $(OUTPUT)
+$(O)/%.skel.h: $(O)/%.bpf.o | $(O)
 	$(call msg,GEN-SKEL,$@)
 	$(Q)$(BPFTOOL) gen skeleton $< > $@
 
-$(OUTPUT)/python.o: python.c | $(OUTPUT)
+$(O)/python.o: python.c | $(O)
 	$(call msg,CC,$@)
 	$(Q)$(CC) -c $< -o $@ -MD -MP $(PYTHON_CFLAGS) $(CFLAGS) $(INCLUDES)
 
-$(OUTPUT)/tui.o: tui.c | $(OUTPUT)
+$(O)/tui.o: tui.c | $(O)
 	$(call msg,CC,$@)
 	$(Q)$(CC) -c $< -o $@ -MD -MP $(DIALOG_CFLAGS) $(CFLAGS) $(INCLUDES)
 
-$(OUTPUT)/%.o: %.c | $(OUTPUT)
+$(O)/%.o: %.c | $(O)
 	$(Q)mkdir -p $(@D)
 	$(call msg,CC,$@)
 	$(Q)$(CC) -c $< -o $@ -MD -MP $(CFLAGS) $(INCLUDES)
 
-$(OUTPUT)/ishoal_native: $(OBJ) | $(OUTPUT)
+$(O)/ishoal_native: $(OBJ) | $(O)
 	$(call msg,LD,$@)
 	$(Q)$(CC) $^ -o $@ $(PYTHON_LDFLAGS) $(DIALOG_LDFLAGS) $(LDFLAGS)
 ifeq ($(DO_STRIP),1)
@@ -93,23 +93,23 @@ ifeq ($(DO_STRIP),1)
 	$(Q)$(STRIP) $@
 endif
 
-$(OUTPUT)/py_dist_build: py_dist py_dist/**/* py-requirements.txt | $(OUTPUT)
+$(O)/py_dist_build: py_dist py_dist/**/* py-requirements.txt | $(O)
 	$(call msg,BUILD,$@)
-	$(Q)mkdir -p $(OUTPUT)/py_dist_build && \
-	cp -a py_dist/* $(OUTPUT)/py_dist_build && \
-	$(PYTHON) -m pip install --no-binary :all: --no-compile $(PIPFLAGS) -Ur py-requirements.txt --target $(OUTPUT)/py_dist_build && \
-	find $(OUTPUT)/py_dist_build -name '*.egg-info' -prune -exec rm -r {} \; && \
-	find $(OUTPUT)/py_dist_build -name 'tests' -prune -exec rm -r {} \; && \
-	find $(OUTPUT)/py_dist_build/chardet -mindepth 1 ! -path $(OUTPUT)/py_dist_build/chardet/version.py -prune -exec rm -r {} \; && \
-	mv $(OUTPUT)/py_dist_build/chardet/{version.py,__init__.py} && \
-	$(PYTHON) py-trimmer.py $(OUTPUT)/py_dist_build && \
-	rm -rf $(OUTPUT)/py_dist_build/*.dist-info || \
-	(rm -rf $(OUTPUT)/py_dist_build; exit 1)
+	$(Q)mkdir -p $(O)/py_dist_build && \
+	cp -a py_dist/* $(O)/py_dist_build && \
+	$(PYTHON) -m pip install --no-binary :all: --no-compile $(PIPFLAGS) -Ur py-requirements.txt --target $(O)/py_dist_build && \
+	find $(O)/py_dist_build -name '*.egg-info' -prune -exec rm -r {} \; && \
+	find $(O)/py_dist_build -name 'tests' -prune -exec rm -r {} \; && \
+	find $(O)/py_dist_build/chardet -mindepth 1 ! -path $(O)/py_dist_build/chardet/version.py -prune -exec rm -r {} \; && \
+	mv $(O)/py_dist_build/chardet/{version.py,__init__.py} && \
+	$(PYTHON) py-trimmer.py $(O)/py_dist_build && \
+	rm -rf $(O)/py_dist_build/*.dist-info || \
+	(rm -rf $(O)/py_dist_build; exit 1)
 
-$(OUTPUT)/ishoal_py: $(OUTPUT)/py_dist_build | $(OUTPUT)
+$(O)/ishoal_py: $(O)/py_dist_build | $(O)
 	$(call msg,ZIPAPP,$@)
-	$(Q)$(PYTHON) -m zipapp --compress $(OUTPUT)/py_dist_build -o $@
+	$(Q)$(PYTHON) -m zipapp --compress $(O)/py_dist_build -o $@
 
-$(OUTPUT)/ishoal: $(OUTPUT)/ishoal_native $(OUTPUT)/ishoal_py | $(OUTPUT)
+$(O)/ishoal: $(O)/ishoal_native $(O)/ishoal_py | $(O)
 	$(call msg,CAT,$@)
 	$(Q)cat $^ > $@ && chmod a+x $@
