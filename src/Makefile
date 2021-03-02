@@ -1,19 +1,22 @@
-CFLAGS ?= -O2 -pipe -g -Wall
-LDFLAGS ?= $(CFLAGS) -lbpf -lurcu-cds -lurcu -lpthread
+OUTPUT := .
+
+INCLUDES := -iquote $(abspath $(OUTPUT))
+CFLAGS := -O2 -pipe -g -Wall
+LDFLAGS := $(CFLAGS) -lbpf -lurcu-cds -lurcu -lpthread
 
 # Define this to build on a system without multilib
-# CLANGFLAGS ?= -D__x86_64__
+# CLANGFLAGS := -D__x86_64__
 
 PYTHON ?= python3.8
 PYTHON_CONFIG ?= $(PYTHON)-config
-PYTHON_CFLAGS = $(shell $(PYTHON_CONFIG) --cflags)
-PYTHON_LDFLAGS = $(shell $(PYTHON_CONFIG) --ldflags --embed)
+PYTHON_CFLAGS := $(shell $(PYTHON_CONFIG) --cflags)
+PYTHON_LDFLAGS := $(shell $(PYTHON_CONFIG) --ldflags --embed)
 
-PIPFLAGS ?=
+PIPFLAGS :=
 
 DIALOG_CONFIG ?= dialog-config
-DIALOG_CFLAGS = $(shell $(DIALOG_CONFIG) --cflags)
-DIALOG_LDFLAGS = $(shell $(DIALOG_CONFIG) --libs)
+DIALOG_CFLAGS := $(shell $(DIALOG_CONFIG) --cflags)
+DIALOG_LDFLAGS := $(shell $(DIALOG_CONFIG) --libs)
 
 LLC ?= llc
 CLANG ?= clang
@@ -22,8 +25,8 @@ LLVM_STRIP ?= llvm-strip
 
 BPFTOOL ?= bpftool
 
-SRC = $(filter-out xdpfilter.bpf.c, $(wildcard *.c) $(wildcard extern/**/*.c))
-OBJ = $(patsubst %.c, %.o, $(SRC))
+SRC := $(filter-out xdpfilter.bpf.c, $(wildcard *.c) $(wildcard extern/**/*.c))
+OBJ := $(SRC:%.c=$(OUTPUT)/%.o)
 
 ifeq ($(V),1)
 	Q =
@@ -32,76 +35,72 @@ else
 	Q = @
 	msg = @printf '  %-8s %s%s\n'					\
 		      "$(1)"						\
-		      "$(patsubst $(abspath $(OUTPUT))/%,%,$(2))"	\
+		      "$(patsubst $(OUTPUT)/%,%,$(2))"	\
 		      "$(if $(3), $(3))";
 	MAKEFLAGS += --no-print-directory
 	PIPFLAGS += -qq
 endif
 
-all: ishoal
+all: $(OUTPUT)/ishoal
 
-include $(SRC:.c=.d)
+-include $(SRC:%.c=$(OUTPUT)/%.d)
 
-xdpfilter.d: xdpfilter.skel.h
-pkt.d: xdpfilter.skel.h
-xdpfilter.bpf.d: pkt.impl.h
+$(OUTPUT)/xdpfilter.o: $(OUTPUT)/xdpfilter.skel.h
+$(OUTPUT)/pkt.o: $(OUTPUT)/xdpfilter.skel.h
 
 .PHONY: clean
 .SECONDARY:
 .DELETE_ON_ERROR:
 
 clean:
-	$(call msg,CLEAN)
-	$(Q)rm -f *.o *.d *.skel.h ishoal_native ishoal_py ishoal
-	$(Q)rm -rf py_dist_build
+	$(call msg,CLEAN,$(OUTPUT))
+	$(Q)test -d $(OUTPUT) && find $(OUTPUT) \( -name '*.o' -o -name '*.d' -o -name '*.skel.h' \) -delete || true
+	$(Q)test -d $(OUTPUT) && cd $(OUTPUT) && rm -f ishoal_native ishoal_py ishoal || true
+	$(Q)test -d $(OUTPUT) && rm -rf $(OUTPUT)/py_dist_build || true
+	$(Q)test -d $(OUTPUT) && find $(OUTPUT) -type d -empty -delete || true
 
-%.d: %.c
-	$(Q)$(CC) -M $< $(shell $(PYTHON_CONFIG) --includes) $(CFLAGS) | \
-		sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' > $@
+$(OUTPUT):
+	$(Q)mkdir -p $@
 
-%.bpf.d: %.bpf.c
-	$(Q)$(CLANG) -M $< $(CFLAGS) $(CLANGFLAGS) -target bpf | \
-		sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' > $@
-
-%.bpf.o: %.bpf.c %.bpf.d
+$(OUTPUT)/%.bpf.o: %.bpf.c | $(OUTPUT)
 	$(call msg,CLNG-BPF,$@)
-	$(Q)$(CLANG) -c $< -o - -fno-common $(CFLAGS) $(CLANGFLAGS) -target bpf -emit-llvm | \
-		llc -o $@ -march=bpf -mcpu=v2 -filetype=obj
+	$(Q)$(CLANG) -c $< -o $@ -MD -MP $(CFLAGS) $(INCLUDES) $(CLANGFLAGS) -target bpf
 	$(Q)$(LLVM_STRIP) -g $@
 
-%.skel.h: %.bpf.o
+$(OUTPUT)/%.skel.h: $(OUTPUT)/%.bpf.o | $(OUTPUT)
 	$(call msg,GEN-SKEL,$@)
 	$(Q)$(BPFTOOL) gen skeleton $< > $@
 
-python.o: python.c
+$(OUTPUT)/python.o: python.c | $(OUTPUT)
 	$(call msg,CC,$@)
-	$(Q)$(CC) -c $< -o $@ $(PYTHON_CFLAGS) $(CFLAGS)
+	$(Q)$(CC) -c $< -o $@ -MD -MP $(PYTHON_CFLAGS) $(CFLAGS) $(INCLUDES)
 
-tui.o: tui.c
+$(OUTPUT)/tui.o: tui.c | $(OUTPUT)
 	$(call msg,CC,$@)
-	$(Q)$(CC) -c $< -o $@ $(DIALOG_CFLAGS) $(CFLAGS)
+	$(Q)$(CC) -c $< -o $@ -MD -MP $(DIALOG_CFLAGS) $(CFLAGS) $(INCLUDES)
 
-%.o: %.c
+$(OUTPUT)/%.o: %.c | $(OUTPUT)
+	$(Q)mkdir -p $(@D)
 	$(call msg,CC,$@)
-	$(Q)$(CC) -c $< -o $@ $(CFLAGS)
+	$(Q)$(CC) -c $< -o $@ -MD -MP $(CFLAGS) $(INCLUDES)
 
-ishoal_native: $(OBJ)
+$(OUTPUT)/ishoal_native: $(OBJ) | $(OUTPUT)
 	$(call msg,LD,$@)
 	$(Q)$(CC) $^ -o $@ $(PYTHON_LDFLAGS) $(DIALOG_LDFLAGS) $(LDFLAGS)
 
-py_dist_build: py_dist py_dist/**/* py-requirements.txt
+$(OUTPUT)/py_dist_build: py_dist py_dist/**/* py-requirements.txt | $(OUTPUT)
 	$(call msg,PIP,$@)
-	$(Q)mkdir -p py_dist_build && \
-	cp -a py_dist/* py_dist_build && \
-	$(PYTHON) -m pip install $(PIPFLAGS) -Ur py-requirements.txt --target py_dist_build && \
-	find py_dist_build -name '__pycache__' -prune -exec rm -r {} \; && \
-	rm -rf py_dist_build/*.dist-info || \
-	(rm -rf py_dist_build; exit 1)
+	$(Q)mkdir -p $(OUTPUT)/py_dist_build && \
+	cp -a py_dist/* $(OUTPUT)/py_dist_build && \
+	$(PYTHON) -m pip install $(PIPFLAGS) -Ur py-requirements.txt --target $(OUTPUT)/py_dist_build && \
+	find $(OUTPUT)/py_dist_build -name '__pycache__' -prune -exec rm -r {} \; && \
+	rm -rf $(OUTPUT)/py_dist_build/*.dist-info || \
+	(rm -rf $(OUTPUT)/py_dist_build; exit 1)
 
-ishoal_py: py_dist_build
+$(OUTPUT)/ishoal_py: $(OUTPUT)/py_dist_build | $(OUTPUT)
 	$(call msg,ZIPAPP,$@)
-	$(Q)$(PYTHON) -m zipapp --compress py_dist_build -o $@
+	$(Q)$(PYTHON) -m zipapp --compress $(OUTPUT)/py_dist_build -o $@
 
-ishoal: ishoal_native ishoal_py
+$(OUTPUT)/ishoal: $(OUTPUT)/ishoal_native $(OUTPUT)/ishoal_py | $(OUTPUT)
 	$(call msg,CAT,$@)
 	$(Q)cat $^ > $@ && chmod a+x $@

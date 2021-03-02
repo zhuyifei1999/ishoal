@@ -92,7 +92,7 @@ ACCEPT_KEYWORDS='~amd64' emerge -vnk dev-libs/libbpf sys-apps/bpftool
 
 "python${PY_VER}" -m ensurepip
 
-rm "${REPO}/src/"*.d || true
+bash "${REPO}/src/extern/get.sh"
 make -B -C "${REPO}/src/" PYTHON="python${PY_VER}" CLANGFLAGS='-D__x86_64__' CFLAGS='-Os -pipe -g -Wall'
 
 ACCEPT_KEYWORDS='~amd64' emerge -vnk sys-boot/edk2

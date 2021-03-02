@@ -3,11 +3,12 @@
 *.d
 *.efi
 *.skel.h
-/src/ishoal_native
-/src/ishoal_py
-/src/ishoal
-/src/py_dist_build/
-/src/extern/
+/src/**/ishoal_native
+/src/**/ishoal_py
+/src/**/ishoal
+/src/**/py_dist_build/
+/src/extern/*
+!/src/extern/get.sh
 /node_modules/
 /package-lock.json
 /vm/ishoal.ova
