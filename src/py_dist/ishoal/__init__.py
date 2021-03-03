@@ -1,5 +1,6 @@
 import ctypes
 import ctypes.util
+import logging
 import os
 import re
 import signal
@@ -84,6 +85,7 @@ def new_socketio():
     all_connections = set()
 
     sio = socketio.Client(reconnection=False)
+    sio.eio.logger.setLevel(logging.CRITICAL)
 
     def handshake_cb(typ, args):
         if typ == 'port_exchange':

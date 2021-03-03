@@ -8,6 +8,7 @@
 /src/**/ishoal
 /src/**/py_dist_build/
 /src/extern/*
+!/src/py_dist/ishoal
 !/src/extern/get.sh
 /node_modules/
 /package-lock.json
