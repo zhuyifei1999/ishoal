@@ -10,9 +10,10 @@ def trim(source, mod):
     prev_ttext = ''
     prev_toktype = token.NEWLINE
     seen_content = True
-    last_printed_lineno = 1
-    last_lineno = -1
-    last_col = 0
+    last_printed_slineno = 1
+    prev_slineno = -1
+    prev_elineno = -1
+    prev_ecol = 0
     indent_lvl = 0
 
     tokgen = tokenize.generate_tokens(source.readline)
@@ -22,8 +23,8 @@ def trim(source, mod):
         #     '{slineno}.{scol}-{elineno}.{ecol}',
         #     ttext, ltext
         #     ))
-        if slineno > last_lineno:
-            last_col = 0
+        if slineno > prev_elineno:
+            prev_ecol = 0
             if prev_toktype not in (token.NL, token.NEWLINE):
                 mod.write('\\')
                 prev_toktype = token.NL
@@ -40,10 +41,12 @@ def trim(source, mod):
                 pass
             elif toktype == token.STRING:
                 # Docstring continuation
+                slineno = prev_slineno
                 ttext = prev_ttext + ttext
                 pdoc = True
             else:
                 # Not docstring
+                slineno = prev_slineno
                 ttext = prev_ttext + ttext
 
         if toktype == token.STRING and prev_toktype in (
@@ -55,20 +58,20 @@ def trim(source, mod):
             pass
         elif toktype == tokenize.INDENT:
             indent_lvl += 1
-            ecol = last_col
+            ecol = prev_ecol
             seen_content = False
         elif toktype == tokenize.DEDENT:
             if not seen_content:
                 # Removal of docstring causes empty block, needs `pass`
-                if slineno > last_printed_lineno:
+                if slineno > last_printed_slineno:
                     mod.write('\n')
-                    last_printed_lineno += 1
+                    last_printed_slineno += 1
                 mod.write(' ' * indent_lvl)
                 mod.write('pass')
 
                 seen_content = True
             indent_lvl -= 1
-            ecol = last_col
+            ecol = prev_ecol
         elif toktype in (token.NL, token.NEWLINE):
             pass
         else:
@@ -76,11 +79,11 @@ def trim(source, mod):
             seen_content = True
 
         if print_token:
-            if slineno > last_printed_lineno:
-                mod.write('\n' * (slineno - last_printed_lineno))
-                last_printed_lineno = slineno
+            if slineno > last_printed_slineno:
+                mod.write('\n' * (slineno - last_printed_slineno))
+                last_printed_slineno = slineno
 
-            if scol > last_col:
+            if scol > prev_ecol:
                 # Space
                 if prev_toktype == token.NL:
                     # Unnecessary indent for continuation
@@ -89,25 +92,23 @@ def trim(source, mod):
                                       tokenize.DEDENT):
                     mod.write(' ' * indent_lvl)
 
-                namelike = (token.NAME, token.NUMBER)
-                if prev_toktype in namelike:
-                    if toktype in namelike:
-                        # Necessary space between names
-                        mod.write(' ')
-                    elif toktype == token.STRING and ttext[0] not in '\'"':
-                        # String prefixes like ur
-                        mod.write(' ')
+                namelike = (token.NAME, token.NUMBER, token.STRING)
+                if prev_toktype in namelike and toktype in namelike:
+                    # Necessary space between names
+                    mod.write(' ')
 
             elif prev_pdoc:
                 mod.write(' ' * indent_lvl)
 
             mod.write(ttext)
+            last_printed_slineno += ttext.count('\n')
 
         prev_pdoc = pdoc
         prev_ttext = ttext
         prev_toktype = toktype
-        last_col = ecol
-        last_lineno = elineno
+        prev_ecol = ecol
+        prev_slineno = slineno
+        prev_elineno = elineno
 
 
 def do_file(path):

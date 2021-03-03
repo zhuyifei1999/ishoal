@@ -117,30 +117,34 @@ app-arch/bzip2-9999
 app-arch/xz-utils-9999
 EOF
 
-cat > /etc/portage/bashrc << 'EOF'
-if [ "${EBUILD_PHASE}" == "preinst" ]; then
-  find "$ED"/usr/share/i18n/locales/ -mindepth 1 -maxdepth 1 ! -name 'C' ! -name 'i18n' -delete
-  find "$ED"/usr/share/i18n/charmaps/ -mindepth 1 -maxdepth 1 -name '*.gz' ! -name 'UTF*' ! -name 'LATIN*' -delete
-  find "$ED"/usr/lib64/gconv/ -mindepth 1 -maxdepth 1 -name '*.so' ! -name 'UTF*' ! -name 'LATIN*' ! -name 'UNICODE*' -delete
-  find "$ED"/usr/share/locale/ -mindepth 1 -maxdepth 1 -type d ! -name 'C' -exec rm -r {} \;
-  find "$ED"/usr/share/terminfo/ -mindepth 2 -maxdepth 2 ! -name 'ansi*' ! -name 'linux*' -delete
-  find "$ED"/usr/share/terminfo/ -empty -type d -delete
-  find "$ED"/usr/lib/python*/ -name '__pycache__' -prune -exec rm -r {} \;
+cat > /etc/portage/bashrc << EOF
+if [ "\${EBUILD_PHASE}" == "preinst" ]; then
+  find "\$ED"/usr/share/i18n/locales/ -mindepth 1 -maxdepth 1 ! -name 'C' ! -name 'i18n' -delete
+  find "\$ED"/usr/share/i18n/charmaps/ -mindepth 1 -maxdepth 1 -name '*.gz' ! -name 'UTF*' ! -name 'LATIN*' -delete
+  find "\$ED"/usr/lib64/gconv/ -mindepth 1 -maxdepth 1 -name '*.so' ! -name 'UTF*' ! -name 'LATIN*' ! -name 'UNICODE*' -delete
+  find "\$ED"/usr/share/locale/ -mindepth 1 -maxdepth 1 -type d ! -name 'C' -exec rm -r {} \;
+  find "\$ED"/usr/share/terminfo/ -mindepth 2 -maxdepth 2 ! -name 'ansi*' ! -name 'linux*' -delete
+  find "\$ED"/usr/share/terminfo/ -empty -type d -delete
+  find "\$ED"/usr/lib/python*/ -name '__pycache__' -prune -exec rm -r {} \;
 
-  rm -r "$ED"/usr/share/doc/
-  rm -r "$ED"/usr/share/man/
-  rm -r "$ED"/usr/share/info/
-  rm -r "$ED"/usr/include/
+  if [ -d "\$ED"/usr/lib/python${PY_VER}/ ]; then
+    python "${REPO}"/src/py-trimmer.py "\$ED"/usr/lib/python${PY_VER}/
+  fi
 
-  rm -r "$ED"/usr/lib/python*/test
-  rm -r "$ED"/usr/lib/python*/unittest
-  rm -r "$ED"/usr/lib/python*/ensurepip
-  find "$ED"/usr/lib/python*/ -name 'test' -prune -exec rm -r {} \;
-  find "$ED"/usr/lib/python*/ -name 'tests' -prune -exec rm -r {} \;
+  rm -r "\$ED"/usr/share/doc/
+  rm -r "\$ED"/usr/share/man/
+  rm -r "\$ED"/usr/share/info/
+  rm -r "\$ED"/usr/include/
 
-  find "$ED"/usr/lib{,64}/ -name '*.a' -delete
-  find "$ED"/usr/lib{,64}/ -name '*.o' -delete
-  find "$ED"/usr/lib{,64}/ -name '*.la' -delete
+  rm -r "\$ED"/usr/lib/python*/test
+  rm -r "\$ED"/usr/lib/python*/unittest
+  rm -r "\$ED"/usr/lib/python*/ensurepip
+  find "\$ED"/usr/lib/python*/ -name 'test' -prune -exec rm -r {} \;
+  find "\$ED"/usr/lib/python*/ -name 'tests' -prune -exec rm -r {} \;
+
+  find "\$ED"/usr/lib{,64}/ -name '*.a' -delete
+  find "\$ED"/usr/lib{,64}/ -name '*.o' -delete
+  find "\$ED"/usr/lib{,64}/ -name '*.la' -delete
 fi
 EOF
 
@@ -154,8 +158,7 @@ emerge --root rootfs -v sys-process/htop sys-process/lsof dev-util/strace
 unset CFLAGS LDFLAGS
 
 ACCEPT_KEYWORDS='~amd64' emerge --root rootfs -v dev-libs/libbpf sys-apps/bpftool
-
-unset USE INSTALL_MASK
+unset USE
 
 make -C kernel -j"$(nproc)" modules_install INSTALL_MOD_PATH="$(realpath rootfs)"
 
