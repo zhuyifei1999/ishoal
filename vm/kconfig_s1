@@ -25,8 +25,7 @@ CONFIG_HW_RANDOM_VIRTIO=y
 # VirtualBox enable host LRO and partial CSUM, can't enable XDP
 CONFIG_VIRTIO_NET=m
 
-CONFIG_E1000=y
-CONFIG_E1000E=y
+# CONFIG_ETHERNET is not set
 
 CONFIG_CMDLINE_BOOL=y
 CONFIG_CMDLINE="root=/dev/sda2 earlycon=ohlawdhecomin"
@@ -67,6 +66,12 @@ CONFIG_TMPFS=y
 # CONFIG_WLAN is not set
 # CONFIG_WIRELESS is not set
 # CONFIG_IPV6 is not set
+# CONFIG_USB_SUPPORT is not set
 
 # CONFIG_IA32_EMULATION is not set
 # CONFIG_X86_X32 is not set
+
+# CONFIG_EXT4_FS is not set
+# CONFIG_MD is not set
+# CONFIG_FTRACE is not set
+# CONFIG_BLK_DEV_INITRD is not set

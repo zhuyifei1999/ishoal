@@ -72,7 +72,8 @@ tar xf "linux-${LINUX_VER}.tar.xz"
 mv "linux-${LINUX_VER}" kernel
 
 pushd kernel
-./scripts/kconfig/merge_config.sh ./arch/x86/configs/x86_64_defconfig "${REPO}/vm/kconfig"
+./scripts/kconfig/merge_config.sh ./arch/x86/configs/x86_64_defconfig "${REPO}/vm/kconfig_s1"
+./scripts/kconfig/merge_config.sh .config "${REPO}/vm/kconfig_s2"
 popd
 
 python -m venv venv
@@ -145,10 +146,11 @@ if [ "\${EBUILD_PHASE}" == "preinst" ]; then
   find "\$ED"/usr/lib{,64}/ -name '*.a' -delete
   find "\$ED"/usr/lib{,64}/ -name '*.o' -delete
   find "\$ED"/usr/lib{,64}/ -name '*.la' -delete
+  find "\$ED"/usr/lib{,64}/ -name '*.pc' -delete
 fi
 EOF
 
-export USE='-* make-symlinks unicode ssl ncurses readline bindist'
+export USE='-* make-symlinks native-symlinks unicode ssl ncurses readline bindist'
 export CFLAGS='-Os -pipe -flto -fipa-pta -fno-semantic-interposition -fdevirtualize-at-ltrans -fuse-linker-plugin'
 export LDFLAGS='-Wl,-O1 -Wl,--as-needed -Wl,--hash-style=gnu'
 emerge --root rootfs -v sys-apps/baselayout
