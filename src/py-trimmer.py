@@ -13,6 +13,7 @@ def trim(source, mod):
     last_printed_slineno = 1
     prev_slineno = -1
     prev_elineno = -1
+    prev_scol = 0
     prev_ecol = 0
     indent_lvl = 0
 
@@ -20,14 +21,18 @@ def trim(source, mod):
     for toktype, ttext, (slineno, scol), (elineno, ecol), ltext in tokgen:
         # print('%10s %-14s %-20r %r' % (
         #     tokenize.tok_name.get(toktype, toktype),
-        #     '{slineno}.{scol}-{elineno}.{ecol}',
+        #     f'{slineno}.{scol}-{elineno}.{ecol}',
         #     ttext, ltext
         #     ))
         if slineno > prev_elineno:
             prev_ecol = 0
             if prev_toktype not in (token.NL, token.NEWLINE):
-                mod.write('\\')
-                prev_toktype = token.NL
+                if prev_pdoc:
+                    prev_ttext += '\\\n'
+                    prev_toktype = token.NEWLINE
+                else:
+                    mod.write('\\')
+                    prev_toktype = token.NL
         if toktype == token.NL and prev_toktype in (
                 token.NEWLINE, tokenize.COMMENT):
             toktype = token.NEWLINE
@@ -42,11 +47,13 @@ def trim(source, mod):
             elif toktype == token.STRING:
                 # Docstring continuation
                 slineno = prev_slineno
+                scol = prev_scol
                 ttext = prev_ttext + ttext
                 pdoc = True
             else:
                 # Not docstring
                 slineno = prev_slineno
+                scol = prev_scol
                 ttext = prev_ttext + ttext
 
         if toktype == token.STRING and prev_toktype in (
@@ -106,6 +113,7 @@ def trim(source, mod):
         prev_pdoc = pdoc
         prev_ttext = ttext
         prev_toktype = toktype
+        prev_scol = scol
         prev_ecol = ecol
         prev_slineno = slineno
         prev_elineno = elineno
