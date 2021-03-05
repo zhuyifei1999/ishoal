@@ -1,3 +1,3 @@
 #define _GNU_SOURCE 1
 #define _LGPL_SOURCE
-#define _XOPEN_SOURCE_EXTENDED
+#define _XOPEN_SOURCE_EXTENDED 1

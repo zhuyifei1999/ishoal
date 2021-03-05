@@ -24,6 +24,7 @@ PORT="$(comm -23 <(seq 49152 65535 | sort) <(ss -Htan | awk '{print $4}' | cut -
 wget https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64-disk-kvm.img -O cloudimg.img
 qemu-img resize cloudimg.img +8G
 
+# Or https://github.com/canonical/cloud-utils.git
 git clone https://salsa.debian.org/cloud-team/cloud-utils.git
 
 ssh-keygen -f sshkey -N '' -C 'ishoal-builder'

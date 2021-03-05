@@ -1,6 +1,7 @@
 #include "features.h"
 
 #include <assert.h>
+#include <dlfcn.h>
 #include <link.h>
 #include <linux/limits.h>
 #include <pthread.h>

@@ -5,6 +5,7 @@
 
 #include <arpa/inet.h>
 #include <dialog.h>
+#include <dlfcn.h>
 #include <errno.h>
 #include <link.h>
 #include <linux/limits.h>

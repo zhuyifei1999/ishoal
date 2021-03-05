@@ -13,9 +13,27 @@ alias emerge='emerge --color=y --quiet-build'
 
 export FEATURES='buildpkg'
 
+# https://bugs.gentoo.org/753935
+# https://github.com/gentoo/gentoo/blob/master/profiles/default/linux/musl/package.use.mask
+# https://github.com/gentoo/gentoo/blob/master/profiles/features/musl/package.use.mask
+mkdir -p /etc/portage/profile
+cat > /etc/portage/profile/package.use.mask << 'EOF'
+sys-devel/clang-runtime sanitize
+EOF
+
 emerge -vuk sys-apps/portage
 emerge -vuDNk --with-bdeps=y @world
 emerge -c
+
+emerge -vuk app-portage/layman
+layman -f
+layman -a musl
+
+# For bpftool
+mkdir -p /etc/portage/patches/sys-libs/musl
+ln -s "${REPO}/vm/musl-nftw.patch" /etc/portage/patches/sys-libs/musl
+ln -s "${REPO}/vm/musl-821083ac7b54eaa040d5a8ddc67c6206a175e0ca.patch" /etc/portage/patches/sys-libs/musl
+emerge -vk sys-libs/musl
 
 emerge -vnk app-portage/portage-utils
 
@@ -76,11 +94,10 @@ pushd kernel
 ./scripts/kconfig/merge_config.sh .config "${REPO}/vm/kconfig_s2"
 popd
 
-python -m venv venv
-venv/bin/pip install pillow
+emerge -vnk dev-python/pillow
 
 pushd "${REPO}/vm/ohlawdhecomin"
-"$(dirs +1)"/venv/bin/python generate_data.py
+python generate_data.py
 popd
 
 ln -s "${REPO}/vm/ohlawdhecomin" kernel/drivers/firmware/efi
@@ -89,6 +106,21 @@ echo 'obj-$(CONFIG_EFI_EARLYCON) += ohlawdhecomin/ohlawdhecomin.o' >> kernel/dri
 make -C kernel -j"$(nproc)"
 
 emerge -vnk "dev-lang/python:${PY_VER}" dev-util/dialog dev-libs/userspace-rcu
+
+# https://github.com/netdata/kernel-collector/issues/23
+patch /usr/include/asm/byteorder.h << 'EOF'
+--- /usr/include/asm/byteorder.h
++++ /usr/include/asm/byteorder.h
+@@ -2,6 +2,7 @@
+ #ifndef _ASM_X86_BYTEORDER_H
+ #define _ASM_X86_BYTEORDER_H
+
++#include <linux/stddef.h>
+ #include <linux/byteorder/little_endian.h>
+
+ #endif /* _ASM_X86_BYTEORDER_H */
+EOF
+
 ACCEPT_KEYWORDS='~amd64' emerge -vnk dev-libs/libbpf sys-apps/bpftool
 
 "python${PY_VER}" -m ensurepip
@@ -120,10 +152,6 @@ EOF
 
 cat > /etc/portage/bashrc << EOF
 if [ "\${EBUILD_PHASE}" == "preinst" ]; then
-  find "\$ED"/usr/share/i18n/locales/ -mindepth 1 -maxdepth 1 ! -name 'C' ! -name 'i18n' -delete
-  find "\$ED"/usr/share/i18n/charmaps/ -mindepth 1 -maxdepth 1 -name '*.gz' ! -name 'UTF*' ! -name 'LATIN*' -delete
-  find "\$ED"/usr/lib64/gconv/ -mindepth 1 -maxdepth 1 -name '*.so' ! -name 'UTF*' ! -name 'LATIN*' ! -name 'UNICODE*' -delete
-  find "\$ED"/usr/share/locale/ -mindepth 1 -maxdepth 1 -type d ! -name 'C' -exec rm -r {} \;
   find "\$ED"/usr/share/terminfo/ -mindepth 2 -maxdepth 2 ! -name 'ansi*' ! -name 'linux*' -delete
   find "\$ED"/usr/share/terminfo/ -empty -type d -delete
   find "\$ED"/usr/lib/python*/ -name '__pycache__' -prune -exec rm -r {} \;
@@ -151,9 +179,11 @@ fi
 EOF
 
 export USE='-* make-symlinks native-symlinks unicode ssl ncurses readline bindist'
+emerge --root rootfs -v sys-apps/baselayout
+emerge --root rootfs -v sys-libs/musl
+
 export CFLAGS='-Os -pipe -flto -fipa-pta -fno-semantic-interposition -fdevirtualize-at-ltrans -fuse-linker-plugin'
 export LDFLAGS='-Wl,-O1 -Wl,--as-needed -Wl,--hash-style=gnu'
-emerge --root rootfs -v sys-apps/baselayout
 emerge --root rootfs -v sys-apps/busybox
 emerge --root rootfs -v "dev-lang/python:${PY_VER}" dev-util/dialog dev-libs/userspace-rcu
 emerge --root rootfs -v sys-process/htop sys-process/lsof dev-util/strace
@@ -167,8 +197,12 @@ make -C kernel -j"$(nproc)" modules_install INSTALL_MOD_PATH="$(realpath rootfs)
 GCC_PATH="$(gcc -print-search-dirs | grep install | cut -d\  -f2)"
 mkdir -p rootfs/"${GCC_PATH}"
 cp -a "${GCC_PATH}"/libgcc_s.so* rootfs/"${GCC_PATH}"
-echo "${GCC_PATH}" > rootfs/etc/ld.so.conf
-ldconfig -C rootfs/etc/ld.so.cache -f rootfs/etc/ld.so.conf
+echo "${GCC_PATH}" >> rootfs/etc/ld-musl-x86_64.path
+cat >> rootfs/etc/ld-musl-x86_64.path << 'EOF'
+/lib
+/usr/lib
+/usr/local/lib
+EOF
 
 set +e
 

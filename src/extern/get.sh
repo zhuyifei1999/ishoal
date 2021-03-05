@@ -14,3 +14,5 @@ get_file() {
 
 get_file plthook/plthook.h https://github.com/kubo/plthook/raw/master/plthook.h
 get_file plthook/plthook_elf.c https://github.com/kubo/plthook/raw/master/plthook_elf.c
+
+patch -d plthook -p1 < plthook-musl.patch

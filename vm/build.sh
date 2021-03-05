@@ -21,22 +21,22 @@ trap cleanup_tmp EXIT
 
 mkdir rootfs
 
-truncate -s $((128 * 1048576)) disk.img
+truncate -s $((64 * 1048576)) disk.img
 fdisk disk.img << EOF
 g
 n
 1
 2048
-32767
+16383
 n
 2
-32768
-262110
+16384
+131038
 w
 EOF
 
-BOOT="$(sudo losetup --offset $(( 2048 * 512 )) --sizelimit $(( 30720 * 512 )) --show --find disk.img)"
-ROOT="$(sudo losetup --offset $(( 32768 * 512 )) --sizelimit $(( 229343 * 512 )) --show --find disk.img)"
+BOOT="$(sudo losetup --offset $(( 2048 * 512 )) --sizelimit $(( ( 16383 - 2048 + 1 ) * 512 )) --show --find disk.img)"
+ROOT="$(sudo losetup --offset $(( 16384 * 512 )) --sizelimit $(( ( 131038 - 16384 + 1 ) * 512 )) --show --find disk.img)"
 
 sudo mkfs.fat "$BOOT"
 sudo mkfs.btrfs -M "$ROOT"
@@ -77,7 +77,7 @@ sudo docker run \
   --security-opt seccomp=unconfined \
   --cap-add=SYS_PTRACE \
   --rm -i \
-  gentoo/stage3:amd64-nomultilib \
+  gentoo/stage3:amd64-musl-vanilla \
   bash "${REPO}/vm/build-inner.sh"
 
 fstrim -v rootfs

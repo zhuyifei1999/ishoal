@@ -10,6 +10,7 @@
 /src/extern/*
 !/src/py_dist/ishoal
 !/src/extern/get.sh
+!/src/extern/*.patch
 /node_modules/
 /package-lock.json
 /vm/ishoal.ova
