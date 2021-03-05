@@ -541,8 +541,8 @@ invalid_ip:
 
 	char msg[110];
 
-	ip_str(switch_ip, ip);
-	mac_str(switch_mac, mac);
+	ip_str(new_switch_ip, ip);
+	mac_str(new_switch_mac, mac);
 
 	snprintf(msg, 110, "You entered that your Switch can be found at:\n"
 		 "\n%s (%s).\n\nIs that correct?",
