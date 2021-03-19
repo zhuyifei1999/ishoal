@@ -8,7 +8,7 @@
 
 #include <Protocol/HiiImageDecoder.h>
 
-#include "lodepng.h"
+#include "extern/lodepng/lodepng.h"
 
 void *lodepng_malloc(size_t size) {
   void *ptr = AllocatePool(size + sizeof(size_t));

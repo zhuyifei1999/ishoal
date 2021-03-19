@@ -8,8 +8,8 @@
 
 [Sources]
   LodePNGDecode.c
-  lodepng.c
-  lodepng.h
+  extern/lodepng/lodepng.c
+  extern/lodepng/lodepng.h
 
 [Packages]
   MdePkg/MdePkg.dec

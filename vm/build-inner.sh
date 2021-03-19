@@ -154,7 +154,11 @@ popd
 
 ACCEPT_KEYWORDS='~amd64' emerge -vnk sys-boot/edk2
 bash "${REPO}/vm/IShoalPkg/build.sh"
-$BUILD_LOGO && bash "${REPO}/vm/LodePNGPkg/build.sh"
+
+if $BUILD_LOGO; then
+  bash "${REPO}/vm/LodePNGPkg/extern/get.sh"
+  bash "${REPO}/vm/LodePNGPkg/build.sh"
+fi
 
 qpkg -c
 
