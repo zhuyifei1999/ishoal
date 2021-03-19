@@ -132,10 +132,11 @@ make -B -C "${REPO}/src/" PYTHON="python${PY_VER}" CFLAGS='-Os -pipe -flto -fno-
 
 pushd "${REPO}/vm/IShoalPkg/"
 if $BUILD_LOGO; then
-  USE='fontconfig truetype' emerge -vnk media-gfx/imagemagick media-fonts/inconsolata
+  USE='fontconfig truetype' emerge -vnk media-gfx/imagemagick media-gfx/optipng media-fonts/inconsolata
   magick-script BootImg.magick
 
   magick convert BootImgUntrimmed.bmp -trim +repage BootImg.png
+  optipng -strip all BootImg.png
   BOOTIMG_INFO="$(magick BootImgUntrimmed.bmp -format "%@" info:)"
 
   [[ $BOOTIMG_INFO =~ [0-9]+x[0-9]+\+([0-9]+)\+([0-9]+) ]]
