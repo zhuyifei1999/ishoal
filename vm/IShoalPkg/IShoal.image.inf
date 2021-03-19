@@ -11,7 +11,7 @@
 [Sources]
   Main.c
   BootImgOffsets.h
-  BootImg.bmp
+  BootImg.png
   BootImg.idf
 
 [Packages]

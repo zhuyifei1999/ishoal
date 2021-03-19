@@ -151,6 +151,10 @@ UefiMain(
     goto out;
 
 #ifdef IMG_BOOTIMG
+  Status = Chainload(L"\\LodePNGDecode.efi");
+  if (EFI_ERROR(Status))
+    goto out;
+
   ShowImg(mBootImageId, BOOTIMG_XOFF, BOOTIMG_YOFF);
 #endif
 

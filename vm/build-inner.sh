@@ -154,6 +154,7 @@ popd
 
 ACCEPT_KEYWORDS='~amd64' emerge -vnk sys-boot/edk2
 bash "${REPO}/vm/IShoalPkg/build.sh"
+bash "${REPO}/vm/LodePNGPkg/build.sh"
 
 qpkg -c
 
@@ -343,5 +344,6 @@ cp "${REPO}/src/ishoal" rootfs/root/ishoal
 chmod a+x rootfs/root/ishoal
 
 mkdir -p rootfs/boot/EFI/Boot/
-cp kernel/arch/x86/boot/bzImage rootfs/boot/linux.efi
 cp "${REPO}/vm/IShoalPkg/IShoal.efi" rootfs/boot/EFI/Boot/bootx64.efi
+cp "${REPO}/vm/LodePNGPkg/LodePNGDecode.efi" rootfs/boot/LodePNGDecode.efi
+cp kernel/arch/x86/boot/bzImage rootfs/boot/linux.efi

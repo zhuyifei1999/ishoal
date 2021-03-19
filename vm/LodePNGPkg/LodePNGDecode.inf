@@ -1,0 +1,31 @@
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = LodePNGDecode
+  FILE_GUID                      = 76C7BB3F-5C18-4B81-B386-4076C1753701
+  MODULE_TYPE                    = UEFI_DRIVER
+  VERSION_STRING                 = 0.1
+  ENTRY_POINT                    = LodePNGDecodeDxeEntry
+
+[Sources]
+  LodePNGDecode.c
+  lodepng.c
+  lodepng.h
+
+[Packages]
+  MdePkg/MdePkg.dec
+
+[LibraryClasses]
+  UefiLib
+  UefiDriverEntryPoint
+  DebugLib
+  MemoryAllocationLib
+  UefiBootServicesTableLib
+
+[Protocols]
+  gEfiHiiImageDecoderProtocolGuid ## PRODUCES
+
+[Guids]
+  gEfiHiiImageDecoderNamePngGuid
+
+[BuildOptions]
+  *_*_*_CC_FLAGS = -DLODEPNG_NO_COMPILE_ENCODER -DLODEPNG_NO_COMPILE_DISK -DLODEPNG_NO_COMPILE_ANCILLARY_CHUNKS -DLODEPNG_NO_COMPILE_ALLOCATORS
