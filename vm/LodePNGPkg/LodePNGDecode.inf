@@ -8,6 +8,8 @@
 
 [Sources]
   LodePNGDecode.c
+  lodepng_allocator.c
+  lodepng_allocator.h
   extern/lodepng/lodepng.c
   extern/lodepng/lodepng.h
 
