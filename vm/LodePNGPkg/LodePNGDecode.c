@@ -93,7 +93,7 @@ GetImageInfo(
     pImageInfo->Channels = 0;
   }
 
-  *ImageInfo = (VOID *)pImageInfo;
+  *ImageInfo = &pImageInfo->Header;
 
   return EFI_SUCCESS;
 }
@@ -116,9 +116,8 @@ DecodeImage(
   EFI_GRAPHICS_OUTPUT_BLT_PIXEL *pPixel;
 
   error = lodepng_decode24(&lodepng_bitmap, &width, &height, Image, ImageRawDataSize);
-  if (error) {
+  if (error)
     return EFI_UNSUPPORTED;
-  }
 
   pBitmap = AllocatePool(sizeof(*pBitmap));
   if (!pBitmap)
@@ -145,7 +144,7 @@ DecodeImage(
 
   lodepng_free(lodepng_bitmap);
 
-  *Bitmap = (VOID *)pBitmap;
+  *Bitmap = pBitmap;
 
   return EFI_SUCCESS;
 }
@@ -158,17 +157,17 @@ STATIC EFI_HII_IMAGE_DECODER_PROTOCOL mLodePNGDecodeProtocol = {
 
 EFI_STATUS
 EFIAPI
-LodePNGDecodeDxeEntry(
+LodePNGDecodeEntry(
   IN EFI_HANDLE        ImageHandle,
   IN EFI_SYSTEM_TABLE  *SystemTable
   )
 {
   EFI_STATUS Status;
 
-  Status = gBS->InstallProtocolInterface(&ImageHandle,
-                                         &gEfiHiiImageDecoderProtocolGuid,
-                                         EFI_NATIVE_INTERFACE,
-                                         &mLodePNGDecodeProtocol);
+  Status = gBS->InstallMultipleProtocolInterfaces(&ImageHandle,
+                                                  &gEfiHiiImageDecoderProtocolGuid,
+                                                  &mLodePNGDecodeProtocol,
+                                                  NULL);
 
   return Status;
 }

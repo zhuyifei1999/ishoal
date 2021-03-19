@@ -135,7 +135,7 @@ if $BUILD_LOGO; then
   USE='fontconfig truetype' emerge -vnk media-gfx/imagemagick media-fonts/inconsolata
   magick-script BootImg.magick
 
-  magick convert BootImgUntrimmed.bmp -trim +repage BootImg.bmp
+  magick convert BootImgUntrimmed.bmp -trim +repage BootImg.png
   BOOTIMG_INFO="$(magick BootImgUntrimmed.bmp -format "%@" info:)"
 
   [[ $BOOTIMG_INFO =~ [0-9]+x[0-9]+\+([0-9]+)\+([0-9]+) ]]
