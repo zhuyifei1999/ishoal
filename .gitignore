@@ -11,7 +11,11 @@
 !/src/py_dist/ishoal
 !/src/extern/get.sh
 !/src/extern/*.patch
-/node_modules/
-/package-lock.json
+/srv/registry/node_modules/
+/srv/registry/package-lock.json
 /vm/ishoal.ova
 /vm/binpkgs
+/vm/IShoalPkg/BootImg.bmp
+/vm/IShoalPkg/BootImgOffsets.h
+/vm/IShoalPkg/BootImgUntrimmed.bmp
+/vm/IShoalPkg/IShoal.inf

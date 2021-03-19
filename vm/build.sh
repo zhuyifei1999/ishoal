@@ -4,7 +4,7 @@ set -ex
 
 # https://stackoverflow.com/a/246128
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-
+BUILD_LOGO="${BUILD_LOGO:-true}"
 REPO="$(realpath -s ${DIR}/..)"
 
 # https://stackoverflow.com/a/34676160
@@ -71,6 +71,7 @@ sudo docker run \
   -v "${REPO}/vm/binpkgs":/var/cache/binpkgs \
   -w $PWD \
   -e REPO="${REPO}" \
+  -e BUILD_LOGO="${BUILD_LOGO}" \
   --tmpfs /var/tmp/portage:exec \
   --tmpfs /var/cache/distfiles \
   --tmpfs /var/db/repos \

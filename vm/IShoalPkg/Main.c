@@ -8,12 +8,18 @@
 #include <Library/UefiBootServicesTableLib.h>
 
 #include <Protocol/DevicePath.h>
+#include <Protocol/LoadedImage.h>
+
+#ifdef IMG_BOOTIMG
 #include <Protocol/HiiDatabase.h>
 #include <Protocol/HiiImageEx.h>
 #include <Protocol/HiiPackageList.h>
-#include <Protocol/LoadedImage.h>
+
+#include "BootImgOffsets.h"
 
 EFI_IMAGE_ID mBootImageId = IMAGE_TOKEN(IMG_BOOTIMG);
+#endif
+
 EFI_GRAPHICS_OUTPUT_PROTOCOL *mGraphicsOutput;
 
 EFI_STATUS
@@ -45,6 +51,7 @@ SetRes(
   return mGraphicsOutput->SetMode(mGraphicsOutput, SetModeNumber);
 }
 
+#ifdef IMG_BOOTIMG
 EFI_STATUS
 ShowImg(
   IN EFI_IMAGE_ID ImageId,
@@ -94,6 +101,7 @@ ShowImg(
 
   return Status;
 }
+#endif
 
 EFI_STATUS
 Chainload(
@@ -142,11 +150,9 @@ UefiMain(
   if (EFI_ERROR(Status))
     goto out;
 
-  // To trim:
-  // $ convert bootimg-untrimmed.bmp -trim +repage BootImg.bmp
-  // To get bounding box info:
-  // $ convert bootimg-untrimmed.bmp -format "%@" info:
-  ShowImg(mBootImageId, 246, 169);
+#ifdef IMG_BOOTIMG
+  ShowImg(mBootImageId, BOOTIMG_XOFF, BOOTIMG_YOFF);
+#endif
 
 out:
   return Chainload(L"\\linux.efi");

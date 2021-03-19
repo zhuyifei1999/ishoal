@@ -1,6 +1,6 @@
 from PIL import Image
 
-img = Image.open('ohlawdhecomin.gif')
+img = Image.open('../ohlawdhecomin.gif')
 
 data = []
 

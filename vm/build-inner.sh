@@ -94,14 +94,16 @@ pushd kernel
 ./scripts/kconfig/merge_config.sh .config "${REPO}/vm/kconfig_s2"
 popd
 
-emerge -vnk dev-python/pillow
+if $BUILD_LOGO; then
+  emerge -vnk dev-python/pillow
 
-pushd "${REPO}/vm/ohlawdhecomin"
-python generate_data.py
-popd
+  pushd "${REPO}/vm/ohlawdhecomin"
+  python generate_data.py
+  popd
 
-ln -s "${REPO}/vm/ohlawdhecomin" kernel/drivers/firmware/efi
-echo 'obj-$(CONFIG_EFI_EARLYCON) += ohlawdhecomin/ohlawdhecomin.o' >> kernel/drivers/firmware/efi/Makefile
+  ln -s "${REPO}/vm/ohlawdhecomin" kernel/drivers/firmware/efi
+  echo 'obj-$(CONFIG_EFI_EARLYCON) += ohlawdhecomin/ohlawdhecomin.o' >> kernel/drivers/firmware/efi/Makefile
+fi
 
 make -C kernel -j"$(nproc)"
 
@@ -127,6 +129,28 @@ ACCEPT_KEYWORDS='~amd64' emerge -vnk dev-libs/libbpf sys-apps/bpftool
 
 bash "${REPO}/src/extern/get.sh"
 make -B -C "${REPO}/src/" PYTHON="python${PY_VER}" CFLAGS='-Os -pipe -flto -fno-semantic-interposition -Wall' CLANGFLAGS='-fno-lto -g -D__x86_64__' DO_STRIP=1
+
+pushd "${REPO}/vm/IShoalPkg/"
+if $BUILD_LOGO; then
+  USE='fontconfig truetype' emerge -vnk media-gfx/imagemagick media-fonts/inconsolata
+  magick-script BootImg.magick
+
+  magick convert BootImgUntrimmed.bmp -trim +repage BootImg.bmp
+  BOOTIMG_INFO="$(magick BootImgUntrimmed.bmp -format "%@" info:)"
+
+  [[ $BOOTIMG_INFO =~ [0-9]+x[0-9]+\+([0-9]+)\+([0-9]+) ]]
+  BOOTIMG_XOFF="${BASH_REMATCH[1]}"
+  BOOTIMG_YOFF="${BASH_REMATCH[2]}"
+
+  cat > BootImgOffsets.h << EOF
+#define BOOTIMG_XOFF $BOOTIMG_XOFF
+#define BOOTIMG_YOFF $BOOTIMG_YOFF
+EOF
+  cp IShoal.image.inf IShoal.inf
+else
+  cp IShoal.noimage.inf IShoal.inf
+fi
+popd
 
 ACCEPT_KEYWORDS='~amd64' emerge -vnk sys-boot/edk2
 bash "${REPO}/vm/IShoalPkg/build.sh"

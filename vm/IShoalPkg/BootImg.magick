@@ -1,0 +1,5 @@
+#!/bin/env magick-script
+-size 640x480 xc:black
+( '../ohlawdhecomin.gif[6]' -background none ) -geometry +251+145 -composite
+( +size -pointsize 20 -font 'Inconsolata-Bold' -fill white label:'Starting IShoal...' -trim +repage ) -geometry +235+325 -composite
+-write BootImgUntrimmed.bmp

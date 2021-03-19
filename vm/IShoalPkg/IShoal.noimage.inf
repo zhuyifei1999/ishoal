@@ -6,12 +6,8 @@
   VERSION_STRING                 = 0.1
   ENTRY_POINT                    = UefiMain
 
-  UEFI_HII_RESOURCE_SECTION      = TRUE
-
 [Sources]
   Main.c
-  BootImg.bmp
-  BootImg.idf
 
 [Packages]
   MdePkg/MdePkg.dec
@@ -27,6 +23,3 @@
 [Protocols]
   gEfiGraphicsOutputProtocolGuid
   gEfiLoadedImageProtocolGuid
-  gEfiHiiDatabaseProtocolGuid
-  gEfiHiiImageExProtocolGuid
-  gEfiHiiPackageListProtocolGuid
