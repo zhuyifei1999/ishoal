@@ -41,7 +41,7 @@ ROOT="$(sudo losetup --offset $(( 16384 * 512 )) --sizelimit $(( ( 131038 - 1638
 sudo mkfs.fat "$BOOT"
 sudo mkfs.btrfs -M "$ROOT"
 
-sudo mount -o compress,discard "$ROOT" rootfs
+sudo mount -o compress=zstd,discard "$ROOT" rootfs
 sudo mkdir -p rootfs/boot
 sudo mount "$BOOT" rootfs/boot
 
