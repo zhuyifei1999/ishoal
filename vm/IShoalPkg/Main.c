@@ -142,6 +142,10 @@ UefiMain(
   if (EFI_ERROR(Status))
     goto out;
 
+  Status = Chainload(L"\\LodePNGDecode.efi");
+  if (EFI_ERROR(Status))
+    goto out;
+
   // To trim:
   // $ convert bootimg-untrimmed.bmp -trim +repage BootImg.bmp
   // To get bounding box info:

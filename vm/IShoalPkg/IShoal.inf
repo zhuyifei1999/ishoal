@@ -10,7 +10,7 @@
 
 [Sources]
   Main.c
-  BootImg.bmp
+  BootImg.png
   BootImg.idf
 
 [Packages]
