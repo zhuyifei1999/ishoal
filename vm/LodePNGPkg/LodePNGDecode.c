@@ -149,7 +149,7 @@ DecodeImage(
   return EFI_SUCCESS;
 }
 
-STATIC EFI_HII_IMAGE_DECODER_PROTOCOL mLodePNGDecodeProtocol = {
+STATIC EFI_HII_IMAGE_DECODER_PROTOCOL gLodePNGDecodeProtocol = {
   GetImageDecoderName,
   GetImageInfo,
   DecodeImage,
@@ -166,7 +166,7 @@ LodePNGDecodeEntry(
 
   Status = gBS->InstallMultipleProtocolInterfaces(&ImageHandle,
                                                   &gEfiHiiImageDecoderProtocolGuid,
-                                                  &mLodePNGDecodeProtocol,
+                                                  &gLodePNGDecodeProtocol,
                                                   NULL);
 
   return Status;
