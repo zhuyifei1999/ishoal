@@ -1,13 +1,13 @@
 [Defines]
   INF_VERSION                    = 0x00010005
-  BASE_NAME                      = LodePNGDecode
+  BASE_NAME                      = LodePngDecode
   FILE_GUID                      = 76C7BB3F-5C18-4B81-B386-4076C1753701
   MODULE_TYPE                    = UEFI_DRIVER
   VERSION_STRING                 = 0.1
-  ENTRY_POINT                    = LodePNGDecodeEntry
+  ENTRY_POINT                    = LodePngDecodeEntry
 
 [Sources]
-  LodePNGDecode.c
+  LodePngDecode.c
   lodepng_allocator.c
   lodepng_allocator.h
   extern/lodepng/lodepng.c

@@ -1,5 +1,5 @@
 [Defines]
   DEC_SPECIFICATION              = 0x00010005
-  PACKAGE_NAME                   = LodePNGPkg
+  PACKAGE_NAME                   = LodePngPkg
   PACKAGE_GUID                   = 4DBC45E9-A36A-4CD9-9F13-0287130DBD23
   PACKAGE_VERSION                = 0.1

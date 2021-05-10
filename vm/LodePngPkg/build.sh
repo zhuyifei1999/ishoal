@@ -21,8 +21,8 @@ source edk2-workspace edk2-workspace
 
 cd edk2-workspace
 ln -s /usr/lib/edk2/MdePkg .
-ln -s "${DIR}" LodePNGPkg
+ln -s "${DIR}" LodePngPkg
 
-build -b RELEASE -p LodePNGPkg/LodePNGPkg.dsc -s
+build -b RELEASE -p LodePngPkg/LodePngPkg.dsc -s
 
-cp -a Build/LodePNGPkg/RELEASE_GCC5/X64/LodePNGDecode.efi "${DIR}"
+cp -a Build/LodePngPkg/RELEASE_GCC5/X64/LodePngDecode.efi "${DIR}"

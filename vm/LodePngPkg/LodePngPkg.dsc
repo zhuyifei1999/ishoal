@@ -1,10 +1,10 @@
 [Defines]
-  PLATFORM_NAME                  = LodePNGPkg
+  PLATFORM_NAME                  = LodePngPkg
   PLATFORM_GUID                  = DD24A6A0-E99C-46FC-BD9C-5EA61D6C4F6F
   PLATFORM_VERSION               = 0.1
   DSC_SPECIFICATION              = 0x00010005
   SUPPORTED_ARCHITECTURES        = IA32|X64
-  OUTPUT_DIRECTORY               = Build/LodePNGPkg
+  OUTPUT_DIRECTORY               = Build/LodePngPkg
   BUILD_TARGETS                  = DEBUG|RELEASE|NOOPT
   SKUID_IDENTIFIER               = DEFAULT
 
@@ -25,4 +25,4 @@
   UefiRuntimeServicesTableLib|MdePkg/Library/UefiRuntimeServicesTableLib/UefiRuntimeServicesTableLib.inf
 
 [Components]
-  LodePNGPkg/LodePNGDecode.inf
+  LodePngPkg/LodePngDecode.inf

@@ -157,8 +157,8 @@ ACCEPT_KEYWORDS='~amd64' emerge -vnk sys-boot/edk2
 bash "${REPO}/vm/IShoalPkg/build.sh"
 
 if $BUILD_LOGO; then
-  bash "${REPO}/vm/LodePNGPkg/extern/get.sh"
-  bash "${REPO}/vm/LodePNGPkg/build.sh"
+  bash "${REPO}/vm/LodePngPkg/extern/get.sh"
+  bash "${REPO}/vm/LodePngPkg/build.sh"
 fi
 
 qpkg -c
@@ -350,5 +350,5 @@ chmod a+x rootfs/root/ishoal
 
 mkdir -p rootfs/boot/EFI/Boot/
 cp "${REPO}/vm/IShoalPkg/IShoal.efi" rootfs/boot/EFI/Boot/bootx64.efi
-$BUILD_LOGO && cp "${REPO}/vm/LodePNGPkg/LodePNGDecode.efi" rootfs/boot/LodePNGDecode.efi
+$BUILD_LOGO && cp "${REPO}/vm/LodePngPkg/LodePngDecode.efi" rootfs/boot/LodePngDecode.efi
 cp kernel/arch/x86/boot/bzImage rootfs/boot/linux.efi
