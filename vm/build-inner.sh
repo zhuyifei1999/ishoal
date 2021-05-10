@@ -2,7 +2,7 @@
 
 set -ex
 
-LINUX_VER=5.11.7
+LINUX_VER=5.11.19
 PY_VER=3.9
 EDKII_VER=202102
 
@@ -22,8 +22,6 @@ sys-devel/clang-runtime sanitize
 EOF
 
 emerge -vuk sys-apps/portage
-emerge -vuDNk --with-bdeps=y @world
-emerge -c
 
 emerge -vuk app-portage/layman
 layman -f
@@ -32,8 +30,10 @@ layman -a musl
 # For bpftool
 mkdir -p /etc/portage/patches/sys-libs/musl
 ln -s "${REPO}/vm/musl-nftw.patch" /etc/portage/patches/sys-libs/musl
-ln -s "${REPO}/vm/musl-821083ac7b54eaa040d5a8ddc67c6206a175e0ca.patch" /etc/portage/patches/sys-libs/musl
 emerge -vk sys-libs/musl
+
+emerge -vuDNk --with-bdeps=y @world
+emerge -c
 
 emerge -vnk app-portage/portage-utils
 
