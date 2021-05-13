@@ -2,7 +2,7 @@
 
 set -ex
 
-LINUX_VER=5.11.19
+LINUX_VER=5.12.9
 PY_VER=3.9
 EDKII_VER=202102
 
@@ -27,10 +27,25 @@ emerge -vuk app-portage/layman
 layman -f
 layman -a musl
 
+mkdir -p /etc/portage/patches/sys-kernel/linux-headers
+ln -s "${REPO}/vm/kernel-musl-gentoo-791364.patch" /etc/portage/patches/sys-kernel/linux-headers
+emerge -vk sys-kernel/linux-headers
+
 # For bpftool
 mkdir -p /etc/portage/patches/sys-libs/musl
 ln -s "${REPO}/vm/musl-nftw.patch" /etc/portage/patches/sys-libs/musl
 emerge -vk sys-libs/musl
+
+if $BUILD_LOGO; then
+  mkdir -p /etc/portage/patches/dev-python/pillow
+  ln -s "${REPO}/vm/pillow-gif-transparency.patch" /etc/portage/patches/dev-python/pillow
+  emerge -vk dev-python/pillow
+fi
+
+emerge -vnk dev-lang/perl app-admin/perl-cleaner
+emerge -1vnk dev-perl/Pod-Parser
+perl-cleaner -v --all -- --color=y --quiet-build -vk
+perl-cleaner -v --all -- --color=y --quiet-build -v
 
 emerge -vuDNk --with-bdeps=y @world
 emerge -c
@@ -90,6 +105,8 @@ tar xf "linux-${LINUX_VER}.tar.xz"
 mv "linux-${LINUX_VER}" kernel
 
 pushd kernel
+patch -p1 < "${REPO}/vm/kernel-musl-gentoo-791364.patch"
+
 ./scripts/kconfig/merge_config.sh ./arch/x86/configs/x86_64_defconfig "${REPO}/vm/kconfig_s1"
 ./scripts/kconfig/merge_config.sh .config "${REPO}/vm/kconfig_s2"
 popd
@@ -222,7 +239,7 @@ unset CFLAGS LDFLAGS
 ACCEPT_KEYWORDS='~amd64' emerge --root rootfs -v dev-libs/libbpf sys-apps/bpftool
 unset USE
 
-make -C kernel -j"$(nproc)" modules_install INSTALL_MOD_PATH="$(realpath rootfs)"
+make -C kernel -j"$(nproc)" modules_install INSTALL_MOD_PATH="$(realpath rootfs)" INSTALL_MOD_STRIP=1
 
 GCC_PATH="$(gcc -print-search-dirs | grep install | cut -d\  -f2)"
 mkdir -p rootfs/"${GCC_PATH}"

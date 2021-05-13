@@ -1,0 +1,60 @@
+diff --git a/src/PIL/GifImagePlugin.py b/src/PIL/GifImagePlugin.py
+index 5c93de2c..ec441a7a 100644
+--- a/src/PIL/GifImagePlugin.py
++++ b/src/PIL/GifImagePlugin.py
+@@ -300,7 +300,7 @@ class GifImageFile(ImageFile.ImageFile):
+                     "gif",
+                     (x0, y0, x1, y1),
+                     self.__offset,
+-                    (bits, interlace, transparency),
++                    (bits, interlace, transparency, self.info["transparency"]),
+                 )
+             ]
+         else:
+diff --git a/src/decode.c b/src/decode.c
+index 7bcbfdee..c903f810 100644
+--- a/src/decode.c
++++ b/src/decode.c
+@@ -431,7 +431,8 @@ PyImaging_GifDecoderNew(PyObject *self, PyObject *args) {
+     int bits = 8;
+     int interlace = 0;
+     int transparency = -1;
+-    if (!PyArg_ParseTuple(args, "s|iii", &mode, &bits, &interlace, &transparency)) {
++    int global_transparency = -1;
++    if (!PyArg_ParseTuple(args, "s|iiii", &mode, &bits, &interlace, &transparency, &global_transparency)) {
+         return NULL;
+     }
+ 
+@@ -450,6 +451,7 @@ PyImaging_GifDecoderNew(PyObject *self, PyObject *args) {
+     ((GIFDECODERSTATE *)decoder->state.context)->bits = bits;
+     ((GIFDECODERSTATE *)decoder->state.context)->interlace = interlace;
+     ((GIFDECODERSTATE *)decoder->state.context)->transparency = transparency;
++    ((GIFDECODERSTATE *)decoder->state.context)->global_transparency = global_transparency;
+ 
+     return (PyObject *)decoder;
+ }
+diff --git a/src/libImaging/Gif.h b/src/libImaging/Gif.h
+index 91132e2e..dcca4b90 100644
+--- a/src/libImaging/Gif.h
++++ b/src/libImaging/Gif.h
+@@ -32,6 +32,7 @@ typedef struct {
+ 
+     /* The transparent palette index, or -1 for no transparency. */
+     int transparency;
++    int global_transparency;
+ 
+     /* PRIVATE CONTEXT (set by decoder) */
+ 
+diff --git a/src/libImaging/GifDecode.c b/src/libImaging/GifDecode.c
+index 301f604b..e642d98f 100644
+--- a/src/libImaging/GifDecode.c
++++ b/src/libImaging/GifDecode.c
+@@ -273,6 +273,8 @@ ImagingGifDecode(Imaging im, ImagingCodecState state, UINT8 *buffer, Py_ssize_t
+         for (c = 0; c < i; c++) {
+             if (p[c] != context->transparency) {
+                 *out = p[c];
++            } else {
++                *out = context->global_transparency;
+             }
+             out++;
+             if (++state->x >= state->xsize) {
