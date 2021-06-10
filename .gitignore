@@ -19,6 +19,4 @@
 /vm/IShoalPkg/BootImgOffsets.h
 /vm/IShoalPkg/BootImgUntrimmed.bmp
 /vm/IShoalPkg/IShoal.inf
-/vm/LodePngPkg/extern/*
-!/vm/LodePngPkg/extern/get.sh
-!/vm/LodePngPkg/extern/*.patch
+/vm/LodePngPkg/
