@@ -21,24 +21,17 @@ cat > /etc/portage/profile/package.use.mask << 'EOF'
 sys-devel/clang-runtime sanitize
 EOF
 
+ln -s "${REPO}/vm/patches" /etc/portage/patches
+
 emerge -vuk sys-apps/portage
 
 emerge -vuk app-portage/layman
 layman -f
 layman -a musl
 
-mkdir -p /etc/portage/patches/sys-kernel/linux-headers
-ln -s "${REPO}/vm/kernel-musl-gentoo-791364.patch" /etc/portage/patches/sys-kernel/linux-headers
 emerge -vk sys-kernel/linux-headers
-
-# For bpftool
-mkdir -p /etc/portage/patches/sys-libs/musl
-ln -s "${REPO}/vm/musl-nftw.patch" /etc/portage/patches/sys-libs/musl
 emerge -vk sys-libs/musl
-
 if $BUILD_LOGO; then
-  mkdir -p /etc/portage/patches/dev-python/pillow
-  ln -s "${REPO}/vm/pillow-gif-transparency.patch" /etc/portage/patches/dev-python/pillow
   emerge -vk dev-python/pillow
 fi
 
@@ -105,7 +98,7 @@ tar xf "linux-${LINUX_VER}.tar.xz"
 mv "linux-${LINUX_VER}" kernel
 
 pushd kernel
-patch -p1 < "${REPO}/vm/kernel-musl-gentoo-791364.patch"
+patch -p1 < "${REPO}/vm/patches/sys-kernel/linux-headers/gentoo-791364.patch"
 
 ./scripts/kconfig/merge_config.sh ./arch/x86/configs/x86_64_defconfig "${REPO}/vm/kconfig_s1"
 ./scripts/kconfig/merge_config.sh .config "${REPO}/vm/kconfig_s2"
