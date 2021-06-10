@@ -20,6 +20,7 @@ else
 		https://github.com/tianocore/edk2/releases/download/${MY_V}/submodule-BaseTools-Source-C-BrotliCompress-brotli.zip -> ${P}-BaseTools-Source-C-BrotliCompress-brotli.zip
 		https://github.com/tianocore/edk2/releases/download/${MY_V}/submodule-CryptoPkg-Library-OpensslLib-openssl.zip -> ${P}-CryptoPkg-Library-OpensslLib-openssl.zip
 		https://github.com/tianocore/edk2/releases/download/${MY_V}/submodule-MdeModulePkg-Library-BrotliCustomDecompressLib-brotli.zip -> ${P}-MdeModulePkg-Library-BrotliCustomDecompressLib-brotli.zip
+		https://github.com/tianocore/edk2/releases/download/${MY_V}/submodule-MdeModulePkg-Universal-RegularExpressionDxe-oniguruma.zip -> ${P}-MdeModulePkg-Universal-RegularExpressionDxe-oniguruma.zip
 		https://github.com/tianocore/edk2/releases/download/${MY_V}/submodule-RedfishPkg-Library-JsonLib-jansson.zip -> ${P}-RedfishPkg-Library-JsonLib-jansson.zip
 		https://github.com/tianocore/edk2/releases/download/${MY_V}/submodule-SoftFloat.zip -> ${P}-SoftFloat.zip
 		https://github.com/tianocore/edk2/releases/download/${MY_V}/submodule-UnitTestFrameworkPkg-Library-CmockaLib-cmocka.zip -> ${P}-UnitTestFrameworkPkg-Library-CmockaLib-cmocka.zip"
@@ -66,6 +67,7 @@ src_unpack() {
 	unpack ${P}-BaseTools-Source-C-BrotliCompress-brotli.zip
 	unpack ${P}-CryptoPkg-Library-OpensslLib-openssl.zip
 	unpack ${P}-MdeModulePkg-Library-BrotliCustomDecompressLib-brotli.zip
+	unpack ${P}-MdeModulePkg-Universal-RegularExpressionDxe-oniguruma.zip
 	unpack ${P}-RedfishPkg-Library-JsonLib-jansson.zip
 	unpack ${P}-SoftFloat.zip
 	unpack ${P}-UnitTestFrameworkPkg-Library-CmockaLib-cmocka.zip
@@ -89,7 +91,6 @@ src_compile() {
 		BUILD_AR="$(tc-getBUILD_AR)"
 		BUILD_LD="$(tc-getBUILD_LD)"
 	)
-	# Base tools does not like parallel make
 	emake "${make_flags[@]}" -C BaseTools
 
 	# Update template parameter files
@@ -118,7 +119,7 @@ src_install() {
 
 	# Use mkdir && cp here as doins does not preserve execution bits
 	mkdir -p "${ED}/usr/lib/${P}" || die
-	cp -pR "${S}"/* "${D}/usr/lib/${P}" || die
+	cp -pR "${S}"/* "${ED}/usr/lib/${P}" || die
 	dosym "${P}" "/usr/lib/${PN}"
 }
 

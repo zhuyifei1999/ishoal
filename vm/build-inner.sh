@@ -4,7 +4,7 @@ set -ex
 
 LINUX_VER=5.12.9
 PY_VER=3.9
-EDKII_VER=202102
+EDKII_VER=202105
 
 emerge-webrsync
 
