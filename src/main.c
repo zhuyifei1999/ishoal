@@ -1,13 +1,10 @@
 #include "features.h"
 
-#include <arpa/inet.h>
-#include <linux/if_packet.h>
 #include <net/if.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/eventfd.h>
-#include <sys/resource.h>
 #include <unistd.h>
 #include <urcu.h>
 
@@ -18,8 +15,6 @@ int exitcode;
 char *progname;
 char *iface;
 int ifindex;
-
-static int promisc_sock;
 
 static void sig_handler(int sig_num)
 {
@@ -43,30 +38,13 @@ int main(int argc, char *argv[])
 
 	free_rcu_init();
 
+	signal(SIGINT, sig_handler);
+	signal(SIGTERM, sig_handler);
+	worker_start();
+
 	ifinfo_init();
 	load_conf();
 
-	struct rlimit unlimited = { RLIM_INFINITY, RLIM_INFINITY };
-	if (setrlimit(RLIMIT_MEMLOCK, &unlimited))
-		perror_exit("setrlimit(RLIMIT_MEMLOCK)");
-
-	/* Enable promiscuous mode in order to workaround WiFi issues */
-	promisc_sock = socket(AF_PACKET, SOCK_RAW | SOCK_CLOEXEC, htons(ETH_P_ALL));
-	if (promisc_sock < 0)
-		perror_exit("socket(AF_PACKET, SOCK_RAW)");
-
-	struct packet_mreq mreq = {
-		.mr_ifindex = ifindex,
-		.mr_type = PACKET_MR_PROMISC,
-	};
-	if (setsockopt(promisc_sock, SOL_PACKET, PACKET_ADD_MEMBERSHIP,
-		       &mreq, sizeof(mreq)))
-		perror_exit("setsockopt");
-
-	signal(SIGINT, sig_handler);
-	signal(SIGTERM, sig_handler);
-
-	worker_start();
 	start_endpoint();
 
 	thread_start(bpf_load_thread, NULL, "bpf");

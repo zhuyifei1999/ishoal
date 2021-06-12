@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/eventfd.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -109,8 +110,7 @@ static void get_if_gateway(char *iface, ipaddr_t *addr)
 		fprintf_exit("Unable to determine default gateway IP address\n");
 }
 
-
-static void resolve_arp_kernel(char *iface, ipaddr_t ipaddr, macaddr_t *macaddr)
+static bool resolve_arp_kernel(char *iface, ipaddr_t ipaddr, macaddr_t *macaddr)
 {
 	bool found = false;
 	char *buf = read_whole_file("/proc/net/arp", NULL);
@@ -156,11 +156,54 @@ static void resolve_arp_kernel(char *iface, ipaddr_t ipaddr, macaddr_t *macaddr)
 
 	free(buf);
 
-	if (!found) {
-		char str[IP_STR_BULEN];
-		ip_str(ipaddr, str);
-		fprintf_exit("Unable to resolve ARP for %s\n", str);
-	}
+	return found;
+}
+
+struct ifinfo_rau_ctx {
+	int done_eventfd;
+	bool solved;
+	struct resolve_arp_user rau;
+};
+
+static void rau_cb(bool solved, void *_ctx)
+{
+	struct ifinfo_rau_ctx *ctx = _ctx;
+
+	ctx->solved = solved;
+
+	if (eventfd_write(ctx->done_eventfd, 1))
+		perror_exit("eventfd_write");
+}
+
+static bool resolve_arp_user_wrapped(char *iface, ipaddr_t ipaddr, macaddr_t *macaddr)
+{
+	struct eventloop *el = eventloop_new();
+	struct ifinfo_rau_ctx *ctx = calloc(1, sizeof(*ctx));
+	if (!ctx)
+		perror_exit("calloc");
+
+	ctx->done_eventfd = eventfd(0, EFD_CLOEXEC);
+	if (ctx->done_eventfd < 0)
+		perror_exit("eventfd");
+
+	eventloop_install_break(el, thread_stop_eventfd(current));
+	eventloop_install_break(el, ctx->done_eventfd);
+
+	ctx->rau.ipaddr = ipaddr;
+	ctx->rau.macaddr = macaddr;
+	ctx->rau.el = el;
+	ctx->rau.cb = rau_cb;
+	ctx->rau.ctx = ctx;
+	resolve_arp_user(&ctx->rau);
+
+	eventloop_enter(el, -1);
+
+	close(ctx->done_eventfd);
+	bool solved = ctx->solved;
+	free(ctx);
+	eventloop_destroy(el);
+
+	return solved;
 }
 
 void ifinfo_init(void)
@@ -171,5 +214,11 @@ void ifinfo_init(void)
 
 	ipaddr_t gateway_ip = 0;
 	get_if_gateway(iface, &gateway_ip);
-	resolve_arp_kernel(iface, gateway_ip, &gateway_mac);
+
+	if (!resolve_arp_kernel(iface, gateway_ip, &gateway_mac) &&
+	    !resolve_arp_user_wrapped(iface, gateway_ip, &gateway_mac)) {
+		char str[IP_STR_BULEN];
+		ip_str(gateway_ip, str);
+		fprintf_exit("Unable to resolve ARP for %s\n", str);
+	}
 }

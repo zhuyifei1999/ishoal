@@ -342,7 +342,7 @@ static void __set_fake_gateway_ip(ipaddr_t new_gateway_ip)
 
 struct tui_rau_ctx {
 	int done_eventfd;
-	bool has_collision;
+	bool solved;
 	struct resolve_arp_user rau;
 };
 
@@ -350,7 +350,7 @@ static void rau_cb(bool solved, void *_ctx)
 {
 	struct tui_rau_ctx *ctx = _ctx;
 
-	ctx->has_collision = solved;
+	ctx->solved = solved;
 
 	if (eventfd_write(ctx->done_eventfd, 1))
 		perror_exit("eventfd_write");
@@ -431,11 +431,12 @@ out:
 		resolve_arp_user(&ctx->rau);
 
 		eventloop_enter(tui_el, -1);
+
 		close(ctx->done_eventfd);
-		bool has_collision = ctx->has_collision;
+		bool solved = ctx->solved;
 		free(ctx);
 
-		if (!has_collision) {
+		if (!solved) {
 			__set_fake_gateway_ip(new_gateway_ip);
 			return;
 		}
