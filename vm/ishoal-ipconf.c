@@ -506,6 +506,7 @@ state_static_attempt:
 
 		switch (res) {
 		case DLG_EXIT_OK:
+			current_item = 0;
 			goto state_static_menu_loop;
 		case DLG_EXIT_EXTRA:
 			goto state_static_attempt;
@@ -522,13 +523,15 @@ state_static_attempt:
 
 		switch (res) {
 		case DLG_EXIT_OK:
+			current_item = 1;
 			goto state_static_menu_loop;
 		default: // DLG_EXIT_CANCEL
 			goto state_menu;
 		}
 	}
 
-	if ((conf.ipaddr & conf.netmask) != (conf.gateway & conf.netmask)) {
+	if ((conf.ipaddr & conf.netmask) != (conf.gateway & conf.netmask) ||
+	    conf.ipaddr == conf.gateway) {
 		dialog_vars.yes_label = "Edit";
 		dialog_vars.no_label = "Menu";
 		res = dialog_yesno("Setup", "\nInvalid gateway.", 7, 30);
@@ -536,6 +539,7 @@ state_static_attempt:
 
 		switch (res) {
 		case DLG_EXIT_OK:
+			current_item = 2;
 			goto state_static_menu_loop;
 		default: // DLG_EXIT_CANCEL
 			goto state_menu;
@@ -553,6 +557,7 @@ state_static_attempt:
 
 		switch (res) {
 		case DLG_EXIT_OK:
+			current_item = 2;
 			goto state_static_menu_loop;
 		case DLG_EXIT_EXTRA:
 			goto state_static_attempt;
@@ -646,23 +651,26 @@ state_static_menu_loop_invalid:
 	ipaddr_t gateway;
 	char *invalid_msg;
 
-	invalid_msg = "\nInvalid IP address for VM.";
-	if (inet_pton(AF_INET, items[0].text, &ipaddr) != 1)
+	if (inet_pton(AF_INET, items[0].text, &ipaddr) != 1 ||
+	    !ipaddr || ipaddr == 0xFFFFFFFF) {
+		current_item = 0;
+		invalid_msg = "\nInvalid IP address for VM.";
 		goto state_static_menu_invalid;
-	if (!ipaddr || ipaddr == 0xFFFFFFFF)
-		goto state_static_menu_invalid;
+	}
 
-	invalid_msg = "\nInvalid IP address for subnet mask.";
-	if (inet_pton(AF_INET, items[1].text, &netmask) != 1)
+	if (inet_pton(AF_INET, items[1].text, &netmask) != 1 ||
+	    !netmask || netmask == 0xFFFFFFFF) {
+		current_item = 1;
+		invalid_msg = "\nInvalid IP address for subnet mask.";
 		goto state_static_menu_invalid;
-	if (!netmask || netmask == 0xFFFFFFFF)
-		goto state_static_menu_invalid;
+	}
 
-	invalid_msg = "\nInvalid IP address for default gateway.";
-	if (inet_pton(AF_INET, items[2].text, &gateway) != 1)
+	if (inet_pton(AF_INET, items[2].text, &gateway) != 1 ||
+	    !gateway || gateway == 0xFFFFFFFF) {
+		current_item = 2;
+		invalid_msg = "\nInvalid IP address for default gateway.";
 		goto state_static_menu_invalid;
-	if (!gateway || gateway == 0xFFFFFFFF)
-		goto state_static_menu_invalid;
+	}
 
 	conf.ipaddr = ipaddr;
 	conf.netmask = netmask;
