@@ -38,7 +38,7 @@ fi
 emerge -vnk dev-lang/perl app-admin/perl-cleaner
 emerge -1vnk dev-perl/Pod-Parser
 perl-cleaner -v --all -- --color=y --quiet-build -vk
-perl-cleaner -v --all -- --color=y --quiet-build -v
+# perl-cleaner -v --all -- --color=y --quiet-build -v
 
 emerge -vuDNk --with-bdeps=y @world
 emerge -c
@@ -139,6 +139,9 @@ ACCEPT_KEYWORDS='~amd64' emerge -vnk dev-libs/libbpf sys-apps/bpftool
 
 bash "${REPO}/src/extern/get.sh"
 make -B -C "${REPO}/src/" PYTHON="python${PY_VER}" CFLAGS='-Os -pipe -flto -fno-semantic-interposition -Wall' CLANGFLAGS='-fno-lto -g -D__x86_64__' DO_STRIP=1
+
+# shellcheck disable=SC2046
+gcc "${REPO}/vm/ishoal-ipconf.c" $(dialog-config --cflags --libs) -Os -pipe -flto -fno-semantic-interposition -Wall -o ishoal-ipconf
 
 pushd "${REPO}/vm/IShoalPkg/"
 if $BUILD_LOGO; then
@@ -311,9 +314,8 @@ hostname ishoal
 
 ip link set dev lo up
 ip link set dev eth0 up
-udhcpc -i eth0 -p /run/udhcpc -s /usr/share/udhcpc/default.script -q -n -f
 
-ping -w 5 -c 1 8.8.8.8
+/root/ishoal-ipconf eth0 init
 
 dmesg -n 1
 EOF
@@ -338,6 +340,8 @@ while true; do
     reboot
     echo 'Waiting for system reboot.'
     sleep 20
+  elif [ $EXITCODE -eq 4 ]; then
+    /root/ishoal-ipconf eth0 reconf
   elif [ $EXITCODE -ne 0 ]; then
     echo 'IShoal failed, entering shell. Please type 'exit' to exit the shell.'
     /bin/sh
@@ -355,6 +359,8 @@ tty2::respawn:-/bin/sh
 ::shutdown:/bin/umount -a -n -r
 EOF
 
+cp ishoal-ipconf rootfs/root/ishoal-ipconf
+chmod a+x rootfs/root/ishoal-ipconf
 cp "${REPO}/src/ishoal" rootfs/root/ishoal
 chmod a+x rootfs/root/ishoal
 

@@ -602,6 +602,8 @@ void tui_thread(void *arg)
 	else
 		detect_switch_online();
 
+	int choice = 0;
+
 	while (true) {
 		tui_clear();
 
@@ -626,16 +628,19 @@ void tui_thread(void *arg)
 			      dlg_strempty()},
 			{"5", "Advanced: Enter Switch information manually",
 			      dlg_strempty()},
-			{"6", "Advanced: Start a Shell", dlg_strempty()},
-			{"7", "Advanced: Reboot the VM", dlg_strempty()},
+			{"6", "Advanced: Change VM network configuration",
+			      dlg_strempty()},
+			{"7", "Advanced: Start a Shell", dlg_strempty()},
+			{"8", "Advanced: Reboot the VM", dlg_strempty()},
 		};
 
-		int choice;
-		res = dlg_menu("IShoal", "Please select an option:", 11, 60, 7, 7,
+		dialog_vars.default_item = choices[choice].name;
+		res = dlg_menu("IShoal", "Please select an option:", 11, 60, 7, 8,
 			 choices, &choice, dlg_dummy_menutext);
 		if (res)
-			choice = 2;
+			continue;
 
+		dialog_state.plain_buttons = false;
 		tui_clear();
 
 		switch (choice) {
@@ -654,7 +659,6 @@ void tui_thread(void *arg)
 				break;
 
 			exitcode = 2;
-
 			goto out;
 		case 3:
 			switch_gw_dialog();
@@ -663,6 +667,9 @@ void tui_thread(void *arg)
 			switch_information_dialog();
 			break;
 		case 5:
+			exitcode = 4;
+			goto out;
+		case 6:
 			tui_reset();
 
 			if (tcsetattr(STDIN_FILENO, TCSANOW, &start_termios))
@@ -693,7 +700,7 @@ void tui_thread(void *arg)
 				perror_exit("tcsetattr");
 
 			break;
-		case 6:
+		case 7:
 			dialog_vars.begin_set = false;
 			res = dialog_yesno("Setup",
 					   "\nDo you really want to reboot the VM?",
@@ -702,7 +709,6 @@ void tui_thread(void *arg)
 				break;
 
 			exitcode = 3;
-
 			goto out;
 		}
 

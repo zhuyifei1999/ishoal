@@ -29,10 +29,8 @@ static void sig_handler(int sig_num)
 
 int main(int argc, char *argv[])
 {
-	if (argc != 2) {
-		fprintf(stderr, "Usage: %s [interface]\n", argv[0]);
-		exit(1);
-	}
+	if (argc != 2)
+		fprintf_exit("Usage: %s [interface]\n", argv[0]);
 
 	progname = argv[0];
 	iface = argv[1];
