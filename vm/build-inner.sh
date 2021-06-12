@@ -315,9 +315,9 @@ hostname ishoal
 ip link set dev lo up
 ip link set dev eth0 up
 
-/root/ishoal-ipconf eth0 init
-
 dmesg -n 1
+
+/root/ishoal-ipconf eth0 init
 EOF
 chmod a+x rootfs/etc/init.d/rcS
 
