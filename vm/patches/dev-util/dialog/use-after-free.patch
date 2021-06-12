@@ -1,0 +1,22 @@
+--- a/guage.c
++++ b/guage.c
+@@ -235,8 +235,8 @@
+     } else {
+ 	result = FALSE;
+ 	if (cleanup) {
+-	    dlg_remove_callback(cb);
+ 	    delink(obj);
++	    dlg_remove_callback(cb);
+ 	}
+     }
+ 
+@@ -383,8 +383,8 @@
+ 	if (obj->prompt)
+ 	    free(obj->prompt);
+ 	obj->obj.keep_win = FALSE;
+-	dlg_remove_callback(&(obj->obj));
+ 	delink(obj);
++	dlg_remove_callback(&(obj->obj));
+     }
+     curs_set(1);
+ }
