@@ -1,3 +1,4 @@
+#include <asm/types.h>
 #include <arpa/inet.h>
 #include <dialog.h>
 #include <errno.h>
@@ -11,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/socket.h>
 #include <sys/wait.h>
 #include <termios.h>
 #include <unistd.h>
@@ -18,6 +20,9 @@
 #include <linux/if_arp.h>
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
+#include <linux/limits.h>
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
 #include <linux/route.h>
 
 #include "../src/version.h"
@@ -83,6 +88,83 @@ static void mk_sockaddr_in(struct sockaddr *dst, ipaddr_t addr)
 {
 	dst->sa_family = AF_INET;
 	((struct sockaddr_in *)dst)->sin_addr.s_addr = addr;
+}
+
+static bool if_is_up(void)
+{
+	char path[PATH_MAX];
+	snprintf(path, PATH_MAX, "/sys/class/net/%s/operstate", iface);
+
+	FILE *f = fopen(path, "r");
+	if (!f)
+		perror_exit(path);
+
+	char *operstate;
+	if (fscanf(f, "%ms", &operstate) != 1)
+		fprintf_exit("%s: Bad format\n", path);
+
+	bool result = !strcmp(operstate, "up");
+
+	free(operstate);
+	fclose(f);
+
+	return result;
+}
+
+static void wait_link(void)
+{
+	int rtnlsock = socket(AF_NETLINK, SOCK_RAW | SOCK_CLOEXEC, NETLINK_ROUTE);
+	if (rtnlsock < 0)
+		perror_exit("socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE)");
+
+	struct sockaddr_nl addr = {
+		.nl_family = AF_NETLINK,
+		.nl_groups = RTMGRP_LINK,
+	};
+	if (bind(rtnlsock, (struct sockaddr *)&addr, sizeof(addr)) < 0)
+		perror_exit("bind(rtnlsock)");
+
+	// Redundant check to avoid races
+	if (if_is_up())
+		goto out;
+
+	while (true) {
+		struct iovec iov = { 0 };
+		struct sockaddr_nl snl;
+		struct msghdr msg = { &snl, sizeof(snl), &iov, 1, NULL, 0, MSG_TRUNC};
+		int status;
+
+		status = recvmsg(rtnlsock, &msg, MSG_PEEK|MSG_TRUNC);
+		if (status < 0)
+			perror_exit("recvmsg");
+		if (!status)
+			fprintf_exit("rtnlsock EOF\n");
+
+		char buf[status];
+		iov = (struct iovec){ &buf, status };
+		msg = (struct msghdr){ &snl, sizeof(snl), &iov, 1, NULL, 0, 0};
+
+		status = recvmsg(rtnlsock, &msg, 0);
+		if (status < 0)
+			perror_exit("recvmsg");
+		if (!status)
+			fprintf_exit("rtnlsock EOF\n");
+
+		for (struct nlmsghdr *h = (void *)buf; NLMSG_OK(h, status); h = NLMSG_NEXT(h, status)) {
+			if (h->nlmsg_type != RTM_NEWLINK)
+				continue;
+
+			struct ifinfomsg *ifi = NLMSG_DATA(h);
+			if (ifi->ifi_index != ifindex)
+				continue;
+
+			if (ifi->ifi_flags & IFF_UP)
+				goto out;
+		}
+	}
+
+out:
+	close(rtnlsock);
 }
 
 static void get_macaddr(void)
@@ -453,6 +535,12 @@ int main(int argc, char *argv[])
 
 	if (tcsetattr(STDIN_FILENO, TCSANOW, &run_termios))
 		perror_exit("tcsetattr");
+
+	if (!if_is_up()) {
+		dialog_msgbox("Setup", "\nWaiting for link to be up ...", 5, 35, 0);
+
+		wait_link();
+	}
 
 	int res, choice = 0, current_item = 0;
 
