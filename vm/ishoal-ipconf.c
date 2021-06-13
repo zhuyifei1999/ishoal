@@ -543,6 +543,19 @@ int main(int argc, char *argv[])
 		wait_link();
 	}
 
+	/* Enable promiscuous mode in order to workaround VirtualBox WiFi issues */
+	int promisc_sock = socket(AF_PACKET, SOCK_RAW | SOCK_CLOEXEC, htons(ETH_P_ALL));
+	if (promisc_sock < 0)
+		perror_exit("socket(AF_PACKET, SOCK_RAW)");
+
+	struct packet_mreq mreq = {
+		.mr_ifindex = ifindex,
+		.mr_type = PACKET_MR_PROMISC,
+	};
+	if (setsockopt(promisc_sock, SOL_PACKET, PACKET_ADD_MEMBERSHIP,
+		       &mreq, sizeof(mreq)))
+		perror_exit("setsockopt");
+
 	int res, choice = 0, current_item = 0;
 
 	switch (mode) {

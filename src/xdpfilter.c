@@ -14,8 +14,6 @@
 #include "ishoal.h"
 #include "xdpfilter.skel.h"
 
-static int promisc_sock;
-
 struct xdpfilter_bpf *obj;
 
 macaddr_t switch_mac;
@@ -146,8 +144,8 @@ void bpf_load_thread(void *arg)
 	if (setrlimit(RLIMIT_MEMLOCK, &unlimited))
 		perror_exit("setrlimit(RLIMIT_MEMLOCK)");
 
-	/* Enable promiscuous mode in order to workaround WiFi issues */
-	promisc_sock = socket(AF_PACKET, SOCK_RAW | SOCK_CLOEXEC, htons(ETH_P_ALL));
+	/* Enable promiscuous mode in order to workaround VirtualBox WiFi issues */
+	int promisc_sock = socket(AF_PACKET, SOCK_RAW | SOCK_CLOEXEC, htons(ETH_P_ALL));
 	if (promisc_sock < 0)
 		perror_exit("socket(AF_PACKET, SOCK_RAW)");
 
