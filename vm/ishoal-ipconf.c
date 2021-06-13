@@ -537,6 +537,7 @@ int main(int argc, char *argv[])
 		perror_exit("tcsetattr");
 
 	if (!if_is_up()) {
+		tui_clear();
 		dialog_msgbox("Setup", "\nWaiting for link to be up ...", 5, 35, 0);
 
 		wait_link();
