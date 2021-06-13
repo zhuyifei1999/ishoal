@@ -21,7 +21,7 @@ trap cleanup_tmp EXIT
 
 # https://unix.stackexchange.com/a/423052
 PORT="$(comm -23 <(seq 49152 65535 | sort) <(ss -Htan | awk '{print $4}' | cut -d':' -f2 | sort -u) | shuf | head -n 1)"
-wget https://cloud-images.ubuntu.com/groovy/current/groovy-server-cloudimg-amd64-disk-kvm.img -O cloudimg.img
+wget https://cloud-images.ubuntu.com/hirsute/current/hirsute-server-cloudimg-amd64-disk-kvm.img -O cloudimg.img
 qemu-img resize cloudimg.img +8G
 
 # Or https://github.com/canonical/cloud-utils.git
@@ -85,6 +85,8 @@ SCRIPT=$(mktemp)
 
 cat > \$SCRIPT << 'INNEREOF'
 set -ex
+
+mount -o remount,discard /
 
 mkdir -p /mnt/{source,output,tmp}
 mount -t 9p /dev/source -o version=9p2000.L,trans=virtio,access=any /mnt/source
