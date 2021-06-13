@@ -111,7 +111,7 @@ void resolve_arp_user(struct resolve_arp_user *ctx)
 
 	eventloop_install_event_sync(ctx->el, &(struct event) {
 		.fd = sock,
-		.expiry = { .tv_sec = 0, .tv_nsec = 500000000 },
+		.expiry = { .tv_sec = 1, .tv_nsec = 0 },
 		.eventfd_ack = false,
 		.handler_type = EVT_CALL_FN,
 		.handler_fn = resolve_arp_user_cb,

@@ -293,7 +293,7 @@ static bool addr_in_use(ipaddr_t addr)
 
 	while (true) {
 		struct pollfd pfds = { .fd = arpsock, .events = POLLIN };
-		int pollres = poll(&pfds, 1, 500);
+		int pollres = poll(&pfds, 1, 1000);
 
 		if (pollres < 0)
 			perror_exit("poll");
@@ -591,7 +591,6 @@ state_dhcp_attempt:
 		}
 	}
 
-	// (void)!system("ping -w 5 -c 1 8.8.8.8"); TODO
 	goto done;
 
 state_static_attempt:
