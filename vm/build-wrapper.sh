@@ -58,8 +58,10 @@ setsid qemu-system-x86_64 \
   -device virtio-9p-pci,fsdev=vfs2,mount_tag=/dev/output \
   -fsdev "local,multidevs=remap,id=vfs3,path=${REPO}/vm/binpkgs,security_model=none" \
   -device virtio-9p-pci,fsdev=vfs3,mount_tag=/dev/binpkgs \
-  -drive file=cloudimg.img \
-  -drive file=user-data.img,format=raw &
+  -drive id=fsdrv,if=none,file=cloudimg.img,cache=unsafe,discard=unmap,detect-zeroes=unmap \
+  -device virtio-blk-pci,drive=fsdrv \
+  -drive id=confdrv,if=none,file=user-data.img,format=raw \
+  -device virtio-blk-pci,drive=confdrv &
   QEMU_PID=$!
 
 RUNNING=true
