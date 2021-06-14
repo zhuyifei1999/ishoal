@@ -174,8 +174,7 @@ async def _do_handshake(remoteid, remoteip, switchip, cb):
             cb('port_exchange', (remoteid, exchangeid, myport))
             return endpoints[remoteid][exchangeid]
 
-        remoteaddr = (
-            remoteip, await asyncio.wait_for(port_exchange(), timeout=1))
+        remoteaddr = (remoteip, await port_exchange())
 
         def send(order):
             data = handshake_struct.pack(order, exchangeid, HANDSHAKE_MSG)
