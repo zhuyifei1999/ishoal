@@ -1,0 +1,15 @@
+# /etc/systemd/system/ishoal-relay.service
+[Unit]
+Description=iShoal relay
+Documentation=https://ishoal.ink
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+ExecStart=/srv/ishoal/srv/relay/ishoal-relay eth0
+AmbientCapabilities=CAP_BPF CAP_SYS_RESOURCE
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

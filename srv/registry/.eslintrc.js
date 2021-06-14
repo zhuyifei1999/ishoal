@@ -17,6 +17,7 @@ module.exports = {
   'rules': {
     'curly': ['error', 'multi-or-nest'],
     'eqeqeq': ['error', 'always'],
+    'no-undef': 'error',
     'space-in-parens': 'error',
   },
 };

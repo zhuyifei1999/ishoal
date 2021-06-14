@@ -1,8 +1,272 @@
-const PORT = 5000;
 // regex credit: https://stackoverflow.com/a/26445549/13673228
 const IPV4_REGEXP = /^(?!0)(?!.*\.$)((1?\d?\d|25[0-5]|2[0-4]\d)(\.|$)){4}$/;
 
-const io = require('socket.io')(PORT, {allowEIO3: true});
+const struct = require('struct');
+const io = require('socket.io')(5000, {allowEIO3: true});
+const relayctl = require('dgram').createSocket('udp4');
+const util = require('util');
+
+const RELAYCTL_CMD_JTC_CLEAR = 1;
+const RELAYCTL_CMD_JTC_ADD = 2;
+const RELAYCTL_CMD_JTC_DEL = 3;
+
+const RELAYCTL_CMD_CTJ_DUMP = 1;
+const RELAYCTL_CMD_CTJ_ADDACK = 2;
+
+relayctl.on('error', (err) => {
+  if (util.getSystemErrorName(err.errno) === 'ECONNREFUSED')
+    return;
+  console.log(`relayctl error:\n${err.stack}`);
+});
+
+Promise.all([
+  new Promise((resolve, reject) => {
+    relayctl.on('connect', () => {
+      resolve();
+    });
+  }),
+  new Promise((resolve, reject) => {
+    relayctl.on('listening', () => {
+      resolve();
+    });
+  }),
+]).then(() => {
+  const stru = struct().word8('cmd');
+
+  stru.allocate();
+  stru.fields.cmd = RELAYCTL_CMD_JTC_CLEAR;
+
+  relayctl.send(stru.buffer());
+});
+
+relayctl.bind(5000);
+relayctl.connect(5001);
+
+const relayData = {
+  allRelays: new Map(),
+  socketIndex: new Map(),
+  addRpcId: new Map(),
+};
+
+const relayAddRpcIdGen = (function() {
+  let curId = 0;
+  return function() {
+    curId = (curId + 1) % 65536;
+    return curId;
+  };
+}());
+
+const doRelayDelInternal = function(key, obj) {
+  relayData.allRelays.delete(key);
+
+  const thisSocketIndex = relayData.socketIndex.get(obj.thisSocketID);
+  thisSocketIndex.delete(key);
+  if (!thisSocketIndex.size)
+    relayData.socketIndex.delete(obj.thisSocketID);
+
+  const thatSocketIndex = relayData.socketIndex.get(obj.thatSocketID);
+  thatSocketIndex.delete(key);
+  if (!thatSocketIndex.size)
+    relayData.socketIndex.delete(obj.thatSocketID);
+};
+
+const doRelayDelRPC = function(thisRelayPort, thatRelayPort) {
+  const stru = struct()
+      .word8('cmd')
+      .word16Ube('thisRelayPort')
+      .word16Ube('thatRelayPort');
+
+  stru.allocate();
+  stru.fields.cmd = RELAYCTL_CMD_JTC_DEL;
+  stru.fields.thisRelayPort = thisRelayPort;
+  stru.fields.thatRelayPort = thatRelayPort;
+
+  relayctl.send(stru.buffer());
+};
+
+const doRelayDelFromSocket = function(socketID) {
+  const index = relayData.socketIndex.get(socketID);
+  if (!index)
+    return;
+
+  for (const key of Array.from(index)) {
+    const obj = relayData.allRelays.get(key);
+    obj.rpcReject(new Error('Disconnect'));
+    doRelayDelInternal(key, obj);
+
+    if (obj.thisRelayPort || obj.thatRelayPort)
+      doRelayDelRPC(obj);
+  }
+};
+
+const doRelayAdd = function(key, obj) {
+  if (obj.thisIP && obj.thatIP && obj.thisPort && obj.thatPort &&
+      !obj.rpcSent) {
+    let rpcId;
+    for (let i = 0; i < 65536; i++) {
+      rpcId = relayAddRpcIdGen();
+
+      if (!relayData.addRpcId.has(rpcId))
+        break;
+
+      const oldkey = relayData.addRpcId.get(rpcId);
+      const oldobj = relayData.allRelays.get(oldkey);
+      if (!oldobj)
+        throw new Error('Assertion failed');
+
+      if (Date.now() - oldobj.rpcTime > 10000) { // Timeout 10 seconds
+        oldobj.rpcReject(new Error('RPC timeout'));
+        doRelayDelInternal(oldkey, oldobj);
+        relayData.addRpcId.delete(rpcId);
+        break;
+      }
+    }
+    if (relayData.addRpcId.has(rpcId))
+      throw new Error(`RPC ID exhaustion`);
+
+    relayData.addRpcId.set(rpcId, key);
+    obj.rpcTime = Date.now();
+
+    const inetAddr = function(ip) {
+      let [, num1, num2, num3, num4] = /^(\d)\.(\d)\.(\d)\.(\d)$/.exec(ip);
+      [num1, num2, num3, num4] =
+        [parseInt(num1), parseInt(num2), parseInt(num3), parseInt(num4)];
+
+      return ((num1 << 24) | (num2 << 16) | (num3 << 8) | num4);
+    };
+
+    const stru = struct()
+        .word8('cmd')
+        .word16Ube('rpcId')
+        .word32Ube('thisIP')
+        .word16Ube('thisPort')
+        .word16Ube('thisRelayPort')
+        .word32Ube('thatIP')
+        .word16Ube('thatPort')
+        .word16Ube('thatRelayPort');
+
+    stru.allocate();
+    stru.fields.cmd = RELAYCTL_CMD_JTC_ADD;
+    stru.fields.rpcId = rpcId;
+    stru.fields.thisIP = inetAddr(obj.thisIP);
+    stru.fields.thisPort = obj.thisPort;
+    stru.fields.thisRelayPort = obj.thisRelayPort;
+    stru.fields.thatIP = inetAddr(obj.thatIP);
+    stru.fields.thatPort = obj.thatPort;
+    stru.fields.thatRelayPort = obj.thatRelayPort;
+
+    relayctl.send(stru.buffer());
+    obj.rpcSent = true;
+  }
+};
+
+relayctl.on('message', (msg, rinfo) => {
+  let stru = struct().word8('cmd');
+
+  stru._setBuff(msg);
+  switch (stru.fields.cmd) {
+    case RELAYCTL_CMD_CTJ_DUMP:
+      for (const [key, obj] of relayData.allRelays) {
+        obj.rpcSent = false;
+        doRelayAdd(key, obj);
+      }
+      break;
+    case RELAYCTL_CMD_CTJ_ADDACK:
+      stru = struct()
+          .word8('cmd')
+          .word16Ube('rpcId')
+          .word16Ube('thisRelayPort')
+          .word16Ube('thatRelayPort');
+      stru._setBuff(msg);
+
+      const key = relayData.addRpcId.get(stru.fields.rpcId);
+      relayData.addRpcId.delete(stru.fields.rpcId);
+      const obj = relayData.allRelays.get(key);
+
+      // This can happen if it disconnects before RPC is done
+      if (!obj) {
+        doRelayDelRPC(stru.fields.thisRelayPort, stru.fields.thatRelayPort);
+        break;
+      }
+
+      obj.thisRelayPort = stru.fields.thisRelayPort;
+      obj.thatRelayPort = stru.fields.thatRelayPort;
+
+      obj.rpcResolve();
+      break;
+  }
+});
+
+const doRelay = function(thisSocketID, thatSocketID, thisIP, thisPort) {
+  if (thisSocketID === thatSocketID)
+    throw new Error('self-relay');
+
+  let thatIP = undefined;
+  let thatPort = undefined;
+  let isThis = true;
+  if (thisSocketID > thatSocketID) {
+    [thisSocketID, thatSocketID] = [thatSocketID, thisSocketID];
+    [thisIP, thatIP] = [thatIP, thisIP];
+    [thisPort, thatPort] = [thatPort, thisPort];
+    isThis = false;
+  }
+
+  // Oh JS, why is your map identity-keyed?
+  const key = JSON.stringify([thisSocketID, thatSocketID]);
+  if (!relayData.allRelays.has(key)) {
+    const newobj = {
+      thisSocketID: thisSocketID,
+      thatSocketID: thatSocketID,
+      thisIP: thisIP,
+      thatIP: thatIP,
+      thisPort: thisPort,
+      thatPort: thatPort,
+    };
+
+    newobj.rpcPromise = new Promise((resolve, reject) => {
+      newobj.rpcResolve = resolve;
+      newobj.rpcReject = reject;
+    });
+    relayData.allRelays.set(key, newobj);
+
+    if (!relayData.socketIndex.has(thisSocketID))
+      relayData.socketIndex.set(thisSocketID, new Set());
+    relayData.socketIndex.get(thisSocketID).add(key);
+
+    if (!relayData.socketIndex.has(thatSocketID))
+      relayData.socketIndex.set(thatSocketID, new Set());
+    relayData.socketIndex.get(thatSocketID).add(key);
+  }
+
+  const obj = relayData.allRelays.get(key);
+  if (obj.thisSocketID !== thisSocketID || obj.thatSocketID !== thatSocketID)
+    throw new Error('bad key?!');
+
+  const localdata = {
+    thisIP: thisIP,
+    thatIP: thatIP,
+    thisPort: thisPort,
+    thatPort: thatPort,
+    thisRelayPort: 0,
+    thatRelayPort: 0,
+  };
+
+  for (const item of Object.keys(localdata)) {
+    if (localdata[item]) {
+      if (obj[item]) {
+        if (localdata[item] !== obj[item])
+          throw new Error(`unmatching ${item}`);
+      } else
+        obj[item] = localdata[item];
+    }
+  }
+
+  doRelayAdd(key, obj);
+
+  return obj.rpcPromise.then(() => {
+    return isThis ? obj.thisRelayPort : obj.thatRelayPort;
+  });
+};
 
 const P2data = {
   allSwitches: new Map(),
@@ -62,10 +326,19 @@ io.on('connection', function(socket) {
         socket.on('disconnect', function() {
           socket.in('p2').emit('del_remote', socket.id, publicIP, switchIP);
           P2data.allSwitches.delete(socket.id);
+
+          doRelayDelFromSocket(socket.id);
         });
 
-        socket.on('handshake', function(socketID, exchangeID, port) {
-          io.to(socketID).emit('handshake', socket.id, exchangeID, port);
+        socket.on('handshake', function(socketID, exchangeID, port, useRelay) {
+          if (useRelay) {
+            (async function() {
+              const relayPort = await doRelay(
+                  socket.id, socketID, publicIP, port);
+              socket.emit('handshake', socketID, exchangeID, relayPort);
+            }());
+          } else
+            io.to(socketID).emit('handshake', socket.id, exchangeID, port);
         });
 
         socket.in('p2').emit('add_remote', socket.id, publicIP, switchIP);

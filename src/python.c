@@ -182,6 +182,14 @@ ishoalc_get_switch_ip(PyObject *self, PyObject *args)
 }
 
 static PyObject *
+ishoalc_get_relay_ip(PyObject *self, PyObject *args)
+{
+    char str[IP_STR_BULEN];
+    ip_str(relay_ip, str);
+    return PyUnicode_FromString(str);
+}
+
+static PyObject *
 ishoalc_add_connection(PyObject *self, PyObject *args)
 {
     const char *str_local_ip;
@@ -250,6 +258,7 @@ static PyMethodDef IshoalcMethods[] = {
     {"on_switch_chg_threadfn", ishoalc_on_switch_chg_threadfn, METH_VARARGS, NULL},
     {"get_public_host_ip", ishoalc_get_public_host_ip, METH_NOARGS, NULL},
     {"get_switch_ip", ishoalc_get_switch_ip, METH_NOARGS, NULL},
+    {"get_relay_ip", ishoalc_get_relay_ip, METH_NOARGS, NULL},
     {"get_remotes_log_fd", ishoalc_get_remotes_log_fd, METH_NOARGS, NULL},
     {"add_connection", ishoalc_add_connection, METH_VARARGS, NULL},
     {"delete_connection", ishoalc_delete_connection, METH_VARARGS, NULL},

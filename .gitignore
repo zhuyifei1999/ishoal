@@ -13,6 +13,7 @@
 !/src/py_dist/ishoal
 /srv/registry/node_modules/
 /srv/registry/package-lock.json
+/srv/relay/ishoal-relay
 /vm/ishoal.ova
 /vm/binpkgs
 /vm/IShoalPkg/BootImg.png

@@ -21,6 +21,8 @@ ipaddr_t switch_ip;
 
 ipaddr_t fake_gateway_ip;
 
+ipaddr_t relay_ip;
+
 int xsk_broadcast_evt_broadcast_primary;
 struct broadcast_event *xsk_broadcast_evt_broadcast;
 
@@ -172,6 +174,8 @@ void bpf_load_thread(void *arg)
 
 	obj->bss->fake_gateway_ip = fake_gateway_ip;
 	update_subnet_mask();
+
+	obj->bss->relay_ip = relay_ip;
 
 	if (bpf_set_link_xdp_fd(ifindex, bpf_program__fd(obj->progs.xdp_prog), 0) < 0)
 		perror_exit("bpf_set_link_xdp_fd");

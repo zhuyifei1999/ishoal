@@ -164,17 +164,21 @@ endpoints = {}
 handshake_struct = struct.Struct(f'>HH{len(HANDSHAKE_MSG)}s')
 
 
-async def _do_handshake(remoteid, remoteip, switchip, cb):
+async def _do_handshake(remoteid, realip, switchip, cb):
     loop = asyncio.get_running_loop()
+    relayip = ishoalc.get_relay_ip()
 
     endpoint = await open_local_endpoint(ishoalc.get_public_host_ip())
 
-    async def _handshake_exchange(myport, exchangeid):
+    async def _handshake_exchange(myport, exchangeid, use_relay):
         def port_exchange():
-            cb('port_exchange', (remoteid, exchangeid, myport))
+            cb('port_exchange', (remoteid, exchangeid, myport, use_relay))
             return endpoints[remoteid][exchangeid]
 
-        remoteaddr = (remoteip, await port_exchange())
+        if use_relay:
+            remoteaddr = (relayip, await port_exchange())
+        else:
+            remoteaddr = (realip, await port_exchange())
 
         def send(order):
             data = handshake_struct.pack(order, exchangeid, HANDSHAKE_MSG)
@@ -225,41 +229,43 @@ async def _do_handshake(remoteid, remoteip, switchip, cb):
                 if addr != remoteaddr:
                     continue
                 send(4)
-                return addr[1]
+                return addr
             elif order == 4:
                 # Order 4: "ACK"
                 # The receiver is alerted by sender that the connection is good
                 # to go. The assertion should not fail.
                 if addr != remoteaddr:
                     continue
-                return addr[1]
+                return addr
 
     try:
         endpoint_fd = endpoint._transport.get_extra_info('socket').fileno()
         _, realport = endpoint.address
 
-        try:
-            # remoteport = _handshake_exchange(remoteid, 0)
-            remoteport = await asyncio.wait_for(
-                _handshake_exchange(realport, 0), timeout=5)
-        except asyncio.TimeoutError:
-            pass
-        else:
-            cb('complete', (switchip, realport, remoteip, remoteport,
-                            endpoint_fd))
+        async def attempt(myport, exchangeid, use_relay):
+            try:
+                remoteaddr, remoteport = await asyncio.wait_for(
+                    _handshake_exchange(myport, exchangeid, use_relay),
+                    timeout=5)
+            except asyncio.TimeoutError:
+                return False
+            else:
+                # We always use realport because only remote concerns stunport
+                cb('complete', (switchip, realport, remoteaddr, remoteport,
+                                endpoint_fd))
+                return True
+
+        if await attempt(realport, 0, False):
             return
 
         _, stunport = await do_stun(endpoint)
 
-        try:
-            remoteport = await asyncio.wait_for(
-                _handshake_exchange(stunport, 1), timeout=5)
-        except asyncio.TimeoutError:
-            pass
-        else:
-            # We still use realport because only remote concerns stunport
-            cb('complete', (switchip, realport, remoteip, remoteport,
-                            endpoint_fd))
+        if await attempt(stunport, 1, False):
+            return
+
+        # Always use STUN in relay as it is slightly more reliable;
+        # if port is bad "order 1" should fix it in theory.
+        if await attempt(stunport, 2, True):
             return
 
         cb('timeout', (switchip,))
@@ -271,7 +277,9 @@ async def _do_handshake(remoteid, remoteip, switchip, cb):
 
 
 def do_handshake(loop, remoteid, remoteip, switchip, cb):
-    endpoints[remoteid] = (loop.create_future(), loop.create_future())
+    endpoints[remoteid] = (loop.create_future(),
+                           loop.create_future(),
+                           loop.create_future())
     asyncio.run_coroutine_threadsafe(
         _do_handshake(remoteid, remoteip, switchip, cb), loop)
 

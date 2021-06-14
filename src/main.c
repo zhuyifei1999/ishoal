@@ -1,5 +1,6 @@
 #include "features.h"
 
+#include <netdb.h>
 #include <net/if.h>
 #include <signal.h>
 #include <stdio.h>
@@ -41,6 +42,18 @@ int main(int argc, char *argv[])
 	signal(SIGINT, sig_handler);
 	signal(SIGTERM, sig_handler);
 	worker_start();
+
+	struct addrinfo *results = NULL;
+	struct addrinfo hints = {
+		.ai_family = AF_INET,
+		.ai_socktype = SOCK_DGRAM,
+	};
+
+	if (getaddrinfo("ishoal.ink", NULL, &hints, &results))
+		perror_exit("getaddrinfo");
+
+	relay_ip = ((struct sockaddr_in *)results->ai_addr)->sin_addr.s_addr;
+	freeaddrinfo(results);
 
 	ifinfo_init();
 	load_conf();

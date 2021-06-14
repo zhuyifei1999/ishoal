@@ -65,6 +65,8 @@ ipaddr_t switch_ip;
 ipaddr_t public_host_ip;
 ipaddr_t fake_gateway_ip;
 
+ipaddr_t relay_ip;
+
 ipaddr_t subnet_mask;
 
 char _license[] SEC("license") = "GPL";

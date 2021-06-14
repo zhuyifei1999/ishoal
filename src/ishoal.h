@@ -54,6 +54,8 @@ extern ipaddr_t public_host_ip;
 extern ipaddr_t real_subnet_mask;
 extern ipaddr_t fake_gateway_ip;
 
+extern ipaddr_t relay_ip;
+
 extern int remotes_log_fd;
 
 enum event_handler {

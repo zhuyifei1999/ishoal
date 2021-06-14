@@ -354,8 +354,8 @@ static __always_inline int send_icmp4_timeout_exceeded(context_t *xdp)
 {
 	void *data, *data_end;
 
-	data = (void *)(long)xdp->data;
-	data_end = (void *)(long)xdp->data_end;
+	data = DATA(ctx);
+	data_end = DATA_END(ctx);
 	if ((void *)data + sizeof(struct ethhdr) > data_end)
 		return XDP_DROP;
 
@@ -510,12 +510,12 @@ int xdp_prog(context_t *ctx)
 		} else
 			return XDP_PASS;
 
-		if (!eth_is_multicast && fake_gateway_ip &&
+		if (!eth_is_multicast && BSS(fake_gateway_ip) &&
 		    (mac_eq(switch_mac, eth->h_source) || mac_eq(switch_mac, (macaddr_t){0})) &&
-		    same_subnet(iph->saddr, fake_gateway_ip, BSS(subnet_mask)) &&
-		    !same_subnet(iph->daddr, fake_gateway_ip, BSS(subnet_mask)) &&
+		    same_subnet(iph->saddr, BSS(fake_gateway_ip), BSS(subnet_mask)) &&
+		    !same_subnet(iph->daddr, BSS(fake_gateway_ip), BSS(subnet_mask)) &&
 		    // FIXME: should this be 'real subnet mask'?
-		    !same_subnet(iph->daddr, public_host_ip, BSS(subnet_mask))) {
+		    !same_subnet(iph->daddr, BSS(public_host_ip), BSS(subnet_mask))) {
 			/* NAT route */
 			if (iph->ttl <= 1)
 				return send_icmp4_timeout_exceeded(ctx);
@@ -564,7 +564,7 @@ int xdp_prog(context_t *ctx)
 
 			ip_decrease_ttl(iph);
 
-			iph->saddr = public_host_ip;
+			iph->saddr = BSS(public_host_ip);
 			recompute_iph_csum(iph);
 			recompute_l4_csum_fast(ctx, iph, &iphp_orig);
 
@@ -646,7 +646,7 @@ int xdp_prog(context_t *ctx)
 			iph->frag_off = bpf_htons(IP_DF);
 			iph->ttl = 64;
 			iph->protocol = IPPROTO_UDP;
-			iph->saddr = public_host_ip;
+			iph->saddr = BSS(public_host_ip);
 			iph->daddr = MAP_LOOKUP_DEREF(conn).remote.ip;
 
 			recompute_iph_csum(iph);
@@ -678,7 +678,7 @@ int xdp_prog(context_t *ctx)
 			return XDP_TX;
 		}
 
-		if (iph->daddr == public_host_ip) {
+		if (iph->daddr == BSS(public_host_ip)) {
 			if (iph->protocol == IPPROTO_UDP) {
 				DECLARE_MAP_LOOKUP_VAR(struct connection, conn);
 				uint16_t dst_port_key = bpf_ntohs(dst_port);
@@ -697,6 +697,9 @@ int xdp_prog(context_t *ctx)
 					return XDP_DROP;
 
 				if (src_port != bpf_htons(MAP_LOOKUP_DEREF(conn).remote.port)) {
+					if (iph->saddr == relay_ip)
+						// This should not happen. Relay should not change port
+						return XDP_DROP;
 #ifdef __BPF__
 					return redirect_to_userspace(ctx);
 #else
@@ -752,8 +755,8 @@ int xdp_prog(context_t *ctx)
 			}
 
 gateway_return:
-			if (fake_gateway_ip &&
-			    !same_subnet(iph->saddr, fake_gateway_ip, BSS(subnet_mask))) {
+			if (BSS(fake_gateway_ip) &&
+			    !same_subnet(iph->saddr, BSS(fake_gateway_ip), BSS(subnet_mask))) {
 				/* NAT return route */
 				if (iph->ttl <= 1)
 					return send_icmp4_timeout_exceeded(ctx);
@@ -908,7 +911,7 @@ gateway_return:
 			return XDP_DROP;
 
 		DECLARE_MAP_LOOKUP_VAR(struct connection, conn);
-		if (arppl->ar_tip != fake_gateway_ip &&
+		if (arppl->ar_tip != BSS(fake_gateway_ip) &&
 		    pkt_map_lookup_elem(conn_by_ip, &arppl->ar_tip, conn))
 			return XDP_PASS;
 

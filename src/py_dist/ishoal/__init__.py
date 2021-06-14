@@ -118,6 +118,7 @@ def new_socketio():
 
     @sio.on('disconnect')
     def on_disconnect():
+        print('Disconnecting', file=remotes_log)
         for switchip in all_connections:
             ishoalc.delete_connection(switchip)
 
