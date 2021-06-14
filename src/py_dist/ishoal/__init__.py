@@ -86,8 +86,12 @@ def new_socketio():
 
     sio = socketio.Client(reconnection=False)
     sio.eio.logger.setLevel(logging.CRITICAL)
+    sio.joined_as = ishoalc.get_switch_ip()
 
     def handshake_cb(typ, args):
+        if sio != g_sio:
+            return
+
         if typ == 'port_exchange':
             sio.emit('handshake', args)
 
@@ -130,7 +134,7 @@ def new_socketio():
 
     @sio.on('connected')
     def on_connected():
-        sio.emit('protocol', (2, ishoalc.get_switch_ip()))
+        sio.emit('protocol', (2, sio.joined_as))
 
         global g_sio
         g_sio = sio
@@ -139,12 +143,18 @@ def new_socketio():
 
     @sio.on('ip_collision')
     def on_ip_collision():
+        if sio != g_sio:
+            return
+
         print(f'Cannot join iShoal network, '
               f'{ishoalc.get_switch_ip()} collision',
               file=remotes_log)
 
     @sio.on('add_remote')
     def on_add_remote(remoteid, remoteip, switchip):
+        if sio != g_sio:
+            return
+
         if not isinstance(remoteip, str) or not IPV4_REGEXP.match(remoteip):
             return
         if not isinstance(switchip, str) or not IPV4_REGEXP.match(switchip):
@@ -155,6 +165,9 @@ def new_socketio():
 
     @sio.on('handshake')
     def on_handshake(remoteid, exchangeid, port):
+        if sio != g_sio:
+            return
+
         if not isinstance(port, int) or not (0 < port < 65536):
             return
         if exchangeid not in (0, 1):
@@ -164,6 +177,9 @@ def new_socketio():
 
     @sio.on('del_remote')
     def on_del_remote(remoteid, remoteip, switchip):
+        if sio != g_sio:
+            return
+
         if not isinstance(switchip, str) or not IPV4_REGEXP.match(switchip):
             return
 
@@ -190,7 +206,10 @@ def main():
     new_socketio()
 
     def on_switch_change():
-        if g_sio:
+        # The race here: in redetect switch, ishoalc.wait_for_switch may return
+        # and sets up g_sio before this runs, so the sio from the wait is
+        # immediately disconnected.
+        if g_sio and g_sio.joined_as != ishoalc.get_switch_ip():
             g_sio.disconnect()
 
     threading.Thread(target=ishoalc.on_switch_chg_threadfn,
