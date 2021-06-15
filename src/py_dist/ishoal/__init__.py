@@ -171,7 +171,7 @@ def new_socketio():
 
         if not isinstance(port, int) or not (0 < port < 65536):
             return
-        if exchangeid not in (0, 1):
+        if exchangeid not in (0, 1, 2):
             return
 
         handshake.on_handshake_msg(loop, remoteid, exchangeid, port)

@@ -354,8 +354,8 @@ static __always_inline int send_icmp4_timeout_exceeded(context_t *xdp)
 {
 	void *data, *data_end;
 
-	data = DATA(ctx);
-	data_end = DATA_END(ctx);
+	data = DATA(xdp);
+	data_end = DATA_END(xdp);
 	if ((void *)data + sizeof(struct ethhdr) > data_end)
 		return XDP_DROP;
 

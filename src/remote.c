@@ -184,8 +184,9 @@ static void __add_connection(ipaddr_t local_ip, uint16_t local_port,
 
 		pthread_mutex_unlock(&remotes_lock);
 		ip_str(local_ip, str);
-		fprintf(remotes_log, "+ Remote IP %s, handled by port %d -> %d\n",
-			str, local_port, remote_port);
+		fprintf(remotes_log, "+ Remote IP %s, handled by port %d -> %s%d\n",
+			str, local_port, remote_ip == relay_ip ? "relay " : "",
+			remote_port);
 		bpf_add_connection(&conn->conn);
 	} else {
 		pthread_mutex_unlock(&remotes_lock);

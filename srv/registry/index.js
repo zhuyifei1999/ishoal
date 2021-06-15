@@ -95,7 +95,7 @@ const doRelayDelFromSocket = function(socketID) {
     doRelayDelInternal(key, obj);
 
     if (obj.thisRelayPort || obj.thatRelayPort)
-      doRelayDelRPC(obj);
+      doRelayDelRPC(obj.thisRelayPort, obj.thatRelayPort);
   }
 };
 
@@ -128,11 +128,12 @@ const doRelayAdd = function(key, obj) {
     obj.rpcTime = Date.now();
 
     const inetAddr = function(ip) {
-      let [, num1, num2, num3, num4] = /^(\d)\.(\d)\.(\d)\.(\d)$/.exec(ip);
+      let [, num1, num2, num3, num4] = /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/.exec(ip);
       [num1, num2, num3, num4] =
         [parseInt(num1), parseInt(num2), parseInt(num3), parseInt(num4)];
 
-      return ((num1 << 24) | (num2 << 16) | (num3 << 8) | num4);
+      // https://stackoverflow.com/a/6798829, `>>> 0` to make unsigned
+      return ((num1 << 24) | (num2 << 16) | (num3 << 8) | num4) >>> 0;
     };
 
     const stru = struct()
@@ -333,8 +334,13 @@ io.on('connection', function(socket) {
         socket.on('handshake', function(socketID, exchangeID, port, useRelay) {
           if (useRelay) {
             (async function() {
-              const relayPort = await doRelay(
-                  socket.id, socketID, publicIP, port);
+              let relayPort;
+              try {
+                relayPort = await doRelay(
+                    socket.id, socketID, publicIP, port);
+              } catch (e) {
+                console.log(`doRelay error:\n${e.stack}`);
+              }
               socket.emit('handshake', socketID, exchangeID, relayPort);
             }());
           } else

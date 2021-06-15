@@ -228,7 +228,7 @@ int main(int argc, char *argv[])
 				 sizeof(bindaddr)) < 0)
 				perror_exit("bind");
 			gsnaddrlen = sizeof(gsnaddr);
-			if (getsockname(sock, (struct sockaddr *)&gsnaddr, &gsnaddrlen) < 0)
+			if (getsockname(this_relay_sock, (struct sockaddr *)&gsnaddr, &gsnaddrlen) < 0)
 				perror_exit("getsockname");
 			uint16_t this_relay_port = ntohs(gsnaddr.sin_port);
 			sock_fds[this_relay_port] = this_relay_sock;
@@ -241,7 +241,7 @@ int main(int argc, char *argv[])
 				 sizeof(bindaddr)) < 0)
 				perror_exit("bind");
 			gsnaddrlen = sizeof(gsnaddr);
-			if (getsockname(sock, (struct sockaddr *)&gsnaddr, &gsnaddrlen) < 0)
+			if (getsockname(that_relay_sock, (struct sockaddr *)&gsnaddr, &gsnaddrlen) < 0)
 				perror_exit("getsockname");
 			uint16_t that_relay_port = ntohs(gsnaddr.sin_port);
 			sock_fds[that_relay_port] = that_relay_sock;

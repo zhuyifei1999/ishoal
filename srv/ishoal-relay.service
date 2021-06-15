@@ -8,7 +8,7 @@ After=network.target
 Type=simple
 User=ubuntu
 ExecStart=/srv/ishoal/srv/relay/ishoal-relay eth0
-AmbientCapabilities=CAP_BPF CAP_SYS_RESOURCE
+AmbientCapabilities=CAP_BPF CAP_NET_ADMIN CAP_PERFMON CAP_SYS_RESOURCE
 Restart=on-failure
 
 [Install]

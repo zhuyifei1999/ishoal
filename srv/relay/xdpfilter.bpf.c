@@ -133,6 +133,7 @@ int xdp_prog(struct xdp_md *ctx)
 
 	iph->saddr = public_host_ip;
 	iph->daddr = conn->send_rem_ip;
+	iph->ttl = 64;
 	recompute_iph_csum(iph);
 
 	struct iph_pseudo iphp_new;
