@@ -276,29 +276,36 @@ async def _do_handshake(remoteid, realip, switchip, cb):
         endpoint.close()
 
 
-def do_handshake(loop, remoteid, remoteip, switchip, cb):
-    endpoints[remoteid] = (loop.create_future(),
-                           loop.create_future(),
-                           loop.create_future())
-    asyncio.run_coroutine_threadsafe(
-        _do_handshake(remoteid, remoteip, switchip, cb), loop)
+class Handshaker:
+    def __init__(self, loop):
+        self.loop = loop
+
+    def do_handshake(self, remoteid, remoteip, switchip, cb):
+        endpoints[remoteid] = (self.loop.create_future(),
+                               self.loop.create_future(),
+                               self.loop.create_future())
+        asyncio.run_coroutine_threadsafe(
+            _do_handshake(remoteid, remoteip, switchip, cb), self.loop)
+
+    def on_handshake_msg(self, remoteid, exchangeid, port):
+        if remoteid not in endpoints:
+            return
+
+        self.loop.call_soon_threadsafe(
+            endpoints[remoteid][exchangeid].set_result, port)
+
+    def threadfn(self):
+        asyncio.set_event_loop(self.loop)
+        self.loop.run_forever()
+
+    def start(self):
+        threading.Thread(target=self.threadfn, name='py_handshake').start()
+
+    def stop(self):
+        self.loop.call_soon_threadsafe(self.loop.stop)
 
 
-def on_handshake_msg(loop, remoteid, exchangeid, port):
-    if remoteid not in endpoints:
-        return
-
-    loop.call_soon_threadsafe(
-        endpoints[remoteid][exchangeid].set_result, port)
-
-
-def handshake_threadfn(loop):
-    asyncio.set_event_loop(loop)
-    loop.run_forever()
-
-
-def start_handshaker():
-    loop = asyncio.new_event_loop()
-    threading.Thread(target=handshake_threadfn,
-                     args=(loop,), name='py_handshake').start()
-    return loop
+def start():
+    handshaker = Handshaker(asyncio.new_event_loop())
+    handshaker.start()
+    return handshaker
