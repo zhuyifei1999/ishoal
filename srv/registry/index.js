@@ -305,8 +305,6 @@ io.on('connection', function(socket) {
     /* ====== BEGIN PROTOCOL 2 ====== */
     if (protocol === 2) {
       (function() {
-        socket.join('p2');
-
         const [switchIP] = args;
         if (typeof switchIP !== 'string')
           return;
@@ -323,6 +321,8 @@ io.on('connection', function(socket) {
             return;
           }
         }
+
+        socket.join('p2');
 
         socket.on('disconnect', function() {
           socket.in('p2').emit('del_remote', socket.id, publicIP, switchIP);
