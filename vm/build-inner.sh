@@ -142,6 +142,7 @@ make -B -C "${REPO}/src/" PYTHON="python${PY_VER}" CFLAGS='-Os -pipe -flto -fno-
 
 # shellcheck disable=SC2046
 gcc "${REPO}/vm/ishoal-ipconf.c" $(dialog-config --cflags --libs) -Os -pipe -flto -fno-semantic-interposition -Wall -o ishoal-ipconf
+gcc "${REPO}/vm/ishoal-update.c" -lz -Os -pipe -flto -fno-semantic-interposition -Wall -o ishoal-update
 
 pushd "${REPO}/vm/IShoalPkg/"
 if $BUILD_LOGO; then
@@ -308,7 +309,8 @@ mount -t bpf bpffs /sys/fs/bpf
 mdev -s
 mdev -d
 
-mount -o remount,rw /
+mount -o remount,rw,compress=zstd,discard /
+mount /dev/sda1 /boot
 
 hostname ishoal
 
@@ -342,6 +344,14 @@ while true; do
     sleep 20
   elif [ $EXITCODE -eq 4 ]; then
     /root/ishoal-ipconf eth0 reconf
+  elif [ $EXITCODE -eq 5 ]; then
+    /root/ishoal-update
+    read -n 1 -s -r -p 'Press any key to reboot...'
+    echo
+    sync
+    reboot
+    echo 'Waiting for system reboot.'
+    sleep 20
   elif [ $EXITCODE -ne 0 ]; then
     echo 'IShoal failed, entering shell. Please type 'exit' to exit the shell.'
     /bin/sh
@@ -361,6 +371,8 @@ EOF
 
 cp ishoal-ipconf rootfs/root/ishoal-ipconf
 chmod a+x rootfs/root/ishoal-ipconf
+cp ishoal-update rootfs/root/ishoal-update
+chmod a+x rootfs/root/ishoal-update
 cp "${REPO}/src/ishoal" rootfs/root/ishoal
 chmod a+x rootfs/root/ishoal
 
@@ -368,3 +380,6 @@ mkdir -p rootfs/boot/EFI/Boot/
 cp "${REPO}/vm/IShoalPkg/IShoal.efi" rootfs/boot/EFI/Boot/bootx64.efi
 $BUILD_LOGO && cp LodePngPkg/Build/LodePngPkg/RELEASE_GCC5/X64/LodePngDecode.efi rootfs/boot/LodePngDecode.efi
 cp kernel/arch/x86/boot/bzImage rootfs/boot/linux.efi
+
+touch rootfs/root/ishoal-filelist
+(cd rootfs; find ! -path './dev/*') | tac > rootfs/root/ishoal-filelist

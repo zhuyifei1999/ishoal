@@ -81,6 +81,8 @@ sudo docker run \
   gentoo/stage3:amd64-musl-vanilla \
   bash "${REPO}/vm/build-inner.sh"
 
+(cd rootfs; sudo tar czf ../ishoal-update.tgz .)
+
 fstrim -v rootfs
 
 do_cleanup_mnt
@@ -95,3 +97,4 @@ echo "SHA1 (ishoal.ovf) = $(sha1sum ishoal.ovf | cut -d\  -f 1 )" >> ishoal.mf
 tar cvf ishoal.ova ishoal.ovf ishoal-disk001.vmdk ishoal.mf
 
 cp -a ishoal.ova "${REPO}/vm/ishoal.ova"
+cp -a ishoal-update.tgz "${REPO}/vm/ishoal-update.tgz"

@@ -24,8 +24,8 @@ do {									\
 	typeof (ptr) ___p = (ptr);					\
 									\
 	if (___p)							\
-		call_rcu(&((___p)->rhf), free_rcu_get_cb(	\
-				offsetof(typeof(*(ptr)), rhf)));		\
+		call_rcu(&((___p)->rhf), free_rcu_get_cb(		\
+			 offsetof(typeof(*(ptr)), rhf)));		\
 } while (0)
 
 /* This is just a marker to show which functions are async (i.e. may return
@@ -194,4 +194,9 @@ void broadcast_all_remotes(void *buf, size_t len);
 
 void bpf_add_connection(struct connection *conn);
 void bpf_delete_connection(ipaddr_t local_ip, uint16_t local_port);
+
+#define ISHOALC_RPC_CHECK_FOR_UPDATES 1
+#define ISHOALC_RPC_INIT_UPDATE 2
+
+int python_rpc(void *data, size_t len);
 #endif

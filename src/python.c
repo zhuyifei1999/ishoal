@@ -159,6 +159,112 @@ ishoalc_on_switch_chg_threadfn(PyObject *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
+static PyObject *ishoalc_rpc_handler;
+static PyThreadState *ishoalc_rpc_tssave;
+static int ishoalc_rpc_breakfd;
+
+static int ishoalc_rpc, ishoalc_rpc_recv;
+
+static PyObject *
+ishoalc_rpc_threadfn(PyObject *self, PyObject *args)
+{
+    if (ishoalc_rpc_handler) {
+        PyErr_SetString(PyExc_AssertionError,
+                        "rps_threadfn cannot be called twice");
+        return NULL;
+    }
+
+    if (!PyArg_ParseTuple(args, "O:rps_threadfn", &ishoalc_rpc_handler))
+        return NULL;
+
+    if (!PyCallable_Check(ishoalc_rpc_handler)) {
+        PyErr_SetString(PyExc_ValueError,
+                        "rps_threadfn argument 1 is not callable");
+        return NULL;
+    }
+
+    ishoalc_rpc_tssave = PyEval_SaveThread();
+    ishoalc_rpc_breakfd = eventfd(0, EFD_CLOEXEC);
+    if (ishoalc_rpc_breakfd < 0)
+        perror_exit("eventfd");
+
+    make_fd_pair(&ishoalc_rpc, &ishoalc_rpc_recv);
+
+    struct eventloop *el = eventloop_new();
+
+    eventloop_install_break(el, thread_stop_eventfd(python_main_thread));
+    eventloop_install_break(el, ishoalc_rpc_breakfd);
+    eventloop_install_rpc(el, ishoalc_rpc_recv);
+    eventloop_enter(el, -1);
+
+    eventloop_destroy(el);
+    close(ishoalc_rpc_breakfd);
+
+    PyEval_RestoreThread(ishoalc_rpc_tssave);
+
+    if (PyErr_Occurred())
+        return NULL;
+
+    Py_RETURN_NONE;
+}
+
+struct ishoalc_rpc_ctx {
+    char *data;
+    size_t len;
+};
+
+static int ishoalc_rpc_cb(void *_ctx)
+{
+    struct ishoalc_rpc_ctx *ctx = _ctx;
+    int result = -1;
+
+    PyEval_RestoreThread(ishoalc_rpc_tssave);
+
+    PyObject *arg = PyBytes_FromStringAndSize(ctx->data, ctx->len);
+    if (!arg)
+        goto err;
+
+    PyObject *res = PyObject_CallFunctionObjArgs(ishoalc_rpc_handler, arg, NULL);
+    if (!res)
+        goto err_arg;
+
+    if (!PyLong_Check(res)) {
+        PyErr_SetString(PyExc_TypeError, "RPC return must be int");
+        goto err_res;
+    }
+
+    result = PyLong_AsLong(res);
+
+err_res:
+    Py_DECREF(res);
+
+err_arg:
+    Py_DECREF(arg);
+
+err:
+    if (PyErr_Occurred()) {
+        if (eventfd_write(ishoalc_rpc_breakfd, 1))
+            perror_exit("eventfd_write");
+    }
+
+    ishoalc_rpc_tssave = PyEval_SaveThread();
+
+    return result;
+}
+
+int python_rpc(void *data, size_t len)
+{
+    struct ishoalc_rpc_ctx ctx = {
+        .data = data,
+        .len = len,
+    };
+
+    if (!ishoalc_rpc_handler)
+        return -1; // Not ready
+
+    return invoke_rpc_sync(ishoalc_rpc, ishoalc_rpc_cb, &ctx);
+}
+
 static PyObject *
 ishoalc_get_remotes_log_fd(PyObject *self, PyObject *args)
 {
@@ -187,6 +293,12 @@ ishoalc_get_relay_ip(PyObject *self, PyObject *args)
     char str[IP_STR_BULEN];
     ip_str(relay_ip, str);
     return PyUnicode_FromString(str);
+}
+
+static PyObject *
+ishoalc_get_version(PyObject *self, PyObject *args)
+{
+    return PyUnicode_FromString(ISHOAL_VERSION_STR);
 }
 
 static PyObject *
@@ -256,10 +368,12 @@ static PyMethodDef IshoalcMethods[] = {
     {"sleep", ishoalc_sleep, METH_VARARGS, NULL},
     {"wait_for_switch", ishoalc_wait_for_switch, METH_NOARGS, NULL},
     {"on_switch_chg_threadfn", ishoalc_on_switch_chg_threadfn, METH_VARARGS, NULL},
+    {"rpc_threadfn", ishoalc_rpc_threadfn, METH_VARARGS, NULL},
     {"get_public_host_ip", ishoalc_get_public_host_ip, METH_NOARGS, NULL},
     {"get_switch_ip", ishoalc_get_switch_ip, METH_NOARGS, NULL},
     {"get_relay_ip", ishoalc_get_relay_ip, METH_NOARGS, NULL},
     {"get_remotes_log_fd", ishoalc_get_remotes_log_fd, METH_NOARGS, NULL},
+    {"get_version", ishoalc_get_version, METH_NOARGS, NULL},
     {"add_connection", ishoalc_add_connection, METH_VARARGS, NULL},
     {"delete_connection", ishoalc_delete_connection, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL}

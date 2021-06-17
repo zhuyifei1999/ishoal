@@ -6,6 +6,7 @@ import threading
 
 import ishoalc
 import ishoal.handshake
+import ishoal.c_rpc
 import ishoal.sio
 
 
@@ -70,6 +71,7 @@ def log_remote(*args, **kwargs):
 
 
 handshaker = ishoal.handshake.start()
+c_rpc = ishoal.c_rpc.start()
 sio = ishoal.sio.start()
 
 threading.Thread(target=ishoalc.on_switch_chg_threadfn,
@@ -84,4 +86,5 @@ while not ishoalc.should_stop():
 
 
 sio.stop()
+# c_rpc.stop()  # Not needed, will be stopped by thread_all_stop()
 handshaker.stop()

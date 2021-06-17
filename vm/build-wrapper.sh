@@ -105,6 +105,7 @@ apt update
 apt install -y docker.io qemu-utils
 BUILD_LOGO='$BUILD_LOGO' "${REPO}/vm/build.sh"
 cp "${REPO}/vm/ishoal.ova" /mnt/output/ishoal.ova
+cp "${REPO}/vm/ishoal-update.tgz" /mnt/output/ishoal-update.tgz
 sync
 INNEREOF
 
@@ -116,3 +117,4 @@ wait "$QEMU_PID"
 RUNNING=false
 
 cp output/ishoal.ova "${REPO}/vm/ishoal.ova"
+cp output/ishoal-update.tgz "${REPO}/vm/ishoal-update.tgz"

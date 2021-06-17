@@ -334,6 +334,59 @@ static void detect_local_switch(void)
 	save_conf();
 }
 
+static bool check_updates(void) {
+	dialog_vars.begin_set = false;
+	dialog_msgbox("Update", "\nChecking for updates ...", 5, 30, 0);
+
+	char **newver;
+	struct ishoalc_check_update {
+		unsigned int cmd;
+		char ***destvar;
+	} check_msg = { ISHOALC_RPC_CHECK_FOR_UPDATES, &newver };
+
+	int res;
+	res = python_rpc(&check_msg, sizeof(check_msg));
+
+	tui_clear();
+
+	if (res < 0) {
+		pause();
+		dialog_msgbox("Update", "\nFailed checking update.", 7, 30, 1);
+		return false;
+	}
+	if (res == 0) {
+		dialog_msgbox("Update", "\nNo update available.", 7, 30, 1);
+		return false;
+	}
+
+	char *msg;
+	if (asprintf(&msg, "\nNew version %s available. Do you want to update?",
+		     *newver) < 0)
+		perror_exit("asprintf");
+	res = dialog_yesno("Update", msg, 8, 40);
+
+	free(msg);
+	free(*newver);
+
+	if (res)
+		return false;
+
+	tui_clear();
+	dialog_msgbox("Update", "\nDownloading update ...", 5, 30, 0);
+
+	int init_msg = ISHOALC_RPC_INIT_UPDATE;
+	res = python_rpc(&init_msg, sizeof(init_msg));
+
+	tui_clear();
+
+	if (res < 0) {
+		dialog_msgbox("Update", "\nFailed downloading update.", 7, 30, 1);
+		return false;
+	}
+
+	return true;
+}
+
 static void __set_fake_gateway_ip(ipaddr_t new_gateway_ip)
 {
 	bpf_set_fake_gateway_ip(new_gateway_ip);
@@ -610,9 +663,9 @@ void tui_thread(void *arg)
 
 		dialog_vars.begin_set = true;
 
-		dialog_vars.begin_y = 16;
+		dialog_vars.begin_y = 18;
 		dialog_vars.begin_x = 2;
-		dialog_tailbox("Log", remotes_path, 8, 76, 1);
+		dialog_tailbox("Log", remotes_path, 10, 76, 1);
 
 		dialog_vars.begin_y = 3;
 		dialog_vars.begin_x = 10;
@@ -623,20 +676,21 @@ void tui_thread(void *arg)
 			{"1", "Refresh state", dlg_strempty()},
 			{"2", "Re-detect Switch", dlg_strempty()},
 			{"3", "Shutdown the VM", dlg_strempty()},
-			{"4", fake_gateway_ip ?
+			{"4", "Check for updates", dlg_strempty()},
+			{"5", fake_gateway_ip ?
 				"Advanced: Setup VM as Gateway (currently enabled)" :
 				"Advanced: Setup VM as Gateway (currently disabled)",
 			      dlg_strempty()},
-			{"5", "Advanced: Enter Switch information manually",
+			{"6", "Advanced: Enter Switch information manually",
 			      dlg_strempty()},
-			{"6", "Advanced: Change VM network configuration",
+			{"7", "Advanced: Change VM network configuration",
 			      dlg_strempty()},
-			{"7", "Advanced: Start a Shell", dlg_strempty()},
-			{"8", "Advanced: Reboot the VM", dlg_strempty()},
+			{"8", "Advanced: Start a Shell", dlg_strempty()},
+			{"9", "Advanced: Reboot the VM", dlg_strempty()},
 		};
 
 		dialog_vars.default_item = choices[choice].name;
-		res = dlg_menu("IShoal", "Please select an option:", 11, 60, 7, 8,
+		res = dlg_menu("IShoal", "Please select an option:", 13, 60, 7, 9,
 			 choices, &choice, dlg_dummy_menutext);
 		if (res)
 			continue;
@@ -662,15 +716,21 @@ void tui_thread(void *arg)
 			exitcode = 2;
 			goto out;
 		case 3:
+			if (!check_updates())
+				break;
+
+			exitcode = 5;
+			goto out;
+		case 4:
 			switch_gw_dialog();
 			break;
-		case 4:
+		case 5:
 			switch_information_dialog();
 			break;
-		case 5:
+		case 6:
 			exitcode = 4;
 			goto out;
-		case 6:
+		case 7:
 			tui_reset();
 
 			if (tcsetattr(STDIN_FILENO, TCSANOW, &start_termios))
@@ -701,7 +761,7 @@ void tui_thread(void *arg)
 				perror_exit("tcsetattr");
 
 			break;
-		case 7:
+		case 8:
 			dialog_vars.begin_set = false;
 			res = dialog_yesno("Setup",
 					   "\nDo you really want to reboot the VM?",

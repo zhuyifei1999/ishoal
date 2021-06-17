@@ -14,8 +14,11 @@
 /srv/registry/node_modules/
 /srv/registry/package-lock.json
 /srv/relay/ishoal-relay
-/vm/ishoal.ova
 /vm/binpkgs
+/vm/ishoal.ova
+/vm/ishoal-ipconf
+/vm/ishoal-update
+/vm/ishoal-update.tgz
 /vm/IShoalPkg/BootImg.png
 /vm/IShoalPkg/BootImgOffsets.h
 /vm/IShoalPkg/BootImgUntrimmed.bmp

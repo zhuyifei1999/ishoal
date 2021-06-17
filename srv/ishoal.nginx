@@ -21,4 +21,12 @@ server {
 	location /ishoal.ova {
 		alias /srv/ishoal.ova;
 	}
+
+	location /ishoal-update.tgz {
+		alias /srv/ishoal-update.tgz;
+	}
+
+	location /ishoal-version {
+		alias /srv/ishoal-version;
+	}
 }

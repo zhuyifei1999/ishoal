@@ -5,7 +5,7 @@
   </References>
   <DiskSection>
     <Info>List of the virtual disks used in the package</Info>
-    <Disk ovf:capacity="268435456" ovf:diskId="vmdisk1" ovf:fileRef="file1" ovf:format="http://www.vmware.com/interfaces/specifications/vmdk.html#streamOptimized" vbox:uuid="8bbe8944-8dc0-4d3f-8365-fd1d7bd04ca9"/>
+    <Disk ovf:capacity="67108864" ovf:diskId="vmdisk1" ovf:fileRef="file1" ovf:format="http://www.vmware.com/interfaces/specifications/vmdk.html#streamOptimized" vbox:uuid="8bbe8944-8dc0-4d3f-8365-fd1d7bd04ca9"/>
   </DiskSection>
   <NetworkSection>
     <Info>Logical networks used in the package</Info>
@@ -94,6 +94,9 @@ along with this program.  If not, see &lt;https://www.gnu.org/licenses/&gt;.</Li
     </VirtualHardwareSection>
     <vbox:Machine ovf:required="false" version="1.15-linux" uuid="{ea916e22-fe2e-461f-aee7-b0b15eb4f079}" name="ishoal" OSType="Linux26_64" snapshotFolder="Snapshots" lastStateChange="2020-07-19T07:02:43Z">
       <ovf:Info>Complete VirtualBox machine configuration in VirtualBox format</ovf:Info>
+      <ExtraData>
+        <ExtraDataItem name="GUI/MouseCapturePolicy" value="Disabled"/>
+      </ExtraData>
       <Hardware>
         <CPU>
           <PAE enabled="true"/>
