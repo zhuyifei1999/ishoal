@@ -131,7 +131,19 @@ static void wait_link(void)
 	while (true) {
 		struct iovec iov = { 0 };
 		struct sockaddr_nl snl;
-		struct msghdr msg = { &snl, sizeof(snl), &iov, 1, NULL, 0, MSG_TRUNC};
+
+		// designated initializer is required here because musl uses
+		// explicit padding fields wheras glibc does not.
+		struct msghdr msg = {
+			.msg_name = &snl,
+			.msg_namelen = sizeof(snl),
+			.msg_iov = &iov,
+			.msg_iovlen = 1,
+			.msg_control = NULL,
+			.msg_controllen = 0,
+			.msg_flags = MSG_TRUNC,
+		};
+
 		int status;
 
 		status = recvmsg(rtnlsock, &msg, MSG_PEEK|MSG_TRUNC);
@@ -142,7 +154,15 @@ static void wait_link(void)
 
 		char buf[status];
 		iov = (struct iovec){ &buf, status };
-		msg = (struct msghdr){ &snl, sizeof(snl), &iov, 1, NULL, 0, 0};
+		msg = (struct msghdr){
+			.msg_name = &snl,
+			.msg_namelen = sizeof(snl),
+			.msg_iov = &iov,
+			.msg_iovlen = 1,
+			.msg_control = NULL,
+			.msg_controllen = 0,
+			.msg_flags = 0,
+		};
 
 		status = recvmsg(rtnlsock, &msg, 0);
 		if (status < 0)
