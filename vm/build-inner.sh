@@ -264,6 +264,7 @@ rm -r rootfs/usr/share/baselayout/
 set -e
 
 mkdir -p rootfs/{boot,dev,proc,root,run,sys}
+mkdir -p rootfs/usr/local/bin
 
 mknod -m 622 rootfs/dev/console c 5 1
 mknod -m 666 rootfs/dev/null c 1 3
@@ -291,7 +292,8 @@ mkdir -p rootfs/etc/init.d/
 
 cat > rootfs/etc/init.d/rcS << 'EOF'
 #! /bin/sh
-export PATH=/bin:/sbin:/usr/bin:/usr/sbin
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/bin
+
 mount -n -t proc -o nosuid,noexec,nodev proc /proc
 mount -n -t tmpfs -o nosuid,nodev tmpfs /run
 mount -n -t sysfs -o nosuid,noexec,nodev sys /sys
@@ -319,15 +321,17 @@ ip link set dev eth0 up
 
 dmesg -n 1
 
-/root/ishoal-ipconf eth0 init
+ishoal-ipconf eth0 init
 EOF
 chmod a+x rootfs/etc/init.d/rcS
 
-cat > rootfs/root/ishoal-wrapper << 'EOF'
+cat > rootfs/usr/local/bin/ishoal-wrapper << 'EOF'
 #! /bin/sh
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/bin
+
 while true; do
   echo 'Starting IShoal ...'
-  /root/ishoal eth0
+  ishoal eth0
   EXITCODE=$?
 
   if [ $EXITCODE -eq 2 ]; then
@@ -343,9 +347,9 @@ while true; do
     echo 'Waiting for system reboot.'
     sleep 20
   elif [ $EXITCODE -eq 4 ]; then
-    /root/ishoal-ipconf eth0 reconf
+    ishoal-ipconf eth0 reconf
   elif [ $EXITCODE -eq 5 ]; then
-    /root/ishoal-update
+    ishoal-update
     read -n 1 -s -r -p 'Press any key to reboot...'
     echo
     sync
@@ -358,23 +362,23 @@ while true; do
   fi
 done
 EOF
-chmod a+x rootfs/root/ishoal-wrapper
+chmod a+x rootfs/usr/local/bin/ishoal-wrapper
 
 cat > rootfs/etc/inittab << 'EOF'
 ::sysinit:/etc/init.d/rcS
-tty1::respawn:/root/ishoal-wrapper
+tty1::respawn:/usr/local/bin/ishoal-wrapper
 tty2::respawn:-/bin/sh
 ::restart:/sbin/init
 ::ctrlaltdel:/sbin/reboot
 ::shutdown:/bin/umount -a -n -r
 EOF
 
-cp ishoal-ipconf rootfs/root/ishoal-ipconf
-chmod a+x rootfs/root/ishoal-ipconf
-cp ishoal-update rootfs/root/ishoal-update
-chmod a+x rootfs/root/ishoal-update
-cp "${REPO}/src/ishoal" rootfs/root/ishoal
-chmod a+x rootfs/root/ishoal
+cp ishoal-ipconf rootfs/usr/local/bin/ishoal-ipconf
+chmod a+x rootfs/usr/local/bin/ishoal-ipconf
+cp ishoal-update rootfs/usr/local/bin/ishoal-update
+chmod a+x rootfs/usr/local/bin/ishoal-update
+cp "${REPO}/src/ishoal" rootfs/usr/local/bin/ishoal
+chmod a+x rootfs/usr/local/bin/ishoal
 
 mkdir -p rootfs/boot/EFI/Boot/
 cp "${REPO}/vm/IShoalPkg/IShoal.efi" rootfs/boot/EFI/Boot/bootx64.efi
