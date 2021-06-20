@@ -18,15 +18,18 @@ server {
 		proxy_set_header Connection "upgrade";
 	}
 
+	location /dist/ {
+		alias /srv/dist/;
+	}
+
+	# Backwards-compatibility
 	location /ishoal.ova {
-		alias /srv/ishoal.ova;
+		alias /srv/dist/ishoal.ova;
 	}
-
 	location /ishoal-update.tgz {
-		alias /srv/ishoal-update.tgz;
+		alias /srv/dist/ishoal-update.tgz;
 	}
-
 	location /ishoal-version {
-		alias /srv/ishoal-version;
+		alias /srv/dist/ishoal-version;
 	}
 }
