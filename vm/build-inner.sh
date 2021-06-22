@@ -364,6 +364,26 @@ done
 EOF
 chmod a+x rootfs/usr/local/bin/ishoal-wrapper
 
+cat > rootfs/usr/local/bin/ishoal-update-channel << 'EOF'
+#! /bin/sh
+set -e
+
+if [ "$1" = 'quick' ]; then
+  rm /usr/local/bin/ishoal
+  wget https://ishoal.ink/dist/ishoal-quickbuild -O /usr/local/bin/ishoal
+  chmod a+x /usr/local/bin/ishoal
+elif [ "$1" = 'test' ]; then
+  wget https://ishoal.ink/dist/ishoal-update.test.tgz -O /tmp/ishoal-update.tgz
+  ishoal-update
+elif [ "$1" = 'rel' ]; then
+  wget https://ishoal.ink/dist/ishoal-update.tgz -O /tmp/ishoal-update.tgz
+  ishoal-update
+else
+  echo "Usage: $0 <quick|test|rel>"
+fi
+EOF
+chmod a+x rootfs/usr/local/bin/ishoal-update-channel
+
 cat > rootfs/etc/inittab << 'EOF'
 ::sysinit:/etc/init.d/rcS
 tty1::respawn:/usr/local/bin/ishoal-wrapper

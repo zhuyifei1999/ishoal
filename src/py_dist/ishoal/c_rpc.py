@@ -18,7 +18,7 @@ malloc.restype = ctypes.c_void_p
 
 def check_for_updates(data):
     _, destvar = struct.unpack('IP', data)
-    r = requests.get('https://ishoal.ink/ishoal-version')
+    r = requests.get('https://ishoal.ink/dist/ishoal-version')
 
     if r.status_code != 200:
         return -1
@@ -47,7 +47,7 @@ def check_for_updates(data):
 
 def init_update():
     # https://stackoverflow.com/a/16696317
-    with requests.get('https://ishoal.ink/ishoal-update.tgz',
+    with requests.get('https://ishoal.ink/dist/ishoal-update.tgz',
                       stream=True) as r:
         r.raise_for_status()
         with open('/tmp/ishoal-update.tgz', 'wb') as f:
