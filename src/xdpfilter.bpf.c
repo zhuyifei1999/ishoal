@@ -23,49 +23,17 @@ struct {
 } conntrack_map SEC(".maps");
 
 struct {
-	__uint(type, BPF_MAP_TYPE_LRU_HASH);
-	__type(key, struct icmp_echotrack_key);
-	__type(value, struct track_entry);
-	__uint(max_entries, 256);
-} icmp_echotrack_map SEC(".maps");
-
-struct {
-	__uint(type, BPF_MAP_TYPE_LRU_HASH);
-	__type(key, char [8]);
-	__type(value, struct track_entry);
-	__uint(max_entries, 256);
-} icmp_echoerrtrack_map SEC(".maps");
-
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, ipaddr_t);
-	__type(value, struct connection);
-	__uint(max_entries, 256);
-} conn_by_ip SEC(".maps");
-
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, uint16_t);
-	__type(value, struct connection);
-	__uint(max_entries, 256);
-} conn_by_port SEC(".maps");
-
-struct {
 	__uint(type, BPF_MAP_TYPE_XSKMAP);
 	__uint(max_entries, MAX_XSKS);
 	__uint(key_size, sizeof(int));
 	__uint(value_size, sizeof(int));
 } xsks_map SEC(".maps");
 
-macaddr_t switch_mac;
 macaddr_t host_mac;
 macaddr_t gateway_mac;
 
-ipaddr_t switch_ip;
 ipaddr_t public_host_ip;
 ipaddr_t fake_gateway_ip;
-
-ipaddr_t relay_ip;
 
 ipaddr_t subnet_mask;
 

@@ -45,16 +45,12 @@ extern int ifindex;
 struct xdpfilter_bpf;
 
 extern struct xdpfilter_bpf *obj;
-extern macaddr_t switch_mac;
 extern macaddr_t host_mac;
 extern macaddr_t gateway_mac;
 
-extern ipaddr_t switch_ip;
 extern ipaddr_t public_host_ip;
 extern ipaddr_t real_subnet_mask;
 extern ipaddr_t fake_gateway_ip;
-
-extern ipaddr_t relay_ip;
 
 extern int remotes_log_fd;
 
@@ -76,12 +72,6 @@ struct eventloop;
 struct broadcast_event;
 
 extern int stop_broadcast_primary;
-
-extern int xsk_broadcast_evt_broadcast_primary;
-extern struct broadcast_event *xsk_broadcast_evt_broadcast;
-
-extern int switch_change_broadcast_primary;
-extern struct broadcast_event *switch_change_broadcast;
 
 void free_rcu_init(void);
 void *free_rcu_get_cb(size_t offset);
@@ -114,8 +104,6 @@ void start_endpoint(void);
 void load_conf(void);
 void save_conf(void);
 
-void bpf_set_switch_ip(ipaddr_t addr);
-void bpf_set_switch_mac(macaddr_t addr);
 void bpf_set_fake_gateway_ip(ipaddr_t addr);
 
 struct xsk_socket *xsk_configure_socket(char *iface, int queue,
@@ -182,18 +170,6 @@ struct resolve_arp_user {
 
 __async
 void resolve_arp_user(struct resolve_arp_user *ctx);
-
-__async
-void add_connection(ipaddr_t local_ip, uint16_t local_port,
-		    ipaddr_t remote_ip, uint16_t remote_port,
-		    int endpoint_fd);
-void delete_connection(ipaddr_t local_ip);
-void update_connection_remote_port(ipaddr_t local_ip, uint16_t new_port);
-
-void broadcast_all_remotes(void *buf, size_t len);
-
-void bpf_add_connection(struct connection *conn);
-void bpf_delete_connection(ipaddr_t local_ip, uint16_t local_port);
 
 #define ISHOALC_RPC_CHECK_FOR_UPDATES 1
 #define ISHOALC_RPC_INIT_UPDATE 2

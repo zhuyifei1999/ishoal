@@ -5,9 +5,7 @@ import signal
 import threading
 
 import ishoalc
-import ishoal.handshake
 import ishoal.c_rpc
-import ishoal.sio
 
 
 # credit: https://bugs.python.org/issue15500#msg230736
@@ -70,13 +68,7 @@ def log_remote(*args, **kwargs):
     print(file=remotes_log, *args, **kwargs)
 
 
-handshaker = ishoal.handshake.start()
 c_rpc = ishoal.c_rpc.start()
-sio = ishoal.sio.start()
-
-threading.Thread(target=ishoalc.on_switch_chg_threadfn,
-                 args=(sio.on_switch_change,),
-                 name='py_switch_chg').start()
 
 # Python is dumb that signal handlers must execute on main thread :(
 # if we ishoalc.sleep(-1) then signal handler will never execute
@@ -85,6 +77,4 @@ while not ishoalc.should_stop():
     ishoalc.sleep(100)
 
 
-sio.stop()
 # c_rpc.stop()  # Not needed, will be stopped by thread_all_stop()
-handshaker.stop()

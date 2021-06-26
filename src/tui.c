@@ -25,7 +25,6 @@ static char remotes_path[PATH_MAX];
 static int remotes_inotifyeventfd;
 
 static char title_str[100];
-static bool is_online;
 
 static struct eventloop *tui_el;
 
@@ -48,37 +47,11 @@ static void tui_el_exit_cb(int fd, void *_ctx, bool expired)
 	longjmp(exit_jmp, 1);
 }
 
-static void tui_on_switch_change(int fd, void *_ctx, bool expired)
-{
-	recompute_title();
-	refresh();
-}
-
-static void tui_on_xsk_pkt(int fd, void *_ctx, bool expired)
-{
-	if (!is_online) {
-		is_online = true;
-
-		recompute_title();
-		refresh();
-	}
-}
-
 static struct event tui_global_events[] = {
 	{
 		.eventfd_ack = true,
 		.handler_type = EVT_CALL_FN,
 		.handler_fn = tui_el_exit_cb,
-	},
-	{
-		.eventfd_ack = true,
-		.handler_type = EVT_CALL_FN,
-		.handler_fn = tui_on_switch_change,
-	},
-	{
-		.eventfd_ack = true,
-		.handler_type = EVT_CALL_FN,
-		.handler_fn = tui_on_xsk_pkt,
 	}
 };
 
@@ -221,25 +194,7 @@ static void tui_reset(void)
 
 static void recompute_title(void)
 {
-	if (!switch_ip)
-		strncpy(title_str,
-			"IShoal " ISHOAL_VERSION_STR " - "
-			"Switch has not been detected, yet.", 100);
-	else {
-		char ip[IP_STR_BULEN];
-		char mac[MAC_STR_BULEN];
-
-		ip_str(switch_ip, ip);
-		mac_str(switch_mac, mac);
-
-		snprintf(title_str, 100,
-			"IShoal " ISHOAL_VERSION_STR " - "
-			"Switch is %s at: %s (%s)",
-			 is_online ? "online" : "offline",
-			 mac,
-			 ip
-		);
-	}
+	strncpy(title_str, "IShoal " ISHOAL_VERSION_STR, 100);
 
 	dialog_vars.backtitle = title_str;
 	dlg_put_backtitle();
@@ -253,85 +208,6 @@ static void tui_clear(void)
 	dlg_clear();
 
 	recompute_title();
-}
-
-static void detect_switch_online(void)
-{
-	is_online = false;
-
-	dialog_vars.begin_set = false;
-	dialog_msgbox("Setup", "\nDetecting status of local Switch ...", 5, 40, 0);
-
-	eventloop_clear_events(tui_el);
-	eventloop_install_break(tui_el, tui_global_events[1].fd);
-	eventloop_install_break(tui_el, tui_global_events[2].fd);
-
-	eventloop_install_event_sync(tui_el, &(struct event){
-		.fd = thread_stop_eventfd(current),
-		.eventfd_ack = true,
-		.handler_type = EVT_CALL_FN,
-		.handler_fn = tui_el_exit_cb,
-	});
-
-	eventloop_enter(tui_el, 2500);
-}
-
-static void detect_local_switch(void)
-{
-	bpf_set_switch_ip(0);
-	bpf_set_switch_mac((macaddr_t){0});
-
-	dialog_vars.begin_set = false;
-	dialog_msgbox("Setup",
-		      "\nPlease enter the shoal now, then enter LAN mode "
-		      "(Hold L+R, then press down the left thumbstick) "
-		      "and try to find a room ...", 10, 40, 1);
-	tui_clear();
-
-	int res;
-
-	while (true) {
-		dialog_state.pipe_input = NULL;
-		void *gauge;
-		gauge = dlg_allocate_gauge("Setup",
-					   "\nSearching for local Switch ...",
-					   9, 40, 0);
-
-		for (int i = 1; i <= 100; i++) {
-			usleep(1 * 50000);
-
-			if (switch_ip)
-				break;
-			dlg_update_gauge(gauge, i);
-		}
-
-		dlg_free_gauge(gauge);
-		tui_clear();
-
-		if (!switch_ip) {
-			res = dialog_yesno("Setup",
-					   "\nCould not find local Switch. "
-					   "Do you want to try again?", 8, 40);
-			if (res)
-				break;
-		} else
-			break;
-	}
-
-	if (switch_ip) {
-		char ip[IP_STR_BULEN];
-		char mac[MAC_STR_BULEN];
-		char buf[100];
-
-		ip_str(switch_ip, ip);
-		mac_str(switch_mac, mac);
-
-		snprintf(buf, 100, "\nFound local Switch:\n\n%s (%s)",
-			 ip, mac);
-		dialog_msgbox("Setup", buf, 9, 40, 1);
-	}
-
-	save_conf();
 }
 
 static bool check_updates(void) {
@@ -504,113 +380,6 @@ out:
 	}
 }
 
-static void switch_information_dialog(void)
-{
-	char ip[IP_STR_BULEN];
-	char mac[MAC_STR_BULEN];
-	int res;
-
-	ipaddr_t new_switch_ip = switch_ip;
-	macaddr_t new_switch_mac;
-	memcpy(new_switch_mac, switch_mac, sizeof(macaddr_t));
-
-	dialog_vars.nocancel = false;
-	dialog_vars.begin_set = false;
-
-	mac_str(new_switch_mac, mac);
-	if ((new_switch_mac[0] | new_switch_mac[1] |
-	     new_switch_mac[2] | new_switch_mac[3] |
-	     new_switch_mac[4] | new_switch_mac[5]) == 0)
-		mac[0] = 0;
-
-	while (true) {
-		tui_clear();
-
-		res = dialog_inputbox("Setup",
-				      "Please enter the MAC address of the Switch:\n",
-				      10, 40, mac, 0);
-		if (res)
-			return;
-
-		if (strlen(dialog_vars.input_result) != 17)
-			goto invalid_mac;
-
-		res = sscanf(dialog_vars.input_result, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
-			     &new_switch_mac[0],
-			     &new_switch_mac[1],
-			     &new_switch_mac[2],
-			     &new_switch_mac[3],
-			     &new_switch_mac[4],
-			     &new_switch_mac[5]);
-
-		if (res != 6)
-			goto invalid_mac;
-
-		if ((new_switch_mac[0] | new_switch_mac[1] |
-		     new_switch_mac[2] | new_switch_mac[3] |
-		     new_switch_mac[4] | new_switch_mac[5]) == 0)
-			goto invalid_mac;
-
-		if ((new_switch_mac[0] & new_switch_mac[1] &
-		     new_switch_mac[2] & new_switch_mac[3] &
-		     new_switch_mac[4] & new_switch_mac[5]) == 0xff)
-			goto invalid_mac;
-
-		if (new_switch_mac[0] & 1)
-			goto invalid_mac;
-
-		break;
-
-invalid_mac:
-		dialog_msgbox("Setup", "Invalid MAC address", 7, 40, 1);
-		snprintf(mac, MAC_STR_BULEN, "%s", dialog_vars.input_result);
-		continue;
-	}
-
-	if (new_switch_ip)
-		ip_str(new_switch_ip, ip);
-	else
-		ip[0] = 0;
-	while (true) {
-		tui_clear();
-
-		res = dialog_inputbox("Setup",
-				      "Please enter the IP address of the Switch:\n",
-				      10, 40, ip, 0);
-		if (res)
-			return;
-
-		if (inet_pton(AF_INET, dialog_vars.input_result, &new_switch_ip) != 1)
-			goto invalid_ip;
-
-		if (!new_switch_ip || new_switch_ip == 0xFFFFFFFF)
-			goto invalid_ip;
-
-		break;
-invalid_ip:
-		dialog_msgbox("Setup", "Invalid IP address", 7, 40, 1);
-		snprintf(ip, IP_STR_BULEN, "%s", dialog_vars.input_result);
-		continue;
-	}
-
-	char msg[110];
-
-	ip_str(new_switch_ip, ip);
-	mac_str(new_switch_mac, mac);
-
-	snprintf(msg, 110, "You entered that your Switch can be found at:\n"
-		 "\n%s (%s).\n\nIs that correct?",
-		 mac, ip);
-	res = dialog_yesno("Setup", msg, 10, 40);
-	if (res)
-		return;
-
-	bpf_set_switch_ip(new_switch_ip);
-	bpf_set_switch_mac(new_switch_mac);
-
-	save_conf();
-}
-
 void tui_thread(void *arg)
 {
 	int res;
@@ -628,8 +397,6 @@ void tui_thread(void *arg)
 	remotes_inotifyeventfd = inotifyeventfd_add(remotes_path, IN_MODIFY);
 
 	tui_global_events[0].fd = thread_stop_eventfd(current);
-	tui_global_events[1].fd = broadcast_replica(switch_change_broadcast);
-	tui_global_events[2].fd = broadcast_replica(xsk_broadcast_evt_broadcast);
 
 	init_dialog(stdin, stdout);
 	dialog_vars.default_button = -1;
@@ -651,11 +418,6 @@ void tui_thread(void *arg)
 
 	tui_clear();
 
-	if (!switch_ip)
-		detect_local_switch();
-	else
-		detect_switch_online();
-
 	int choice = 0;
 
 	while (true) {
@@ -673,20 +435,16 @@ void tui_thread(void *arg)
 		dialog_vars.nocancel = true;
 
 		DIALOG_LISTITEM choices[] = {
-			{"1", "Refresh state", dlg_strempty()},
-			{"2", "Re-detect Switch", dlg_strempty()},
-			{"3", "Shutdown the VM", dlg_strempty()},
-			{"4", "Check for updates", dlg_strempty()},
-			{"5", fake_gateway_ip ?
-				"Advanced: Setup VM as Gateway (currently enabled)" :
-				"Advanced: Setup VM as Gateway (currently disabled)",
+			{"1", fake_gateway_ip ?
+				"Setup VM as Gateway (currently enabled)" :
+				"Setup VM as Gateway (currently disabled)",
 			      dlg_strempty()},
-			{"6", "Advanced: Enter Switch information manually",
+			{"2", "Shutdown the VM", dlg_strempty()},
+			{"3", "Check for updates", dlg_strempty()},
+			{"4", "Advanced: Change VM network configuration",
 			      dlg_strempty()},
-			{"7", "Advanced: Change VM network configuration",
-			      dlg_strempty()},
-			{"8", "Advanced: Start a Shell", dlg_strempty()},
-			{"9", "Advanced: Reboot the VM", dlg_strempty()},
+			{"5", "Advanced: Start a Shell", dlg_strempty()},
+			{"6", "Advanced: Reboot the VM", dlg_strempty()},
 		};
 
 		dialog_vars.default_item = choices[choice].name;
@@ -699,11 +457,8 @@ void tui_thread(void *arg)
 		tui_clear();
 
 		switch (choice) {
-		case 0:
-			detect_switch_online();
-			break;
 		case 1:
-			detect_local_switch();
+			switch_gw_dialog();
 			break;
 		case 2:
 			dialog_vars.begin_set = false;
@@ -722,15 +477,9 @@ void tui_thread(void *arg)
 			exitcode = 5;
 			goto out;
 		case 4:
-			switch_gw_dialog();
-			break;
-		case 5:
-			switch_information_dialog();
-			break;
-		case 6:
 			exitcode = 4;
 			goto out;
-		case 7:
+		case 5:
 			tui_reset();
 
 			if (tcsetattr(STDIN_FILENO, TCSANOW, &start_termios))
@@ -761,7 +510,7 @@ void tui_thread(void *arg)
 				perror_exit("tcsetattr");
 
 			break;
-		case 8:
+		case 6:
 			dialog_vars.begin_set = false;
 			res = dialog_yesno("Setup",
 					   "\nDo you really want to reboot the VM?",

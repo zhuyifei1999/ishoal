@@ -14,8 +14,6 @@
 
 struct ishoal_conf_v1 {
 	uint32_t version;
-	macaddr_t switch_mac;
-	ipaddr_t switch_ip;
 	ipaddr_t fake_gateway_ip;
 } __attribute__((packed));
 
@@ -72,11 +70,9 @@ void save_conf(void)
 
 	struct ishoal_conf_v1 conf = {
 		.version = 1,
-		.switch_ip = switch_ip,
 		.fake_gateway_ip = fake_gateway_ip,
 	};
 
-	memcpy(conf.switch_mac, switch_mac, sizeof(macaddr_t));
 
 	FILE *f = fopen(CONF_PATH, "w");
 	if (!f)
@@ -107,8 +103,6 @@ void load_conf(void)
 			return;
 
 		struct ishoal_conf_v1 *conf = buf;
-		memcpy(switch_mac, conf->switch_mac, sizeof(macaddr_t));
-		switch_ip = conf->switch_ip;
 		fake_gateway_ip = conf->fake_gateway_ip;
 	}
 }

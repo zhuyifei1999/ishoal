@@ -16,34 +16,7 @@
 
 struct xdpfilter_bpf *obj;
 
-macaddr_t switch_mac;
-ipaddr_t switch_ip;
-
 ipaddr_t fake_gateway_ip;
-
-ipaddr_t relay_ip;
-
-int xsk_broadcast_evt_broadcast_primary;
-struct broadcast_event *xsk_broadcast_evt_broadcast;
-
-int switch_change_broadcast_primary;
-struct broadcast_event *switch_change_broadcast;
-
-__attribute__((constructor))
-static void switch_change_broadcast_init(void)
-{
-	switch_change_broadcast_primary = eventfd(0, EFD_CLOEXEC);
-	if (switch_change_broadcast_primary < 0)
-		perror_exit("eventfd");
-
-	switch_change_broadcast = broadcast_new(switch_change_broadcast_primary);
-
-	xsk_broadcast_evt_broadcast_primary = eventfd(0, EFD_CLOEXEC);
-	if (xsk_broadcast_evt_broadcast_primary < 0)
-		perror_exit("eventfd");
-
-	xsk_broadcast_evt_broadcast = broadcast_new(xsk_broadcast_evt_broadcast_primary);
-}
 
 static void close_obj(void)
 {
@@ -61,48 +34,6 @@ static void clear_map(void)
 		int key = i;
 		bpf_map_delete_elem(bpf_map__fd(obj->maps.xsks_map), &key);
 	}
-}
-
-void bpf_add_connection(struct connection *conn)
-{
-	if (bpf_map_update_elem(bpf_map__fd(obj->maps.conn_by_ip), &conn->local_ip,
-				conn, BPF_ANY))
-		perror_exit("bpf_map_update_elem");
-	if (bpf_map_update_elem(bpf_map__fd(obj->maps.conn_by_port), &conn->local_port,
-				conn, BPF_ANY))
-		perror_exit("bpf_map_update_elem");
-}
-
-void bpf_delete_connection(ipaddr_t local_ip, uint16_t local_port)
-{
-	bpf_map_delete_elem(bpf_map__fd(obj->maps.conn_by_ip), &local_ip);
-	bpf_map_delete_elem(bpf_map__fd(obj->maps.conn_by_port), &local_port);
-}
-
-static void __on_switch_change(void)
-{
-	if (eventfd_write(switch_change_broadcast_primary, 1))
-		perror_exit("eventfd_write");
-}
-
-void bpf_set_switch_ip(ipaddr_t addr)
-{
-	if (switch_ip == addr)
-		return;
-
-	switch_ip = addr;
-	obj->bss->switch_ip = addr;
-	__on_switch_change();
-}
-
-void bpf_set_switch_mac(macaddr_t addr)
-{
-	if (!memcmp(switch_mac, addr, sizeof(macaddr_t)))
-		return;
-
-	memcpy(switch_mac, addr, sizeof(macaddr_t));
-	memcpy(obj->bss->switch_mac, addr, sizeof(macaddr_t));
-	__on_switch_change();
 }
 
 static void update_subnet_mask(void)
@@ -126,17 +57,6 @@ void bpf_set_fake_gateway_ip(ipaddr_t addr)
 
 static void on_xsk_pkt(void *ptr, size_t length)
 {
-	if (obj->bss->switch_ip != switch_ip ||
-	    memcmp(obj->bss->switch_mac, switch_mac, sizeof(macaddr_t))) {
-		switch_ip = obj->bss->switch_ip;
-		memcpy(switch_mac, obj->bss->switch_mac, sizeof(macaddr_t));
-
-		__on_switch_change();
-	}
-
-	if (eventfd_write(xsk_broadcast_evt_broadcast_primary, 1))
-		perror_exit("eventfd_write");
-
 	xdpemu(ptr, length);
 }
 
@@ -165,17 +85,12 @@ void bpf_load_thread(void *arg)
 
 	atexit(close_obj);
 
-	obj->bss->switch_ip = switch_ip;
-	memcpy(obj->bss->switch_mac, switch_mac, sizeof(macaddr_t));
-
 	obj->bss->public_host_ip = public_host_ip;
 	memcpy(obj->bss->host_mac, host_mac, sizeof(macaddr_t));
 	memcpy(obj->bss->gateway_mac, gateway_mac, sizeof(macaddr_t));
 
 	obj->bss->fake_gateway_ip = fake_gateway_ip;
 	update_subnet_mask();
-
-	obj->bss->relay_ip = relay_ip;
 
 	if (bpf_set_link_xdp_fd(ifindex, bpf_program__fd(obj->progs.xdp_prog), 0) < 0)
 		perror_exit("bpf_set_link_xdp_fd");
