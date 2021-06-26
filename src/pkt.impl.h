@@ -414,7 +414,7 @@ static __always_inline int send_icmp4_timeout_exceeded(context_t *xdp)
 	recompute_iph_csum(iph);
 
 	memcpy(eth->h_dest, eth_orig.h_source, sizeof(macaddr_t));
-	memcpy(eth->h_source, host_mac, sizeof(macaddr_t));
+	memcpy(eth->h_source, BSS(host_mac), sizeof(macaddr_t));
 	eth->h_proto = bpf_htons(ETH_P_IP);
 
 	return XDP_TX;
@@ -483,9 +483,9 @@ int xdp_prog(context_t *ctx)
 			old_csum = udph->check;
 
 			if (dst_port == bpf_htons(49152) &&
-			    eth_is_broadcast && !switch_ip) {
-				switch_ip = iph->saddr;
-				memcpy(switch_mac, eth->h_source, sizeof(macaddr_t));
+			    eth_is_broadcast && !BSS(switch_ip)) {
+				BSS(switch_ip) = iph->saddr;
+				memcpy(BSS(switch_mac), eth->h_source, sizeof(macaddr_t));
 			}
 		} else if (iph->protocol == IPPROTO_ICMP) {
 			struct icmphdr *icmph = data;
@@ -511,7 +511,7 @@ int xdp_prog(context_t *ctx)
 			return XDP_PASS;
 
 		if (!eth_is_multicast && BSS(fake_gateway_ip) &&
-		    (mac_eq(switch_mac, eth->h_source) || mac_eq(switch_mac, (macaddr_t){0})) &&
+		    (mac_eq(BSS(switch_mac), eth->h_source) || mac_eq(BSS(switch_mac), (macaddr_t){0})) &&
 		    same_subnet(iph->saddr, BSS(fake_gateway_ip), BSS(subnet_mask)) &&
 		    !same_subnet(iph->daddr, BSS(fake_gateway_ip), BSS(subnet_mask)) &&
 		    // FIXME: should this be 'real subnet mask'?
@@ -568,13 +568,13 @@ int xdp_prog(context_t *ctx)
 			recompute_iph_csum(iph);
 			recompute_l4_csum_fast(ctx, iph, &iphp_orig);
 
-			memcpy(eth->h_dest, gateway_mac, sizeof(macaddr_t));
-			memcpy(eth->h_source, host_mac, sizeof(macaddr_t));
+			memcpy(eth->h_dest, BSS(gateway_mac), sizeof(macaddr_t));
+			memcpy(eth->h_source, BSS(host_mac), sizeof(macaddr_t));
 
 			return XDP_TX;
 		}
 
-		if (mac_eq(switch_mac, eth->h_source)) {
+		if (mac_eq(BSS(switch_mac), eth->h_source)) {
 			if (eth_is_multicast) {
 				if (iph->protocol == IPPROTO_UDP &&
 				    dst_port == bpf_htons(67) &&
@@ -671,8 +671,8 @@ int xdp_prog(context_t *ctx)
 				}
 			}
 
-			memcpy(eth->h_dest, gateway_mac, sizeof(macaddr_t));
-			memcpy(eth->h_source, host_mac, sizeof(macaddr_t));
+			memcpy(eth->h_dest, BSS(gateway_mac), sizeof(macaddr_t));
+			memcpy(eth->h_source, BSS(host_mac), sizeof(macaddr_t));
 			eth->h_proto = bpf_htons(ETH_P_IP);
 
 			return XDP_TX;
@@ -697,7 +697,7 @@ int xdp_prog(context_t *ctx)
 					return XDP_DROP;
 
 				if (src_port != bpf_htons(MAP_LOOKUP_DEREF(conn).remote.port)) {
-					if (iph->saddr == relay_ip)
+					if (iph->saddr == BSS(relay_ip))
 						// This should not happen. Relay should not change port
 						return XDP_DROP;
 #ifdef __BPF__
@@ -737,8 +737,8 @@ int xdp_prog(context_t *ctx)
 					return XDP_DROP;
 
 				ipaddr_t subnet_broadcast =
-					((switch_ip & BSS(subnet_mask)) | ~BSS(subnet_mask));
-				if (iph->daddr != switch_ip &&
+					((BSS(switch_ip) & BSS(subnet_mask)) | ~BSS(subnet_mask));
+				if (iph->daddr != BSS(switch_ip) &&
 				    iph->daddr != subnet_broadcast &&
 				    iph->daddr != 0xFFFFFFFFUL &&
 				    (bpf_ntohl(iph->daddr) & 0xF0000000UL) != 0xE0000000UL)
@@ -747,8 +747,8 @@ int xdp_prog(context_t *ctx)
 				if (iph->saddr != MAP_LOOKUP_DEREF(conn).local_ip)
 					return XDP_DROP;
 
-				memcpy(eth->h_dest, switch_mac, sizeof(macaddr_t));
-				memcpy(eth->h_source, host_mac, sizeof(macaddr_t));
+				memcpy(eth->h_dest, BSS(switch_mac), sizeof(macaddr_t));
+				memcpy(eth->h_source, BSS(host_mac), sizeof(macaddr_t));
 				eth->h_proto = bpf_htons(ETH_P_IP);
 
 				return XDP_TX;
@@ -886,7 +886,7 @@ gateway_return:
 				recompute_l4_csum_fast(ctx, iph, &iphp_orig);
 
 				memcpy(eth->h_dest, h_source, sizeof(macaddr_t));
-				memcpy(eth->h_source, host_mac, sizeof(macaddr_t));
+				memcpy(eth->h_source, BSS(host_mac), sizeof(macaddr_t));
 
 				return XDP_TX;
 			}
@@ -918,7 +918,7 @@ gateway_return:
 		ipaddr_t tmp_ip;
 
 		memcpy(arppl->ar_tha, arppl->ar_sha, sizeof(macaddr_t));
-		memcpy(arppl->ar_sha, host_mac, sizeof(macaddr_t));
+		memcpy(arppl->ar_sha, BSS(host_mac), sizeof(macaddr_t));
 
 		tmp_ip = arppl->ar_tip;
 		arppl->ar_tip = arppl->ar_sip;
@@ -927,7 +927,7 @@ gateway_return:
 		arph->ar_op = bpf_htons(ARPOP_REPLY);
 
 		memcpy(eth->h_dest, eth->h_source, sizeof(macaddr_t));
-		memcpy(eth->h_source, host_mac, sizeof(macaddr_t));
+		memcpy(eth->h_source, BSS(host_mac), sizeof(macaddr_t));
 
 		return XDP_TX;
 	} else
