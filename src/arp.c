@@ -65,11 +65,6 @@ void resolve_arp_user(struct resolve_arp_user *ctx)
 		return;
 	}
 
-	if (!same_subnet(ctx->ipaddr, public_host_ip, real_subnet_mask)) {
-		ctx->cb(false, ctx->ctx);
-		return;
-	}
-
 	int sock = socket(AF_PACKET, SOCK_RAW | SOCK_CLOEXEC, htons(ETH_P_ARP));
 	if (sock < 0)
 		perror_exit("socket(AF_PACKET, SOCK_RAW)");
@@ -102,7 +97,7 @@ void resolve_arp_user(struct resolve_arp_user *ctx)
 	arp_request->arph.ar_op = htons(ARPOP_REQUEST);
 
 	memcpy(arp_request->arppl.ar_sha, host_mac, sizeof(macaddr_t));
-	arp_request->arppl.ar_sip = public_host_ip;
+	arp_request->arppl.ar_sip = 0;
 	memset(arp_request->arppl.ar_tha, 0, sizeof(macaddr_t));
 	arp_request->arppl.ar_tip = ctx->ipaddr;
 
