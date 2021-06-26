@@ -4,6 +4,7 @@
 #include <ncursesw/ncurses.h>
 
 #include <arpa/inet.h>
+#include <assert.h>
 #include <dialog.h>
 #include <dlfcn.h>
 #include <errno.h>
@@ -263,6 +264,21 @@ static bool check_updates(void) {
 	return true;
 }
 
+static void __print_conf(void)
+{
+	char tmpbuf[IP_STR_BULEN];
+
+	ftruncate(remotes_log_fd, 0);
+	fprintf(remotes_log, "Please set switch settings to:\n");
+	ip_str(htonl((ntohl(fake_gateway_ip) & 0xFFFFFF00) | 2), tmpbuf);
+	fprintf(remotes_log, "IP Address: %s\n", tmpbuf);
+	fprintf(remotes_log, "Subnet Mask: 255.255.255.0\n");
+	ip_str(fake_gateway_ip, tmpbuf);
+	fprintf(remotes_log, "Gateway: %s\n", tmpbuf);
+	fprintf(remotes_log, "Primary DNS: 8.8.8.8\n");
+	fprintf(remotes_log, "Secondary DNS: 8.8.4.4\n");
+}
+
 static void __set_fake_gateway_ip(ipaddr_t new_gateway_ip)
 {
 	bpf_set_fake_gateway_ip(new_gateway_ip);
@@ -291,15 +307,8 @@ static void switch_gw_dialog(void)
 	char tmpbuf[IP_STR_BULEN];
 	int res;
 
-	dialog_vars.begin_set = false;
-	res = dialog_yesno("Setup",
-			   "\nDo you want to setup the VM as a Gateway?\n\n"
-			   "This is needed for example when your local network "
-			   "does not use the 192.168.1.0 subnet.", 12, 40);
-	if (res)
-		goto out;
-
 	new_gateway_ip = fake_gateway_ip ? : htonl(0xc0a80101);
+	dialog_vars.begin_set = false;
 
 reenter:
 	tui_clear();
@@ -330,10 +339,68 @@ invalid_ip:
 		continue;
 	}
 
-out:
-	if (new_gateway_ip) {
+	assert(new_gateway_ip);
+
+	dialog_vars.begin_set = false;
+	dialog_msgbox("Setup", "\nDetecting IP collision ...", 5, 40, 0);
+
+	eventloop_clear_events(tui_el);
+	eventloop_install_event_sync(tui_el, &(struct event){
+		.fd = thread_stop_eventfd(current),
+		.eventfd_ack = true,
+		.handler_type = EVT_CALL_FN,
+		.handler_fn = tui_el_exit_cb,
+	});
+
+	struct tui_rau_ctx *ctx = calloc(1, sizeof(*ctx));
+	if (!ctx)
+		perror_exit("calloc");
+
+	ctx->done_eventfd = eventfd(0, EFD_CLOEXEC);
+	if (ctx->done_eventfd < 0)
+		perror_exit("eventfd");
+
+	eventloop_install_break(tui_el, ctx->done_eventfd);
+
+	ctx->rau.ipaddr = new_gateway_ip;
+	ctx->rau.el = tui_el;
+	ctx->rau.cb = rau_cb;
+	ctx->rau.ctx = ctx;
+	resolve_arp_user(&ctx->rau);
+
+	eventloop_enter(tui_el, -1);
+
+	close(ctx->done_eventfd);
+	bool solved = ctx->solved;
+	free(ctx);
+
+	if (!solved) {
+		__set_fake_gateway_ip(new_gateway_ip);
+		return;
+	}
+
+	res = dialog_yesno("Setup",
+			   "\nIP collision detected. Do you want to "
+			   "enter another IP?\n\n", 8, 40);
+	if (!res)
+		goto reenter;
+}
+
+static void autofind_gateway(void)
+{
+	for (int i = 99; i >= 95; i--) {
+		ipaddr_t new_gateway_ip = htonl(0xc0a80001 | (i << 8));
+
+		char tmpbuf[IP_STR_BULEN];
+		ip_str(new_gateway_ip, tmpbuf);
+
+		char msgbuf[100];
+		snprintf(msgbuf, sizeof(msgbuf),
+			"\nDetecting IP collision for gateway %s ...", tmpbuf);
+
+		tui_clear();
 		dialog_vars.begin_set = false;
-		dialog_msgbox("Setup", "\nDetecting IP collision ...", 5, 40, 0);
+		dialog_msgbox("Setup", msgbuf, 6, 40, 0);
 
 		eventloop_clear_events(tui_el);
 		eventloop_install_event_sync(tui_el, &(struct event){
@@ -369,15 +436,9 @@ out:
 			__set_fake_gateway_ip(new_gateway_ip);
 			return;
 		}
-
-		res = dialog_yesno("Setup",
-				   "\nIP collision detected. Do you want to "
-				   "enter another IP?\n\n", 8, 40);
-		if (!res)
-			goto reenter;
-	} else {
-		__set_fake_gateway_ip(new_gateway_ip);
 	}
+
+	switch_gw_dialog();
 }
 
 void tui_thread(void *arg)
@@ -416,7 +477,10 @@ void tui_thread(void *arg)
 	if (setjmp(exit_jmp))
 		goto out;
 
-	tui_clear();
+	if (!fake_gateway_ip)
+		autofind_gateway();
+	else
+		__print_conf();
 
 	int choice = 0;
 
@@ -435,10 +499,7 @@ void tui_thread(void *arg)
 		dialog_vars.nocancel = true;
 
 		DIALOG_LISTITEM choices[] = {
-			{"1", fake_gateway_ip ?
-				"Setup VM as Gateway (currently enabled)" :
-				"Setup VM as Gateway (currently disabled)",
-			      dlg_strempty()},
+			{"1", "Setup VM as Gateway", dlg_strempty()},
 			{"2", "Shutdown the VM", dlg_strempty()},
 			{"3", "Check for updates", dlg_strempty()},
 			{"4", "Advanced: Change VM network configuration",
@@ -448,7 +509,7 @@ void tui_thread(void *arg)
 		};
 
 		dialog_vars.default_item = choices[choice].name;
-		res = dlg_menu("IShoal", "Please select an option:", 13, 60, 7, 9,
+		res = dlg_menu("IShoal", "Please select an option:", 13, 60, 7, 6,
 			 choices, &choice, dlg_dummy_menutext);
 		if (res)
 			continue;
@@ -457,10 +518,10 @@ void tui_thread(void *arg)
 		tui_clear();
 
 		switch (choice) {
-		case 1:
+		case 0:
 			switch_gw_dialog();
 			break;
-		case 2:
+		case 1:
 			dialog_vars.begin_set = false;
 			res = dialog_yesno("Setup",
 					   "\nDo you really want to shutdown the VM?",
@@ -470,16 +531,16 @@ void tui_thread(void *arg)
 
 			exitcode = 2;
 			goto out;
-		case 3:
+		case 2:
 			if (!check_updates())
 				break;
 
 			exitcode = 5;
 			goto out;
-		case 4:
+		case 3:
 			exitcode = 4;
 			goto out;
-		case 5:
+		case 4:
 			tui_reset();
 
 			if (tcsetattr(STDIN_FILENO, TCSANOW, &start_termios))
@@ -510,7 +571,7 @@ void tui_thread(void *arg)
 				perror_exit("tcsetattr");
 
 			break;
-		case 6:
+		case 5:
 			dialog_vars.begin_set = false;
 			res = dialog_yesno("Setup",
 					   "\nDo you really want to reboot the VM?",

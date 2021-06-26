@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <time.h>
 
 #include "version.h"
@@ -53,6 +54,7 @@ extern ipaddr_t real_subnet_mask;
 extern ipaddr_t fake_gateway_ip;
 
 extern int remotes_log_fd;
+extern FILE *remotes_log;
 
 enum event_handler {
 	EVT_CALL_FN,

@@ -6,7 +6,7 @@
 #include "ishoal.h"
 
 int remotes_log_fd;
-static FILE *remotes_log;
+FILE *remotes_log;
 
 void start_endpoint(void)
 {
