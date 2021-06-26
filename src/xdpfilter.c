@@ -55,6 +55,13 @@ void bpf_set_fake_gateway_ip(ipaddr_t addr)
 	update_subnet_mask();
 }
 
+void bpf_whitelist_ip(ipaddr_t addr)
+{
+	int ip_whitelist_unused = 0;
+	if (bpf_map_update_elem(bpf_map__fd(obj->maps.ip_whitelist), &addr, &ip_whitelist_unused, BPF_ANY))
+		perror_exit("bpf_map_update_elem");
+}
+
 static void on_xsk_pkt(void *ptr, size_t length)
 {
 	xdpemu(ptr, length);
@@ -91,6 +98,9 @@ void bpf_load_thread(void *arg)
 
 	obj->bss->fake_gateway_ip = fake_gateway_ip;
 	update_subnet_mask();
+
+	bpf_whitelist_ip(htonl(0x08080808));
+	bpf_whitelist_ip(htonl(0x08080404));
 
 	if (bpf_set_link_xdp_fd(ifindex, bpf_program__fd(obj->progs.xdp_prog), 0) < 0)
 		perror_exit("bpf_set_link_xdp_fd");

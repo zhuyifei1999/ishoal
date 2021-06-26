@@ -69,25 +69,23 @@ void hex_dump(void *ptr, size_t length)
 {
 	const unsigned char *address = ptr;
 	const unsigned char *line = address;
-	size_t line_size = 32;
+	size_t line_size = 16;
 	unsigned char c;
 	int i = 0;
 
-	printf("length = %zu\n", length);
 	while (length-- > 0) {
-		printf("%02X ", *address++);
+		printf("%02x ", *address++);
 		if (!(++i % line_size) || (length == 0 && i % line_size)) {
 			if (length == 0) {
 				while (i++ % line_size)
 					printf("__ ");
 			}
-			printf(" | ");	/* right close */
+			printf(" | ");
 			while (line < address) {
 				c = *line++;
-				printf("%c", (c < 33 || c == 255) ? 0x2E : c);
+				printf("%c", (c < 32 || c > 126) ? '.' : c);
 			}
 			printf("\n");
 		}
 	}
-	printf("\n");
 }

@@ -29,6 +29,13 @@ struct {
 	__uint(value_size, sizeof(int));
 } xsks_map SEC(".maps");
 
+struct {
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
+	__uint(key_size, sizeof(ipaddr_t));
+	__uint(max_entries, 1024);
+	__uint(value_size, sizeof(int));
+} ip_whitelist SEC(".maps");
+
 macaddr_t host_mac;
 macaddr_t gateway_mac;
 

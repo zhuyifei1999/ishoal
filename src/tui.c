@@ -268,8 +268,8 @@ static void __print_conf(void)
 {
 	char tmpbuf[IP_STR_BULEN];
 
-	ftruncate(remotes_log_fd, 0);
-	fprintf(remotes_log, "Please set switch settings to:\n");
+	(void)!ftruncate(remotes_log_fd, 0);
+	fprintf(remotes_log, "Please set switch settings to:\n\n");
 	ip_str(htonl((ntohl(fake_gateway_ip) & 0xFFFFFF00) | 2), tmpbuf);
 	fprintf(remotes_log, "IP Address: %s\n", tmpbuf);
 	fprintf(remotes_log, "Subnet Mask: 255.255.255.0\n");

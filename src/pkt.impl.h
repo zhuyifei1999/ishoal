@@ -471,7 +471,7 @@ int xdp_prog(context_t *ctx)
 			dst_port = udph->dest;
 
 			old_csum = udph->check;
-		}
+		} else
 			return XDP_PASS;
 
 		if (!eth_is_multicast && BSS(fake_gateway_ip) &&
@@ -482,6 +482,10 @@ int xdp_prog(context_t *ctx)
 			/* NAT route */
 			if (iph->ttl <= 1)
 				return send_icmp4_timeout_exceeded(ctx);
+
+			DECLARE_MAP_LOOKUP_VAR(int, ip_whitelist_unused);
+			if (pkt_map_lookup_elem(ip_whitelist, &iph->daddr, ip_whitelist_unused))
+				return XDP_PASS;
 
 			struct track_entry track_entry = {
 				.saddr = iph->saddr,
@@ -534,6 +538,18 @@ int xdp_prog(context_t *ctx)
 				}
 				MAP_LOOKUP_DEREF(track_entry).ktime_ns = bpf_ktime_get_ns();
 				pkt_map_update_lookup(conntrack_map, &conntrack_key, track_entry);
+
+				DECLARE_MAP_LOOKUP_VAR(int, ip_whitelist_unused);
+				if (pkt_map_lookup_elem(ip_whitelist, &iph->saddr, ip_whitelist_unused))
+					return XDP_PASS;
+
+				if (iph->protocol == IPPROTO_UDP && src_port == bpf_htons(53)) {
+#ifdef __BPF__
+					return redirect_to_userspace(ctx);
+#else
+					dns_whitelist_process_pkt(data, data_end-data);
+#endif
+				}
 
 				iph->daddr = MAP_LOOKUP_DEREF(track_entry).saddr;
 				memcpy(h_source, MAP_LOOKUP_DEREF(track_entry).h_source, sizeof(macaddr_t));

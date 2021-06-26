@@ -107,6 +107,7 @@ void load_conf(void);
 void save_conf(void);
 
 void bpf_set_fake_gateway_ip(ipaddr_t addr);
+void bpf_whitelist_ip(ipaddr_t addr);
 
 struct xsk_socket *xsk_configure_socket(char *iface, int queue,
 	void (*handler)(void *pkt, size_t length));
@@ -172,6 +173,8 @@ struct resolve_arp_user {
 
 __async
 void resolve_arp_user(struct resolve_arp_user *ctx);
+
+extern void dns_whitelist_process_pkt(void *data, size_t len);
 
 #define ISHOALC_RPC_CHECK_FOR_UPDATES 1
 #define ISHOALC_RPC_INIT_UPDATE 2

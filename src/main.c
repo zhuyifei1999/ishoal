@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 
 	thread_start(bpf_load_thread, NULL, "bpf");
 	thread_start(python_thread, NULL, "python");
-	thread_start(tui_thread, NULL, "tui");
+	// thread_start(tui_thread, NULL, "tui");
 
 	struct eventloop *main_el = eventloop_new();
 	eventloop_install_break(main_el, thread_stop_eventfd(current));
