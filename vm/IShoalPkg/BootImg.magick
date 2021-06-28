@@ -1,5 +1,6 @@
 #!/bin/env magick-script
 -size 640x480 xc:black
-( '../ohlawdhecomin.gif[6]' -background none ) -geometry +251+145 -composite
-( +size -pointsize 20 -font 'Inconsolata-Bold' -fill white label:'Starting IShoal...' -trim +repage ) -geometry +235+325 -composite
+( '../bootimg.gif[0]' -background none -filter box -resize 192x192 ) -geometry +240+80 -composite
+( +size -pointsize 20 -font 'Inconsolata-Bold' -fill white label:'Starting IShoal...' -trim +repage ) -geometry +245+345 -composite
+( +size -pointsize 10 -font 'Inconsolata-Bold' -fill white label:'Boot logo by @Colorized245 on Twitter, CC BY-SA 4.0' -trim +repage ) -geometry +370+460 -composite
 -write BootImgUntrimmed.bmp
