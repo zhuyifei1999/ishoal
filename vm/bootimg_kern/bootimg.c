@@ -6,25 +6,24 @@
 // This file is largely copied from drivers/firmware/efi/earlycon.c
 
 #include <linux/console.h>
+#include <linux/delay.h>
 #include <linux/efi.h>
 #include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/serial_core.h>
 #include <linux/screen_info.h>
 
-#include <asm/delay.h>
 #include <asm/early_ioremap.h>
 
-#include "ohlawdhecomin.h"
+#include "bootimg.h"
 
-#define OHLAWDHECOMIN_X 251
-#define OHLAWDHECOMIN_Y 145
+#define BOOTIMG_X 240
+#define BOOTIMG_Y 80
 
 static const struct console *earlycon_console __initdata;
 static u64 fb_base;
 static bool fb_wb;
 static void *efi_fb;
-static u8 frame = 6;
 
 /*
  * EFI earlycon needs to use early_memremap() to map the framebuffer.
@@ -33,7 +32,7 @@ static u8 frame = 6;
  * paging_init() which is earlier than initcall callbacks. Thus adding this
  * early initcall function early_efi_map_fb() to map the whole EFI framebuffer.
  */
-static int __init ohlawdhecomin_remap_fb(void)
+static int __init bootimg_remap_fb(void)
 {
 	/* bail if there is no bootconsole or it has been disabled already */
 	if (!earlycon_console || !(earlycon_console->flags & CON_ENABLED))
@@ -44,18 +43,18 @@ static int __init ohlawdhecomin_remap_fb(void)
 
 	return efi_fb ? 0 : -ENOMEM;
 }
-early_initcall(ohlawdhecomin_remap_fb);
+early_initcall(bootimg_remap_fb);
 
-static int __init ohlawdhecomin_unmap_fb(void)
+static int __init bootimg_unmap_fb(void)
 {
 	/* unmap the bootconsole fb unless keep_bootcon has left it enabled */
 	if (efi_fb && !(earlycon_console->flags & CON_ENABLED))
 		memunmap(efi_fb);
 	return 0;
 }
-late_initcall(ohlawdhecomin_unmap_fb);
+late_initcall(bootimg_unmap_fb);
 
-static __ref void *ohlawdhecomin_map(unsigned long start, unsigned long len)
+static __ref void *bootimg_map(unsigned long start, unsigned long len)
 {
 	pgprot_t fb_prot;
 
@@ -66,7 +65,7 @@ static __ref void *ohlawdhecomin_map(unsigned long start, unsigned long len)
 	return early_memremap_prot(fb_base + start, len, pgprot_val(fb_prot));
 }
 
-static __ref void ohlawdhecomin_unmap(void *addr, unsigned long len)
+static __ref void bootimg_unmap(void *addr, unsigned long len)
 {
 	if (efi_fb)
 		return;
@@ -74,34 +73,39 @@ static __ref void ohlawdhecomin_unmap(void *addr, unsigned long len)
 	early_memunmap(addr, len);
 }
 
-static void ohlawdhecomin_newline(void)
+static void bootimg_newline(void)
 {
 	unsigned long line_bytes = screen_info.lfb_width * 4;
+	static u8 frame = 1;
+	static u8 cnt = 0;
 	u32 r, c;
 	u32 *dst;
-	uint i;
 
-	frame = (frame + 1) % OHLAWDHECOMIN_F;
-	for (r = 0; r < OHLAWDHECOMIN_H; r++) {
-		dst = ohlawdhecomin_map((OHLAWDHECOMIN_Y + r) * line_bytes,
-					line_bytes);
+	if (cnt)
+		goto end;
+
+	for (r = 0; r < BOOTIMG_H; r++) {
+		dst = bootimg_map((BOOTIMG_Y + r) * line_bytes,
+				  line_bytes);
 		if (!dst)
 			return;
 
-		for (c = 0; c < OHLAWDHECOMIN_W; c++) {
-			dst[c + OHLAWDHECOMIN_X] =
-				ohlawdhecomin_data[frame][r][c];
+		for (c = 0; c < BOOTIMG_W; c++) {
+			dst[c + BOOTIMG_X] = bootimg_data[frame][r][c];
 		}
 
-		ohlawdhecomin_unmap(dst, line_bytes);
+		bootimg_unmap(dst, line_bytes);
 	}
 
-	for (i = 0; i < 5; i++)
-		udelay(10000);
+	frame = (frame + 1) % BOOTIMG_F;
+
+end:
+	cnt = (cnt + 1) % 2;
+	mdelay(50);
 }
 
 static void
-ohlawdhecomin_write(struct console *con, const char *str, unsigned int num)
+bootimg_write(struct console *con, const char *str, unsigned int num)
 {
 	const char *s;
 	unsigned int count = 0;
@@ -112,12 +116,12 @@ ohlawdhecomin_write(struct console *con, const char *str, unsigned int num)
 		count++;
 
 		if (*s == '\n')
-			ohlawdhecomin_newline();
+			bootimg_newline();
 	}
 }
 
-static int __init ohlawdhecomin_setup(struct earlycon_device *device,
-				     const char *opt)
+static int __init bootimg_setup(struct earlycon_device *device,
+				const char *opt)
 {
 	if (screen_info.orig_video_isVGA != VIDEO_TYPE_EFI)
 		return -ENODEV;
@@ -129,14 +133,14 @@ static int __init ohlawdhecomin_setup(struct earlycon_device *device,
 	fb_wb = opt && !strcmp(opt, "ram");
 
 	/*
-	 * ohlawdhecomin_write_char() implicitly assumes a framebuffer with
+	 * bootimg_write_char() implicitly assumes a framebuffer with
 	 * 32 bits per pixel.
 	 */
 	if (screen_info.lfb_depth != 32)
 		return -ENODEV;
 
-	device->con->write = ohlawdhecomin_write;
+	device->con->write = bootimg_write;
 	earlycon_console = device->con;
 	return 0;
 }
-EARLYCON_DECLARE(ohlawdhecomin, ohlawdhecomin_setup);
+EARLYCON_DECLARE(bootimg, bootimg_setup);

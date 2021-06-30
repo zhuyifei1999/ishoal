@@ -28,7 +28,7 @@ CONFIG_VIRTIO_NET=m
 # CONFIG_ETHERNET is not set
 
 CONFIG_CMDLINE_BOOL=y
-CONFIG_CMDLINE="root=/dev/sda2 earlycon=ohlawdhecomin"
+CONFIG_CMDLINE="root=/dev/sda2 earlycon=bootimg"
 # CONFIG_CMDLINE_OVERRIDE is not set
 CONFIG_EFI_STUB=y
 

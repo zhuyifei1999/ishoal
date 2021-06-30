@@ -20,7 +20,7 @@ trap cleanup_tmp EXIT
 do_copy() {
   mkdir -p rootfs/EFI/Boot/
   cp /var/cache/kbuild/arch/x86/boot/bzImage rootfs/linux.efi
-  cp "${DIR}/../LodePngPkg/LodePngDecode.efi" rootfs/LodePngDecode.efi
+  cp "${DIR}/../LodePngPkg/Build/LodePngPkg/RELEASE_GCC5/X64/LodePngDecode.efi" rootfs/LodePngDecode.efi
   cp "${DIR}/IShoal.efi" rootfs/EFI/Boot/bootx64.efi
 }
 

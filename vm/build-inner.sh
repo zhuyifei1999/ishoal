@@ -107,12 +107,12 @@ popd
 if $BUILD_LOGO; then
   emerge -vnk dev-python/pillow
 
-  pushd "${REPO}/vm/ohlawdhecomin"
+  pushd "${REPO}/vm/bootimg_kern"
   python generate_data.py
   popd
 
-  ln -s "${REPO}/vm/ohlawdhecomin" kernel/drivers/firmware/efi
-  echo 'obj-$(CONFIG_EFI_EARLYCON) += ohlawdhecomin/ohlawdhecomin.o' >> kernel/drivers/firmware/efi/Makefile
+  ln -s "${REPO}/vm/bootimg_kern" kernel/drivers/firmware/efi
+  echo 'obj-$(CONFIG_EFI_EARLYCON) += bootimg_kern/bootimg.o' >> kernel/drivers/firmware/efi/Makefile
 fi
 
 make -C kernel -j"$(nproc)"
