@@ -56,12 +56,14 @@ void *free_rcu_get_cb(size_t offset)
 
 	if (caa_unlikely(darray_nmemb_rcu(trampolines) <= offset)) {
 		pthread_mutex_lock(&trampolines_mutex);
+		rcu_read_lock();
 		goto resize;
 	}
 
 	res = uatomic_read(darray_idx_rcu(trampolines, offset));
 	if (caa_unlikely(!res)) {
 		pthread_mutex_lock(&trampolines_mutex);
+		rcu_read_lock();
 		goto fill;
 	}
 
@@ -112,6 +114,7 @@ fill:
 		uatomic_set(darray_idx_rcu(trampolines, offset), res);
 	}
 
+	rcu_read_unlock();
 	pthread_mutex_unlock(&trampolines_mutex);
 
 out:

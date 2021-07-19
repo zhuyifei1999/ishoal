@@ -326,7 +326,9 @@ int broadcast_replica(struct broadcast_event *bce)
 	bcr->fd = fd;
 
 	pthread_mutex_lock(&bce->replica_fds_mutex);
+	rcu_read_lock();
 	cds_list_add_rcu(&bcr->list, &bce->replica_fds);
+	rcu_read_unlock();
 	pthread_mutex_unlock(&bce->replica_fds_mutex);
 
 	return fd;
@@ -337,11 +339,13 @@ void broadcast_replica_del(struct broadcast_event *bce, int fd)
 	struct broadcast_replica *bcr;
 
 	pthread_mutex_lock(&bce->replica_fds_mutex);
+	rcu_read_lock();
 	cds_list_for_each_entry_rcu(bcr, &bce->replica_fds, list)
 		if (bcr->fd == fd) {
 			cds_list_del_rcu(&bcr->list);
 			free_rcu(bcr, rcu);
 		}
+	rcu_read_unlock();
 	pthread_mutex_unlock(&bce->replica_fds_mutex);
 
 	close(fd);

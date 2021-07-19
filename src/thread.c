@@ -53,13 +53,17 @@ static void *thread_wrapper_fn(void *thread)
 	rcu_register_thread();
 
 	pthread_mutex_lock(&threads_lock);
+	rcu_read_lock();
 	cds_list_add_rcu(&current->list, &threads);
+	rcu_read_unlock();
 	pthread_mutex_unlock(&threads_lock);
 
 	current->fn(current->arg);
 
 	pthread_mutex_lock(&threads_lock);
+	rcu_read_lock();
 	cds_list_del_rcu(&current->list);
+	rcu_read_unlock();
 	pthread_mutex_unlock(&threads_lock);
 
 	rcu_unregister_thread();
@@ -142,11 +146,13 @@ void thread_join_rest(void)
 	struct thread *thread, *tmp;
 
 	pthread_mutex_lock(&threads_lock);
+	rcu_read_lock();
 	cds_list_for_each_entry_safe(thread, tmp, &threads, list)
 		if (thread != current) {
 			pthread_mutex_unlock(&threads_lock);
 			thread_join(thread);
 			pthread_mutex_lock(&threads_lock);
 		}
+	rcu_read_unlock();
 	pthread_mutex_unlock(&threads_lock);
 }

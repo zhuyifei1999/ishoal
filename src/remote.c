@@ -154,11 +154,13 @@ static void __add_connection(ipaddr_t local_ip, uint16_t local_port,
 	unsigned long hash;
 
 	pthread_mutex_lock(&remotes_lock);
+	rcu_read_lock();
 
 	hash = jhash(&local_ip, sizeof(local_ip), seed);
 	cds_lfht_lookup(ht_by_ip, hash, match_ip, &local_ip, &iter);
 	ht_node = cds_lfht_iter_get_node(&iter);
 	if (ht_node) {
+		rcu_read_unlock();
 		pthread_mutex_unlock(&remotes_lock);
 		fprintf(remotes_log, "Assertion error on remote addition -- "
 			"Connection already exists.\n");
@@ -182,6 +184,7 @@ static void __add_connection(ipaddr_t local_ip, uint16_t local_port,
 		hash = jhash(&local_ip, sizeof(local_ip), seed);
 		cds_lfht_add(ht_by_ip, hash, &conn->node);
 
+		rcu_read_unlock();
 		pthread_mutex_unlock(&remotes_lock);
 		ip_str(local_ip, str);
 		fprintf(remotes_log, "+ Remote IP %s, handled by port %d -> %s%d\n",
@@ -189,6 +192,7 @@ static void __add_connection(ipaddr_t local_ip, uint16_t local_port,
 			remote_port);
 		bpf_add_connection(&conn->conn);
 	} else {
+		rcu_read_unlock();
 		pthread_mutex_unlock(&remotes_lock);
 
 		struct remotes_arp_ctx *rpc_ctx = malloc(sizeof(*rpc_ctx));
@@ -248,6 +252,7 @@ void delete_connection(ipaddr_t local_ip)
 	unsigned long hash;
 
 	pthread_mutex_lock(&remotes_lock);
+	rcu_read_lock();
 
 	hash = jhash(&local_ip, sizeof(local_ip), seed);
 	cds_lfht_lookup(ht_by_ip, hash, match_ip, &local_ip, &iter);
@@ -265,6 +270,7 @@ void delete_connection(ipaddr_t local_ip)
 
 	call_rcu(&conn->rcu, _delete_connection_rcu_cb);
 
+	rcu_read_unlock();
 	pthread_mutex_unlock(&remotes_lock);
 
 	ip_str(local_ip, str);
@@ -274,6 +280,7 @@ void delete_connection(ipaddr_t local_ip)
 	return;
 
 out_unlock:
+	rcu_read_unlock();
 	pthread_mutex_unlock(&remotes_lock);
 }
 
