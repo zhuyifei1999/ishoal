@@ -329,6 +329,8 @@ cat > rootfs/usr/local/bin/ishoal-wrapper << 'EOF'
 #! /bin/sh
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/bin
 
+ulimit -c unlimited
+
 while true; do
   echo 'Starting IShoal ...'
   ishoal eth0
