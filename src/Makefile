@@ -100,8 +100,6 @@ $(O)/py_dist_build: py_dist py_dist/**/* py-requirements.txt | $(O)
 	$(PYTHON) -m pip install --no-binary :all: --no-compile $(PIPFLAGS) -Ur py-requirements.txt --target $(O)/py_dist_build && \
 	find $(O)/py_dist_build -name '*.egg-info' -prune -exec rm -r {} \; && \
 	find $(O)/py_dist_build -name 'tests' -prune -exec rm -r {} \; && \
-	find $(O)/py_dist_build/chardet -mindepth 1 ! -path $(O)/py_dist_build/chardet/version.py -prune -exec rm -r {} \; && \
-	mv $(O)/py_dist_build/chardet/{version.py,__init__.py} && \
 	$(PYTHON) py-trimmer.py $(O)/py_dist_build && \
 	rm -rf $(O)/py_dist_build/*.dist-info || \
 	(rm -rf $(O)/py_dist_build; exit 1)

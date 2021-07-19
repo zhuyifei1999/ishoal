@@ -1,6 +1,11 @@
 #include <errno.h>
 #include <string.h>
 
+#ifndef __BPF__
+// Include order issues, collision with <linux/in.h>
+#include <netinet/in.h>
+#endif
+
 #include <linux/bpf.h>
 #include <linux/icmp.h>
 #include <linux/if_arp.h>

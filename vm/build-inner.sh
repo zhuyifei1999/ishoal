@@ -2,7 +2,7 @@
 
 set -ex
 
-LINUX_VER=5.12.9
+LINUX_VER=5.13.2
 PY_VER=3.9
 EDKII_VER=202105
 
@@ -21,6 +21,13 @@ cat > /etc/portage/profile/package.use.mask << 'EOF'
 sys-devel/clang-runtime sanitize
 EOF
 
+cat > /etc/portage/package.accept_keywords << 'EOF'
+dev-libs/libbpf ~amd64
+sys-apps/bpftool ~amd64
+
+sys-boot/edk2 ~amd64
+EOF
+
 ln -s "${REPO}/vm/patches" /etc/portage/patches
 
 emerge -vuk sys-apps/portage
@@ -29,7 +36,6 @@ emerge -vuk app-portage/layman
 layman -f
 layman -a musl
 
-emerge -vk sys-kernel/linux-headers
 emerge -vk sys-libs/musl
 if $BUILD_LOGO; then
   emerge -vk dev-python/pillow
@@ -98,8 +104,6 @@ tar xf "linux-${LINUX_VER}.tar.xz"
 mv "linux-${LINUX_VER}" kernel
 
 pushd kernel
-patch -p1 < "${REPO}/vm/patches/sys-kernel/linux-headers/gentoo-791364.patch"
-
 ./scripts/kconfig/merge_config.sh ./arch/x86/configs/x86_64_defconfig "${REPO}/vm/kconfig_s1"
 ./scripts/kconfig/merge_config.sh .config "${REPO}/vm/kconfig_s2"
 popd
@@ -133,7 +137,7 @@ patch /usr/include/asm/byteorder.h << 'EOF'
  #endif /* _ASM_X86_BYTEORDER_H */
 EOF
 
-ACCEPT_KEYWORDS='~amd64' emerge -vnk dev-libs/libbpf sys-apps/bpftool
+emerge -vnk dev-libs/libbpf sys-apps/bpftool
 
 "python${PY_VER}" -m ensurepip
 
@@ -167,7 +171,7 @@ else
 fi
 popd
 
-ACCEPT_KEYWORDS='~amd64' emerge -vnk sys-boot/edk2
+emerge -vnk sys-boot/edk2
 bash "${REPO}/vm/IShoalPkg/build.sh"
 
 if $BUILD_LOGO; then
@@ -233,7 +237,7 @@ emerge --root rootfs -v "dev-lang/python:${PY_VER}" dev-util/dialog dev-libs/use
 emerge --root rootfs -v sys-process/htop sys-process/lsof dev-util/strace
 unset CFLAGS LDFLAGS
 
-ACCEPT_KEYWORDS='~amd64' emerge --root rootfs -v dev-libs/libbpf sys-apps/bpftool
+emerge --root rootfs -v dev-libs/libbpf sys-apps/bpftool
 unset USE
 
 make -C kernel -j"$(nproc)" modules_install INSTALL_MOD_PATH="$(realpath rootfs)" INSTALL_MOD_STRIP=1
