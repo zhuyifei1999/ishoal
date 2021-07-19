@@ -298,10 +298,6 @@ void update_connection_remote_port(ipaddr_t local_ip, uint16_t new_port)
 	if (!ht_node)
 		goto out_unlock;
 
-	int ret = cds_lfht_del(ht_by_ip, ht_node);
-	if (ret)
-		goto out_unlock;
-
 	conn = caa_container_of(ht_node,
 		struct userspace_connection, node);
 
