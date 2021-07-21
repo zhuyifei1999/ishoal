@@ -34,7 +34,7 @@ static jmp_buf exit_jmp;
 static int (*real_wget_wch)(WINDOW *win, wint_t *wch);
 static int (*real_wgetch)(WINDOW *win);
 
-struct termios start_termios, run_termios;
+static struct termios start_termios, run_termios;
 
 static void reset_termios(void)
 {
@@ -216,7 +216,7 @@ static void tui_reset(void)
 
 	// https://stackoverflow.com/a/7660837/13673228
 	const char *CLEAR_SCREEN_ANSI = "\e[1;1H\e[2J";
-	(void)!write(1, CLEAR_SCREEN_ANSI, 10);
+	(void)!write(STDOUT_FILENO, CLEAR_SCREEN_ANSI, 10);
 }
 
 static void recompute_title(void)

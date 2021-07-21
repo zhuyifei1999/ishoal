@@ -21,6 +21,7 @@ cat > /etc/portage/profile/package.use.mask << 'EOF'
 sys-devel/clang-runtime sanitize
 EOF
 
+# Using this instead of ACCEPT_KEYWORDS env var so as not to affect dependencies
 cat > /etc/portage/package.accept_keywords << 'EOF'
 dev-libs/libbpf ~amd64
 sys-apps/bpftool ~amd64
@@ -121,7 +122,7 @@ fi
 
 make -C kernel -j"$(nproc)"
 
-emerge -vnk "dev-lang/python:${PY_VER}" dev-util/dialog dev-libs/userspace-rcu
+emerge -vnk "dev-lang/python:${PY_VER}" dev-util/dialog dev-libs/userspace-rcu sys-libs/libunwind
 
 # https://github.com/netdata/kernel-collector/issues/23
 patch /usr/include/asm/byteorder.h << 'EOF'
@@ -233,7 +234,7 @@ emerge --root rootfs -v sys-libs/musl
 export CFLAGS='-Os -pipe -flto -fipa-pta -fno-semantic-interposition -fdevirtualize-at-ltrans -fuse-linker-plugin'
 export LDFLAGS='-Wl,-O1 -Wl,--as-needed -Wl,--hash-style=gnu'
 emerge --root rootfs -v sys-apps/busybox
-emerge --root rootfs -v "dev-lang/python:${PY_VER}" dev-util/dialog dev-libs/userspace-rcu
+emerge --root rootfs -v "dev-lang/python:${PY_VER}" dev-util/dialog dev-libs/userspace-rcu sys-libs/libunwind
 emerge --root rootfs -v sys-process/htop sys-process/lsof dev-util/strace
 unset CFLAGS LDFLAGS
 

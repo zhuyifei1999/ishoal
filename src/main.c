@@ -25,6 +25,8 @@ static void sig_handler(int sig_num)
 
 int main(int argc, char *argv[])
 {
+	faulthandler_init();
+
 	if (argc != 2)
 		fprintf_exit("Usage: %s [interface]\n", argv[0]);
 
@@ -41,6 +43,7 @@ int main(int argc, char *argv[])
 
 	signal(SIGINT, sig_handler);
 	signal(SIGTERM, sig_handler);
+
 	worker_start();
 
 	struct addrinfo *results = NULL;

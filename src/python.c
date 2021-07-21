@@ -13,6 +13,7 @@
 #include "ishoal.h"
 
 static struct thread *python_main_thread;
+__thread bool thread_is_python;
 
 static PyObject *
 ishoalc_thread_all_stop(PyObject *self, PyObject *args)
@@ -30,16 +31,34 @@ ishoalc_should_stop(PyObject *self, PyObject *args)
 }
 
 static PyObject *
-ishoalc_rcu_register_thread(PyObject *self, PyObject *args)
+ishoalc_init_thread(PyObject *self, PyObject *args)
 {
+    thread_is_python = true;
+
+    faulthandler_altstack_init();
     rcu_register_thread();
     Py_RETURN_NONE;
 }
 
 static PyObject *
-ishoalc_rcu_unregister_thread(PyObject *self, PyObject *args)
+ishoalc_deinit_thread(PyObject *self, PyObject *args)
 {
     rcu_unregister_thread();
+    faulthandler_altstack_deinit();
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+ishoalc_faulthandler_hijack_pre(PyObject *self, PyObject *args)
+{
+    faulthandler_hijack_py_pre();
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+ishoalc_faulthandler_hijack_post(PyObject *self, PyObject *args)
+{
+    faulthandler_hijack_py_post();
     Py_RETURN_NONE;
 }
 
@@ -363,8 +382,10 @@ ishoalc_delete_connection(PyObject *self, PyObject *args)
 static PyMethodDef IshoalcMethods[] = {
     {"thread_all_stop", ishoalc_thread_all_stop, METH_NOARGS, NULL},
     {"should_stop", ishoalc_should_stop, METH_NOARGS, NULL},
-    {"rcu_register_thread", ishoalc_rcu_register_thread, METH_NOARGS, NULL},
-    {"rcu_unregister_thread", ishoalc_rcu_unregister_thread, METH_NOARGS, NULL},
+    {"init_thread", ishoalc_init_thread, METH_NOARGS, NULL},
+    {"deinit_thread", ishoalc_deinit_thread, METH_NOARGS, NULL},
+    {"faulthandler_hijack_pre", ishoalc_faulthandler_hijack_pre, METH_NOARGS, NULL},
+    {"faulthandler_hijack_post", ishoalc_faulthandler_hijack_post, METH_NOARGS, NULL},
     {"sleep", ishoalc_sleep, METH_VARARGS, NULL},
     {"wait_for_switch", ishoalc_wait_for_switch, METH_NOARGS, NULL},
     {"on_switch_chg_threadfn", ishoalc_on_switch_chg_threadfn, METH_VARARGS, NULL},
@@ -393,6 +414,7 @@ PyInit_ishoalc(void)
 void python_thread(void *arg)
 {
     python_main_thread = current;
+    thread_is_python = true;
 
     PyImport_AppendInittab("ishoalc", &PyInit_ishoalc);
 

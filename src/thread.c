@@ -50,6 +50,7 @@ static void *thread_wrapper_fn(void *thread)
 {
 	current = thread;
 
+	faulthandler_altstack_init();
 	rcu_register_thread();
 
 	pthread_mutex_lock(&threads_lock);
@@ -67,6 +68,7 @@ static void *thread_wrapper_fn(void *thread)
 	pthread_mutex_unlock(&threads_lock);
 
 	rcu_unregister_thread();
+	faulthandler_altstack_deinit();
 
 	current->exited = true;
 

@@ -1,5 +1,6 @@
 import ctypes
 import ctypes.util
+import faulthandler
 import os
 import signal
 import threading
@@ -45,11 +46,11 @@ def monkey_patch():
     orig_bootstrap = threading.Thread._bootstrap
 
     def new_bootstrap(self):
-        ishoalc.rcu_register_thread()
+        ishoalc.init_thread()
         try:
             orig_bootstrap(self)
         finally:
-            ishoalc.rcu_unregister_thread()
+            ishoalc.deinit_thread()
 
     threading.Thread._bootstrap = new_bootstrap
 
@@ -62,6 +63,10 @@ def sig_handler(sig_num, frame):
 
 
 signal.signal(signal.SIGINT, sig_handler)
+
+ishoalc.faulthandler_hijack_pre()
+faulthandler.enable(all_threads=False)
+ishoalc.faulthandler_hijack_post()
 
 remotes_log = os.fdopen(os.dup(ishoalc.get_remotes_log_fd()), 'a', buffering=1)
 

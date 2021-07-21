@@ -195,8 +195,16 @@ void broadcast_all_remotes(void *buf, size_t len);
 void bpf_add_connection(struct connection *conn);
 void bpf_delete_connection(ipaddr_t local_ip, uint16_t local_port);
 
+extern __thread bool thread_is_python;
+
 #define ISHOALC_RPC_CHECK_FOR_UPDATES 1
 #define ISHOALC_RPC_INIT_UPDATE 2
 
 int python_rpc(void *data, size_t len);
+
+void faulthandler_init(void);
+void faulthandler_hijack_py_pre(void);
+void faulthandler_hijack_py_post(void);
+void faulthandler_altstack_init(void);
+void faulthandler_altstack_deinit(void);
 #endif

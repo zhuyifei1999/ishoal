@@ -2,7 +2,7 @@ O := .
 
 INCLUDES := -iquote $(abspath $(O))
 CFLAGS := -O2 -pipe -g -Wall
-LDFLAGS := $(CFLAGS) -lbpf -lurcu-cds -lurcu -lpthread
+LDFLAGS := $(CFLAGS) -lbpf -lurcu-cds -lurcu -lpthread -lunwind
 
 # Define this to build on a system without multilib
 # CLANGFLAGS := -D__x86_64__
@@ -90,7 +90,7 @@ $(O)/ishoal_native: $(OBJ) | $(O)
 	$(Q)$(CC) $^ -o $@ $(PYTHON_LDFLAGS) $(DIALOG_LDFLAGS) $(LDFLAGS)
 ifeq ($(DO_STRIP),1)
 	$(call msg,STRIP,$@)
-	$(Q)$(STRIP) $@
+	$(Q)$(STRIP) -g $@
 endif
 
 $(O)/py_dist_build: py_dist py_dist/**/* py-requirements.txt | $(O)
