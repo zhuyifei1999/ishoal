@@ -2,7 +2,7 @@
 
 set -ex
 
-LINUX_VER=5.13.2
+LINUX_VER=5.13.4
 PY_VER=3.9
 EDKII_VER=202105
 
@@ -31,7 +31,7 @@ EOF
 
 ln -s "${REPO}/vm/patches" /etc/portage/patches
 
-emerge -vuk sys-apps/portage
+emerge -vuk --ignore-world sys-apps/portage
 
 emerge -vuk app-portage/layman
 layman -f
@@ -42,10 +42,8 @@ if $BUILD_LOGO; then
   emerge -vk dev-python/pillow
 fi
 
-emerge -vnk dev-lang/perl app-admin/perl-cleaner
-emerge -1vnk dev-perl/Pod-Parser
+emerge -1vuk --ignore-world dev-lang/perl app-admin/perl-cleaner
 perl-cleaner -v --all -- --color=y --quiet-build -vk
-# perl-cleaner -v --all -- --color=y --quiet-build -v
 
 emerge -vuDNk --with-bdeps=y @world
 emerge -c
@@ -229,10 +227,12 @@ EOF
 
 export USE='-* make-symlinks native-symlinks unicode ssl ncurses readline bindist'
 emerge --root rootfs -v sys-apps/baselayout
+
+export CFLAGS='-Os -pipe -fasynchronous-unwind-tables'
 emerge --root rootfs -v sys-libs/musl
 
-export CFLAGS='-Os -pipe -flto -fipa-pta -fno-semantic-interposition -fdevirtualize-at-ltrans -fuse-linker-plugin'
-export LDFLAGS='-Wl,-O1 -Wl,--as-needed -Wl,--hash-style=gnu'
+export CFLAGS='-Os -pipe -flto -fipa-pta -fno-semantic-interposition -fdevirtualize-at-ltrans -fuse-linker-plugin -ffunction-sections -fdata-sections'
+export LDFLAGS='-Wl,-O1 -Wl,--as-needed -Wl,--hash-style=gnu -Wl,--gc-sections,--gc-keep-exported'
 emerge --root rootfs -v sys-apps/busybox
 emerge --root rootfs -v "dev-lang/python:${PY_VER}" dev-util/dialog dev-libs/userspace-rcu sys-libs/libunwind
 emerge --root rootfs -v sys-process/htop sys-process/lsof dev-util/strace
