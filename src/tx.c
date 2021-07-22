@@ -19,7 +19,7 @@ static int tx_sock;
 
 void tx(void *pkt, size_t length)
 {
-	static atomic_flag init_done;
+	static atomic_flag init_done = ATOMIC_FLAG_INIT;
 	if (!atomic_flag_test_and_set(&init_done)) {
 		tx_sock = socket(AF_PACKET, SOCK_RAW | SOCK_CLOEXEC, 0);
 		if (tx_sock < 0)

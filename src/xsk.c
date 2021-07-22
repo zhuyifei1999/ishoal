@@ -129,7 +129,7 @@ static int xsk_rx_rpc;
 struct xsk_socket *xsk_configure_socket(char *iface, int queue,
 	void (*handler)(void *pkt, size_t length))
 {
-	static atomic_flag init_done;
+	static atomic_flag init_done = ATOMIC_FLAG_INIT;
 	if (!atomic_flag_test_and_set(&init_done)) {
 		monkey_patch();
 

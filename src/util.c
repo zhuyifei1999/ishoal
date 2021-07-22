@@ -98,7 +98,7 @@ void hex_dump(void *ptr, size_t length)
 void fork_tee(void)
 {
 	// May be called by crash handler. Async signal safe functions only.
-	static atomic_flag tee_forked;
+	static atomic_flag tee_forked = ATOMIC_FLAG_INIT;
 	if (atomic_flag_test_and_set(&tee_forked))
 		return;
 

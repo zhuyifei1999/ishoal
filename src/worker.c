@@ -17,7 +17,7 @@ static struct thread *worker_thread;
 __attribute__((constructor))
 static void init_worker(void)
 {
-	static atomic_flag init_done;
+	static atomic_flag init_done = ATOMIC_FLAG_INIT;
 	if (!atomic_flag_test_and_set(&init_done)) {
 		make_fd_pair(&worker_rpc, &worker_rpc_recv);
 
@@ -30,7 +30,7 @@ void worker_start(void)
 {
 	init_worker();
 
-	static atomic_flag init_done;
+	static atomic_flag init_done = ATOMIC_FLAG_INIT;
 	if (!atomic_flag_test_and_set(&init_done)) {
 		worker_thread = thread_start(eventloop_thread_fn, worker_el, "worker");
 	}

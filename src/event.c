@@ -432,7 +432,7 @@ static int inotifyeventfd_rm_cb(void *_ctx)
 
 int inotifyeventfd_add(char *pathname, uint32_t mask)
 {
-	static atomic_flag init_done;
+	static atomic_flag init_done = ATOMIC_FLAG_INIT;
 	if (!atomic_flag_test_and_set(&init_done)) {
 		inotify_fd = inotify_init1(IN_CLOEXEC);
 		if (inotify_fd < 0)

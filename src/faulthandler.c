@@ -41,7 +41,7 @@ static int proc_fd;
 static int maps_fd;
 
 static __thread volatile sig_atomic_t reentrant;
-static atomic_flag crashed;
+static atomic_flag crashed = ATOMIC_FLAG_INIT;
 
 static sigjmp_buf can_deref_ret;
 static sigjmp_buf py_faulthandler_ret;
