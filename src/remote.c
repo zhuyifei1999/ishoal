@@ -322,7 +322,7 @@ out_unlock:
 	rcu_read_unlock();
 }
 
-void broadcast_all_remotes(void *buf, size_t len)
+void broadcast_all_remotes(const void *buf, size_t len)
 {
 	char buf_clone[sizeof(uint16_t) + len];
 

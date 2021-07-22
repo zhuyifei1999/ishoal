@@ -77,7 +77,7 @@ static void *thread_wrapper_fn(void *thread)
 	return NULL;
 }
 
-struct thread *thread_start(void (*fn)(void *arg), void *arg, char *name)
+struct thread *thread_start(void (*fn)(void *arg), void *arg, const char *name)
 {
 	struct thread *thread = calloc(1, sizeof(*thread));
 	if (!thread)
@@ -110,17 +110,17 @@ void thread_stop(struct thread *thread)
 		perror_exit("eventfd_write");
 }
 
-bool thread_should_stop(struct thread *thread)
+bool thread_should_stop(const struct thread *thread)
 {
 	return thread->should_stop;
 }
 
-int thread_stop_eventfd(struct thread *thread)
+int thread_stop_eventfd(const struct thread *thread)
 {
 	return thread->stop_eventfd;
 }
 
-bool thread_is_main(struct thread *thread)
+bool thread_is_main(const struct thread *thread)
 {
 	return thread == &main_thread;
 }

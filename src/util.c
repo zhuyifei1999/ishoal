@@ -11,7 +11,7 @@
 #include "ishoal.h"
 
 __attribute__ ((format(printf, 1, 2)))
-void fprintf_exit(char *fmt, ...)
+void fprintf_exit(const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
@@ -20,13 +20,13 @@ void fprintf_exit(char *fmt, ...)
 	exit(1);
 }
 
-void perror_exit(char *msg)
+void perror_exit(const char *msg)
 {
 	perror(msg);
 	exit(1);
 }
 
-char *read_whole_file(char *path, size_t *nbytes)
+char *read_whole_file(const char *path, size_t *nbytes)
 {
 	FILE *f = fopen(path, "r");
 	if (!f)
@@ -68,7 +68,7 @@ char *read_whole_file(char *path, size_t *nbytes)
 	return buf;
 }
 
-void hex_dump(void *ptr, size_t length)
+void hex_dump(const void *ptr, size_t length)
 {
 	const unsigned char *address = ptr;
 	const unsigned char *line = address;

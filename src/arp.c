@@ -18,9 +18,9 @@ struct arppkt {
 	struct arp_ipv4_payload arppl;
 } __attribute__((packed));
 
-static void resolve_arp_user_cb(int fd, void *_ctx, bool expired)
+static void resolve_arp_user_cb(int fd, const void *_ctx, bool expired)
 {
-	struct resolve_arp_user *ctx = _ctx;
+	const struct resolve_arp_user *ctx = _ctx;
 
 	if (expired) {
 		eventloop_remove_event_current(ctx->el);
@@ -56,7 +56,7 @@ static void resolve_arp_user_cb(int fd, void *_ctx, bool expired)
 	ctx->cb(true, ctx->ctx);
 }
 
-void resolve_arp_user(struct resolve_arp_user *ctx)
+void resolve_arp_user(const struct resolve_arp_user *ctx)
 {
 	if (ctx->ipaddr == public_host_ip) {
 		if (ctx->macaddr)
@@ -114,7 +114,7 @@ void resolve_arp_user(struct resolve_arp_user *ctx)
 		.expiry = { .tv_sec = 1, .tv_nsec = 0 },
 		.eventfd_ack = false,
 		.handler_type = EVT_CALL_FN,
-		.handler_fn = resolve_arp_user_cb,
-		.handler_ctx = ctx,
+		.handler_fn_const = resolve_arp_user_cb,
+		.handler_ctx_const = ctx,
 	});
 }

@@ -67,8 +67,16 @@ struct event {
 	struct timespec expiry;
 	bool eventfd_ack;
 	enum event_handler handler_type;
-	void (*handler_fn)(int fd, void *ctx, bool expired);
-	void *handler_ctx;
+	union {
+		struct {
+			void (*handler_fn)(int fd, void *ctx, bool expired);
+			void *handler_ctx;
+		};
+		struct {
+			void (*handler_fn_const)(int fd, const void *ctx, bool expired);
+			const void *handler_ctx_const;
+		};
+	};
 };
 
 struct eventloop;
@@ -91,20 +99,20 @@ void timespec_add(struct timespec *x, const struct timespec *y);
 void timespec_sub(struct timespec *x, const struct timespec *y);
 
 __attribute__ ((format(printf, 1, 2), noreturn))
-void fprintf_exit(char *fmt, ...);
+void fprintf_exit(const char *fmt, ...);
 __attribute__ ((noreturn))
-void perror_exit(char *msg);
+void perror_exit(const char *msg);
 
-char *read_whole_file(char *path, size_t *nbytes);
+char *read_whole_file(const char *path, size_t *nbytes);
 
-void hex_dump(void *ptr, size_t length);
+void hex_dump(const void *ptr, size_t length);
 
 void fork_tee(void);
 
 #define IP_STR_BULEN 16
-void ip_str(ipaddr_t addr, char *str);
+void ip_str(const ipaddr_t addr, char *str);
 #define MAC_STR_BULEN 18
-void mac_str(macaddr_t addr, char *str);
+void mac_str(const macaddr_t addr, char *str);
 
 void ifinfo_init(void);
 void start_endpoint(void);
@@ -112,24 +120,24 @@ void start_endpoint(void);
 void load_conf(void);
 void save_conf(void);
 
-void bpf_set_switch_ip(ipaddr_t addr);
-void bpf_set_switch_mac(macaddr_t addr);
-void bpf_set_fake_gateway_ip(ipaddr_t addr);
+void bpf_set_switch_ip(const ipaddr_t addr);
+void bpf_set_switch_mac(const macaddr_t addr);
+void bpf_set_fake_gateway_ip(const ipaddr_t addr);
 
-struct xsk_socket *xsk_configure_socket(char *iface, int queue,
+struct xsk_socket *xsk_configure_socket(const char *iface, int queue,
 	void (*handler)(void *pkt, size_t length));
 
-void tx(void *pkt, size_t length);
+void tx(const void *pkt, size_t length);
 void xdpemu(void *pkt, size_t length);
 
 struct thread;
 extern __thread struct thread *current;
 
-struct thread *thread_start(void (*fn)(void *arg), void *arg, char *name);
+struct thread *thread_start(void (*fn)(void *arg), void *arg, const char *name);
 void thread_stop(struct thread *thread);
-bool thread_should_stop(struct thread *thread);
-int thread_stop_eventfd(struct thread *thread);
-bool thread_is_main(struct thread *thread);
+bool thread_should_stop(const struct thread *thread);
+int thread_stop_eventfd(const struct thread *thread);
+bool thread_is_main(const struct thread *thread);
 void thread_join(struct thread *thread);
 void thread_release(struct thread *thread);
 void thread_all_stop(void);
@@ -161,11 +169,11 @@ void worker_install_event(struct event *evt);
 struct eventloop *eventloop_new(void);
 void eventloop_destroy(struct eventloop *el);
 void eventloop_clear_events(struct eventloop *el);
-void eventloop_install_event_sync(struct eventloop *el, struct event *evt);
+void eventloop_install_event_sync(struct eventloop *el, const struct event *evt);
 void eventloop_install_rpc(struct eventloop *el, int rpc_recv_fd);
 void eventloop_install_break(struct eventloop *el, int break_evt_fd);
 __async
-void eventloop_install_event_async(struct eventloop *el, struct event *evt,
+void eventloop_install_event_async(struct eventloop *el, const struct event *evt,
 				   int rpc_send_fd);
 void eventloop_remove_event_current(struct eventloop *el);
 int eventloop_enter(struct eventloop *el, int timeout_ms);
@@ -175,7 +183,7 @@ struct broadcast_event *broadcast_new(int primary_event_fd);
 int broadcast_replica(struct broadcast_event *bce);
 void broadcast_replica_del(struct broadcast_event *bce, int fd);
 
-int inotifyeventfd_add(char *pathname, uint32_t mask);
+int inotifyeventfd_add(const char *pathname, uint32_t mask);
 void inotifyeventfd_rm(int fd);
 
 struct resolve_arp_user {
@@ -187,7 +195,7 @@ struct resolve_arp_user {
 };
 
 __async
-void resolve_arp_user(struct resolve_arp_user *ctx);
+void resolve_arp_user(const struct resolve_arp_user *ctx);
 
 __async
 void add_connection(ipaddr_t local_ip, uint16_t local_port,
@@ -196,9 +204,9 @@ void add_connection(ipaddr_t local_ip, uint16_t local_port,
 void delete_connection(ipaddr_t local_ip);
 void update_connection_remote_port(ipaddr_t local_ip, uint16_t new_port);
 
-void broadcast_all_remotes(void *buf, size_t len);
+void broadcast_all_remotes(const void *buf, size_t len);
 
-void bpf_add_connection(struct connection *conn);
+void bpf_add_connection(const struct connection *conn);
 void bpf_delete_connection(ipaddr_t local_ip, uint16_t local_port);
 
 extern __thread bool thread_is_python;

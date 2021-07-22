@@ -49,7 +49,7 @@ static bool py_faulthandler_set;
 static struct sigaction py_faulthandler;
 
 // surprisingly, atoi family functions are not async signal safe
-static unsigned long safe_atoul(char *str)
+static unsigned long safe_atoul(const char *str)
 {
 	unsigned long r = 0;
 
@@ -77,7 +77,7 @@ static char *dec(unsigned long val, char *buf)
 	return ptr;
 }
 
-static void emit(char *str)
+static void emit(const char *str)
 {
 	size_t len = strlen(str);
 

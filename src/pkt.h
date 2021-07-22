@@ -47,7 +47,7 @@ struct icmp_echotrack_key {
 
 #define BROADCAST_MAC ((macaddr_t){0xff, 0xff, 0xff, 0xff, 0xff, 0xff})
 
-static inline bool same_subnet(ipaddr_t a, ipaddr_t b, ipaddr_t subnet_mask)
+static inline bool same_subnet(const ipaddr_t a, const ipaddr_t b, const ipaddr_t subnet_mask)
 {
 	return (a & subnet_mask) == (b & subnet_mask);
 }

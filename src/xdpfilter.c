@@ -63,7 +63,7 @@ static void clear_map(void)
 	}
 }
 
-void bpf_add_connection(struct connection *conn)
+void bpf_add_connection(const struct connection *conn)
 {
 	if (bpf_map_update_elem(bpf_map__fd(obj->maps.conn_by_ip), &conn->local_ip,
 				conn, BPF_ANY))
@@ -85,7 +85,7 @@ static void __on_switch_change(void)
 		perror_exit("eventfd_write");
 }
 
-void bpf_set_switch_ip(ipaddr_t addr)
+void bpf_set_switch_ip(const ipaddr_t addr)
 {
 	if (switch_ip == addr)
 		return;
@@ -95,7 +95,7 @@ void bpf_set_switch_ip(ipaddr_t addr)
 	__on_switch_change();
 }
 
-void bpf_set_switch_mac(macaddr_t addr)
+void bpf_set_switch_mac(const macaddr_t addr)
 {
 	if (!memcmp(switch_mac, addr, sizeof(macaddr_t)))
 		return;
@@ -113,7 +113,7 @@ static void update_subnet_mask(void)
 		obj->bss->subnet_mask = real_subnet_mask;
 }
 
-void bpf_set_fake_gateway_ip(ipaddr_t addr)
+void bpf_set_fake_gateway_ip(const ipaddr_t addr)
 {
 	if (fake_gateway_ip == addr)
 		return;

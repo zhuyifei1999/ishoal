@@ -76,7 +76,7 @@ struct xsk_socket_info {
 	struct xsk_umem_info umem;
 	struct xsk_socket *xsk;
 
-	void (*handler)(void *pkt, size_t length);
+	void (*handler)(void * restrict pkt, size_t length);
 };
 
 static pthread_mutex_t xsks_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -126,7 +126,7 @@ static void rx_cb(int fd, void *ctx, bool expired)
 static struct eventloop *xsk_rx_el;
 static int xsk_rx_rpc;
 
-struct xsk_socket *xsk_configure_socket(char *iface, int queue,
+struct xsk_socket *xsk_configure_socket(const char *iface, int queue,
 	void (*handler)(void *pkt, size_t length))
 {
 	static atomic_flag init_done = ATOMIC_FLAG_INIT;

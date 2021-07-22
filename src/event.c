@@ -56,7 +56,7 @@ void eventloop_clear_events(struct eventloop *el)
 	el->num_events = 0;
 }
 
-void eventloop_install_event_sync(struct eventloop *el, struct event *evt)
+void eventloop_install_event_sync(struct eventloop *el, const struct event *evt)
 {
 	struct eventloop_elem *ele = malloc(sizeof(*ele));
 	if (!ele)
@@ -115,7 +115,7 @@ void eventloop_install_break(struct eventloop *el, int break_evt_fd)
 	});
 }
 
-void eventloop_install_event_async(struct eventloop *el, struct event *evt,
+void eventloop_install_event_async(struct eventloop *el, const struct event *evt,
 				   int rpc_send_fd)
 {
 	struct eventloop_install_async *rpc_ctx = malloc(sizeof(*rpc_ctx));
@@ -362,7 +362,7 @@ struct inotifyeventfd_wd_entry {
 };
 
 struct inotifyeventfd_add_ctx {
-	char *pathname;
+	const char *pathname;
 	uint32_t mask;
 	int eventfd;
 };
@@ -430,7 +430,7 @@ static int inotifyeventfd_rm_cb(void *_ctx)
 	return 0;
 }
 
-int inotifyeventfd_add(char *pathname, uint32_t mask)
+int inotifyeventfd_add(const char *pathname, uint32_t mask)
 {
 	static atomic_flag init_done = ATOMIC_FLAG_INIT;
 	if (!atomic_flag_test_and_set(&init_done)) {
