@@ -1,3 +1,4 @@
+import contextlib
 import ctypes
 import ctypes.util
 import faulthandler
@@ -23,7 +24,6 @@ def monkey_patch():
     orig_start = threading.Thread.start
 
     def new_start(self):
-        orig_start(self)
         try:
             name = self.name
             if not name or name.startswith('Thread-'):
@@ -33,7 +33,15 @@ def monkey_patch():
                         name = self._target.__name__
                     except Exception:
                         name = self.name
+
             if name:
+                self.name = name
+        except Exception:
+            pass
+
+        orig_start(self)
+        try:
+            if self.name:
                 if isinstance(name, str):
                     name = name.encode('ascii', 'replace')
                 ident = self.ident
@@ -43,16 +51,17 @@ def monkey_patch():
 
     threading.Thread.start = new_start
 
-    orig_bootstrap = threading.Thread._bootstrap
+    threading.Thread._bootstrap = ishoalc.patch_thread_bootstrap(
+        threading.Thread, threading.Thread._bootstrap)
 
-    def new_bootstrap(self):
-        ishoalc.init_thread()
-        try:
-            orig_bootstrap(self)
-        finally:
-            ishoalc.deinit_thread()
+    def new_make_invoke_excepthook():
+        def new_excepthook(self):
+            # Propagate to our thread_bootstrap
+            raise
 
-    threading.Thread._bootstrap = new_bootstrap
+        return new_excepthook
+
+    threading._make_invoke_excepthook = new_make_invoke_excepthook
 
 
 monkey_patch()
@@ -75,21 +84,31 @@ def log_remote(*args, **kwargs):
     print(file=remotes_log, *args, **kwargs)
 
 
-handshaker = ishoal.handshake.start()
-c_rpc = ishoal.c_rpc.start()
-sio = ishoal.sio.start()
+def start_threads():
+    handshaker = c_rpc = sio = None
 
-threading.Thread(target=ishoalc.on_switch_chg_threadfn,
-                 args=(sio.on_switch_change,),
-                 name='py_switch_chg').start()
+    try:
+        handshaker = ishoal.handshake.start()
+        c_rpc = ishoal.c_rpc.start()  # noqa: F841
+        sio = ishoal.sio.start()
 
-# Python is dumb that signal handlers must execute on main thread :(
-# if we ishoalc.sleep(-1) then signal handler will never execute
-# wake up every 100ms to check for signals
-while not ishoalc.should_stop():
-    ishoalc.sleep(100)
+        threading.Thread(target=ishoalc.on_switch_chg_threadfn,
+                         args=(sio.on_switch_change,),
+                         name='py_switch_chg').start()
+
+        # Python is dumb that signal handlers must execute on main thread :(
+        # if we ishoalc.sleep(-1) then signal handler will never execute
+        # wake up every 100ms to check for signals
+        while not ishoalc.should_stop():
+            ishoalc.sleep(100)
+    finally:
+        with contextlib.suppress(Exception):
+            sio.stop()
+        # Not needed, will be stopped by thread_all_stop()
+        # with contextlib.suppress(Exception):
+        #     c_rpc.stop()
+        with contextlib.suppress(Exception):
+            handshaker.stop()
 
 
-sio.stop()
-# c_rpc.stop()  # Not needed, will be stopped by thread_all_stop()
-handshaker.stop()
+start_threads()

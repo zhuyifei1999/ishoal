@@ -62,6 +62,9 @@ def new_socketio(g_sio):
         all_connections.clear()
         ishoal.log_remote('Disconnected')
 
+        if g_sio.finalizing:
+            return
+
         ishoalc.sleep(100)
 
         if not g_sio.finalizing:
@@ -69,6 +72,10 @@ def new_socketio(g_sio):
 
     @sio.on('connected')
     def on_connected():
+        if g_sio.finalizing:
+            sio.disconnect()
+            return
+
         sio.emit('protocol', (2, sio.joined_as))
 
         g_sio.sio = sio

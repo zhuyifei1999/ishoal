@@ -19,6 +19,8 @@ struct thread {
 	int stop_eventfd;
 	bool should_stop;
 	bool exited;
+	pthread_mutex_t join_mutex;
+	bool joined;
 };
 
 static struct thread main_thread;
@@ -85,6 +87,7 @@ struct thread *thread_start(void (*fn)(void *arg), void *arg, char *name)
 	thread->arg = arg;
 
 	thread->stop_eventfd = broadcast_replica(stop_broadcast);
+	pthread_mutex_init(&thread->join_mutex, NULL);
 
 	if (pthread_create(&thread->pthread, NULL, thread_wrapper_fn, thread))
 		perror_exit("pthread_create");
@@ -96,6 +99,11 @@ struct thread *thread_start(void (*fn)(void *arg), void *arg, char *name)
 
 void thread_stop(struct thread *thread)
 {
+	if (CMM_ACCESS_ONCE(thread->should_stop) ||
+	    CMM_ACCESS_ONCE(thread->exited) ||
+	    CMM_ACCESS_ONCE(thread->joined))
+		return;
+
 	thread->should_stop = true;
 
 	if (eventfd_write(thread->stop_eventfd, 1))
@@ -119,8 +127,14 @@ bool thread_is_main(struct thread *thread)
 
 void thread_join(struct thread *thread)
 {
-	assert(thread != current);
-	pthread_join(thread->pthread, NULL);
+	assert(thread != current && thread != &main_thread);
+
+	pthread_mutex_lock(&thread->join_mutex);
+	if (!thread->joined) {
+		pthread_join(thread->pthread, NULL);
+		thread->joined = true;
+	}
+	pthread_mutex_unlock(&thread->join_mutex);
 }
 
 void thread_release(struct thread *thread)

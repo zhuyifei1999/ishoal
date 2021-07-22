@@ -90,10 +90,6 @@ int timespec_cmp(const struct timespec *x, const struct timespec *y);
 void timespec_add(struct timespec *x, const struct timespec *y);
 void timespec_sub(struct timespec *x, const struct timespec *y);
 
-void tui_thread(void *arg);
-void bpf_load_thread(void *arg);
-void python_thread(void *arg);
-
 __attribute__ ((format(printf, 1, 2), noreturn))
 void fprintf_exit(char *fmt, ...);
 __attribute__ ((noreturn))
@@ -102,6 +98,8 @@ void perror_exit(char *msg);
 char *read_whole_file(char *path, size_t *nbytes);
 
 void hex_dump(void *ptr, size_t length);
+
+void fork_tee(void);
 
 #define IP_STR_BULEN 16
 void ip_str(ipaddr_t addr, char *str);
@@ -136,6 +134,14 @@ void thread_join(struct thread *thread);
 void thread_release(struct thread *thread);
 void thread_all_stop(void);
 void thread_join_rest(void);
+
+extern struct thread *tui_thread;
+extern struct thread *bpf_load_thread;
+extern struct thread *python_thread;
+
+void tui_thread_fn(void *arg);
+void bpf_load_thread_fn(void *arg);
+void python_thread_fn(void *arg);
 
 void make_fd_pair(int *send_fd, int *recv_fd);
 void handle_rpc(int call_recv_fd);

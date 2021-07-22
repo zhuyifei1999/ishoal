@@ -17,6 +17,10 @@ char *progname;
 char *iface;
 int ifindex;
 
+struct thread *tui_thread;
+struct thread *bpf_load_thread;
+struct thread *python_thread;
+
 static void sig_handler(int sig_num)
 {
 	if (eventfd_write(stop_broadcast_primary, 1))
@@ -63,9 +67,9 @@ int main(int argc, char *argv[])
 
 	start_endpoint();
 
-	thread_start(bpf_load_thread, NULL, "bpf");
-	thread_start(python_thread, NULL, "python");
-	thread_start(tui_thread, NULL, "tui");
+	bpf_load_thread = thread_start(bpf_load_thread_fn, NULL, "bpf");
+	python_thread = thread_start(python_thread_fn, NULL, "python");
+	tui_thread = thread_start(tui_thread_fn, NULL, "tui");
 
 	struct eventloop *main_el = eventloop_new();
 	eventloop_install_break(main_el, thread_stop_eventfd(current));

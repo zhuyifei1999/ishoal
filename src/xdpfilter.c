@@ -140,7 +140,7 @@ static void on_xsk_pkt(void *ptr, size_t length)
 	xdpemu(ptr, length);
 }
 
-void bpf_load_thread(void *arg)
+void bpf_load_thread_fn(void *arg)
 {
 	struct rlimit unlimited = { RLIM_INFINITY, RLIM_INFINITY };
 	if (setrlimit(RLIMIT_MEMLOCK, &unlimited))

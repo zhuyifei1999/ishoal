@@ -4,6 +4,7 @@
 #include <poll.h>
 #include <pthread.h>
 #include <sys/eventfd.h>
+#include <sys/eventfd.h>
 #include <urcu.h>
 
 #define PY_SSIZE_T_CLEAN
@@ -12,8 +13,20 @@
 
 #include "ishoal.h"
 
-static struct thread *python_main_thread;
+static bool main_exiting;
 __thread bool thread_is_python;
+
+static void prepare_dump_trace(void)
+{
+    if (CMM_ACCESS_ONCE(tui_thread)) {
+        Py_BEGIN_ALLOW_THREADS
+        thread_stop(tui_thread);
+        thread_join(tui_thread);
+        Py_END_ALLOW_THREADS
+    }
+
+    fork_tee();
+}
 
 static PyObject *
 ishoalc_thread_all_stop(PyObject *self, PyObject *args)
@@ -25,27 +38,126 @@ ishoalc_thread_all_stop(PyObject *self, PyObject *args)
 static PyObject *
 ishoalc_should_stop(PyObject *self, PyObject *args)
 {
-    PyObject *res = thread_should_stop(python_main_thread) ? Py_True : Py_False;
+    PyObject *res = thread_should_stop(python_thread) ? Py_True : Py_False;
     Py_INCREF(res);
     return res;
 }
 
-static PyObject *
-ishoalc_init_thread(PyObject *self, PyObject *args)
-{
-    thread_is_python = true;
+static PyObject *old_thread_bootstrap;
+static PyObject *texc_thread_name, *texc_type, *texc_value, *texc_traceback;
 
-    faulthandler_altstack_init();
-    rcu_register_thread();
-    Py_RETURN_NONE;
+static void set_exc_context(PyObject **type, PyObject **value, PyObject **traceback)
+{
+    PyObject *i_type, *i_value, *i_traceback;
+
+    PyErr_Fetch(&i_type, &i_value, &i_traceback);
+    PyErr_NormalizeException(type, value, traceback);
+    PyErr_NormalizeException(&i_type, &i_value, &i_traceback);
+    PyException_SetContext(i_value, *value);
+    PyErr_Restore(i_type, i_value, i_traceback);
 }
 
 static PyObject *
-ishoalc_deinit_thread(PyObject *self, PyObject *args)
+ishoalc_thread_bootstrap(PyObject *self, PyObject *args, PyObject *kwargs)
 {
+    static PyObject *result;
+
+    faulthandler_altstack_init();
+    rcu_register_thread();
+    thread_is_python = true;
+
+    if (PyMapping_Length(args) || (kwargs && PyMapping_Length(kwargs))) {
+        // Main thread is waiting for us to start, so if we raise here,
+        // there is no way for us to signal main thread to perform a
+        // recoverable exit of all threads, so invoking exit is the best
+        // we can do to dump the error.
+        PyErr_SetString(PyExc_NotImplementedError,
+                        "thread_bootstrap can't take arguments");
+
+        prepare_dump_trace();
+        PyErr_Print();
+
+        exit(1);
+    }
+
+
+    result = PyObject_CallFunctionObjArgs(old_thread_bootstrap, self, NULL);
+
+    // If we have an error, propagate to main thread
+    if (PyErr_Occurred() && !PyErr_ExceptionMatches(PyExc_SystemExit)) {
+        PyObject *thread_name, *type, *value, *traceback;
+
+        PyErr_Fetch(&type, &value, &traceback);
+
+        PyErr_SetString(PyExc_NotImplementedError,
+                        "failed to get attr sim");
+        thread_name = PyObject_GetAttrString(self, "name");
+        if (thread_name) {
+            PyErr_Restore(type, value, traceback);
+        } else {
+            set_exc_context(&type, &value, &traceback);
+        }
+
+        if (CMM_ACCESS_ONCE(texc_type) || CMM_ACCESS_ONCE(main_exiting)) {
+            // Oh noes another thread crashed too?
+            prepare_dump_trace();
+
+            if (thread_name)
+                PySys_FormatStderr("iShoal Fatal Python exception in thread %R:\n",
+                                   thread_name);
+            else
+                PySys_WriteStderr("iShoal Fatal Python exception in (unknown thread):\n");
+            PyErr_Print();
+        } else {
+            texc_thread_name = thread_name;
+            PyErr_Fetch(&texc_type, &texc_value, &texc_traceback);
+        }
+
+        thread_stop(python_thread);
+
+        result = Py_None;
+        Py_INCREF(result);
+    }
+
     rcu_unregister_thread();
     faulthandler_altstack_deinit();
-    Py_RETURN_NONE;
+
+    return result;
+}
+
+static PyMethodDef thread_bootstrap_methoddef = {
+    "thread_bootstrap", (PyCFunction)ishoalc_thread_bootstrap,
+    METH_VARARGS | METH_KEYWORDS, NULL
+};
+
+static PyObject *
+ishoalc_patch_thread_bootstrap(PyObject *self, PyObject *args)
+{
+    PyTypeObject *type = NULL;
+    PyObject *_bootstrap = NULL;
+
+    if (!PyArg_ParseTuple(args, "O!O:patch_thread_bootstrap",
+                          &PyType_Type, &type, &_bootstrap))
+        return NULL;
+
+    if (!PyCallable_Check(_bootstrap)) {
+        PyErr_SetString(PyExc_ValueError,
+                        "patch_thread_bootstrap argument 1 is not callable");
+        return NULL;
+    }
+
+    if (old_thread_bootstrap) {
+        PyErr_SetString(PyExc_AssertionError,
+                        "patch_thread_bootstrap cannot be called twice");
+        return NULL;
+    }
+
+    old_thread_bootstrap = _bootstrap;
+
+    // This is needed because reference is kept even after we return
+    Py_INCREF(_bootstrap);
+
+    return PyDescr_NewMethod(type, &thread_bootstrap_methoddef);
 }
 
 static PyObject *
@@ -75,7 +187,7 @@ ishoalc_sleep(PyObject *self, PyObject *args)
     Py_BEGIN_ALLOW_THREADS
 
     struct eventloop *el = eventloop_new();
-    eventloop_install_break(el, thread_stop_eventfd(python_main_thread));
+    eventloop_install_break(el, thread_stop_eventfd(python_thread));
     eventloop_enter(el, millis);
     eventloop_destroy(el);
 
@@ -92,7 +204,7 @@ ishoalc_wait_for_switch(PyObject *self, PyObject *args)
     int replica_fd = broadcast_replica(switch_change_broadcast);
     struct eventloop *el = eventloop_new();
 
-    eventloop_install_break(el, thread_stop_eventfd(python_main_thread));
+    eventloop_install_break(el, thread_stop_eventfd(python_thread));
     eventloop_install_event_sync(el, &(struct event){
         .fd = replica_fd,
         .eventfd_ack = true,
@@ -101,7 +213,7 @@ ishoalc_wait_for_switch(PyObject *self, PyObject *args)
 
     while ((!switch_ip ||
             !memcmp(switch_mac, (macaddr_t){}, sizeof(macaddr_t))) &&
-           !thread_should_stop(python_main_thread)) {
+           !thread_should_stop(python_thread)) {
         eventloop_enter(el, -1);
     }
 
@@ -136,19 +248,17 @@ static void ishoalc_on_switch_chg_threadfn_cb(int fd, void *_ctx, bool expired)
 }
 
 static PyObject *
-ishoalc_on_switch_chg_threadfn(PyObject *self, PyObject *args)
+ishoalc_on_switch_chg_threadfn(PyObject *self, PyObject *arg)
 {
     struct ishoalc_on_switch_chg_threadfn_ctx ctx;
 
-    if (!PyArg_ParseTuple(args, "O:on_switch_chg_threadfn", &ctx.handler))
-        return NULL;
-
-    if (!PyCallable_Check(ctx.handler)) {
+    if (!PyCallable_Check(arg)) {
         PyErr_SetString(PyExc_ValueError,
                         "on_switch_chg_threadfn argument 1 is not callable");
         return NULL;
     }
 
+    ctx.handler = arg;
     ctx.tssave = PyEval_SaveThread();
     ctx.breakfd = eventfd(0, EFD_CLOEXEC);
     if (ctx.breakfd < 0)
@@ -157,7 +267,7 @@ ishoalc_on_switch_chg_threadfn(PyObject *self, PyObject *args)
     int replica_fd = broadcast_replica(switch_change_broadcast);
     struct eventloop *el = eventloop_new();
 
-    eventloop_install_break(el, thread_stop_eventfd(python_main_thread));
+    eventloop_install_break(el, thread_stop_eventfd(python_thread));
     eventloop_install_break(el, ctx.breakfd);
     eventloop_install_event_sync(el, &(struct event){
         .fd = replica_fd,
@@ -185,23 +295,21 @@ static int ishoalc_rpc_breakfd;
 static int ishoalc_rpc, ishoalc_rpc_recv;
 
 static PyObject *
-ishoalc_rpc_threadfn(PyObject *self, PyObject *args)
+ishoalc_rpc_threadfn(PyObject *self, PyObject *arg)
 {
+    if (!PyCallable_Check(arg)) {
+        PyErr_SetString(PyExc_ValueError,
+                        "rps_threadfn argument 1 is not callable");
+        return NULL;
+    }
+
     if (ishoalc_rpc_handler) {
         PyErr_SetString(PyExc_AssertionError,
                         "rps_threadfn cannot be called twice");
         return NULL;
     }
 
-    if (!PyArg_ParseTuple(args, "O:rps_threadfn", &ishoalc_rpc_handler))
-        return NULL;
-
-    if (!PyCallable_Check(ishoalc_rpc_handler)) {
-        PyErr_SetString(PyExc_ValueError,
-                        "rps_threadfn argument 1 is not callable");
-        return NULL;
-    }
-
+    ishoalc_rpc_handler = arg;
     ishoalc_rpc_tssave = PyEval_SaveThread();
     ishoalc_rpc_breakfd = eventfd(0, EFD_CLOEXEC);
     if (ishoalc_rpc_breakfd < 0)
@@ -211,7 +319,7 @@ ishoalc_rpc_threadfn(PyObject *self, PyObject *args)
 
     struct eventloop *el = eventloop_new();
 
-    eventloop_install_break(el, thread_stop_eventfd(python_main_thread));
+    eventloop_install_break(el, thread_stop_eventfd(python_thread));
     eventloop_install_break(el, ishoalc_rpc_breakfd);
     eventloop_install_rpc(el, ishoalc_rpc_recv);
     eventloop_enter(el, -1);
@@ -236,31 +344,30 @@ static int ishoalc_rpc_cb(void *_ctx)
 {
     struct ishoalc_rpc_ctx *ctx = _ctx;
     int result = -1;
+    PyObject *arg = NULL;
+    PyObject *res = NULL;
 
     PyEval_RestoreThread(ishoalc_rpc_tssave);
 
-    PyObject *arg = PyBytes_FromStringAndSize(ctx->data, ctx->len);
+    arg = PyBytes_FromStringAndSize(ctx->data, ctx->len);
     if (!arg)
         goto err;
 
-    PyObject *res = PyObject_CallFunctionObjArgs(ishoalc_rpc_handler, arg, NULL);
+    res = PyObject_CallFunctionObjArgs(ishoalc_rpc_handler, arg, NULL);
     if (!res)
-        goto err_arg;
+        goto err;
 
     if (!PyLong_Check(res)) {
         PyErr_SetString(PyExc_TypeError, "RPC return must be int");
-        goto err_res;
+        goto err;
     }
 
     result = PyLong_AsLong(res);
 
-err_res:
-    Py_DECREF(res);
-
-err_arg:
-    Py_DECREF(arg);
-
 err:
+    Py_XDECREF(arg);
+    Py_XDECREF(res);
+
     if (PyErr_Occurred()) {
         if (eventfd_write(ishoalc_rpc_breakfd, 1))
             perror_exit("eventfd_write");
@@ -382,14 +489,13 @@ ishoalc_delete_connection(PyObject *self, PyObject *args)
 static PyMethodDef IshoalcMethods[] = {
     {"thread_all_stop", ishoalc_thread_all_stop, METH_NOARGS, NULL},
     {"should_stop", ishoalc_should_stop, METH_NOARGS, NULL},
-    {"init_thread", ishoalc_init_thread, METH_NOARGS, NULL},
-    {"deinit_thread", ishoalc_deinit_thread, METH_NOARGS, NULL},
+    {"patch_thread_bootstrap", ishoalc_patch_thread_bootstrap, METH_VARARGS, NULL},
     {"faulthandler_hijack_pre", ishoalc_faulthandler_hijack_pre, METH_NOARGS, NULL},
     {"faulthandler_hijack_post", ishoalc_faulthandler_hijack_post, METH_NOARGS, NULL},
     {"sleep", ishoalc_sleep, METH_VARARGS, NULL},
     {"wait_for_switch", ishoalc_wait_for_switch, METH_NOARGS, NULL},
-    {"on_switch_chg_threadfn", ishoalc_on_switch_chg_threadfn, METH_VARARGS, NULL},
-    {"rpc_threadfn", ishoalc_rpc_threadfn, METH_VARARGS, NULL},
+    {"on_switch_chg_threadfn", ishoalc_on_switch_chg_threadfn, METH_O, NULL},
+    {"rpc_threadfn", ishoalc_rpc_threadfn, METH_O, NULL},
     {"get_public_host_ip", ishoalc_get_public_host_ip, METH_NOARGS, NULL},
     {"get_switch_ip", ishoalc_get_switch_ip, METH_NOARGS, NULL},
     {"get_relay_ip", ishoalc_get_relay_ip, METH_NOARGS, NULL},
@@ -411,9 +517,9 @@ PyInit_ishoalc(void)
     return PyModule_Create(&IshoalcModule);
 }
 
-void python_thread(void *arg)
+void python_thread_fn(void *arg)
 {
-    python_main_thread = current;
+    python_thread = current;
     thread_is_python = true;
 
     PyImport_AppendInittab("ishoalc", &PyInit_ishoalc);
@@ -441,9 +547,44 @@ void python_thread(void *arg)
         goto out;
 
 out:
+    CMM_ACCESS_ONCE(main_exiting) = true;
     thread_all_stop();
 
+    bool propagated = false;
+
+    if (CMM_ACCESS_ONCE(texc_type)) {
+        if (PyErr_Occurred()) {
+            PyObject *type, *value, *traceback;
+
+            // Thread crashed while we crashed too,
+            // swap to it, print it, swap back
+            prepare_dump_trace();
+
+            if (CMM_ACCESS_ONCE(texc_thread_name))
+                PySys_FormatStderr("iShoal Fatal Python exception in thread %R:\n",
+                                   texc_thread_name);
+            else
+                PySys_WriteStderr("iShoal Fatal Python exception in (unknown thread):\n");
+            PyErr_Fetch(&type, &value, &traceback);
+            PyErr_Restore(texc_type, texc_value, texc_traceback);
+            PyErr_Print();
+            PyErr_Restore(type, value, traceback);
+        } else {
+            PyErr_Restore(texc_type, texc_value, texc_traceback);
+            propagated = true;
+        }
+    }
+
     if (PyErr_Occurred()) {
+        prepare_dump_trace();
+
+        if (!propagated)
+            PySys_WriteStderr("iShoal Fatal Python exception in (python main thread):\n");
+        else if (CMM_ACCESS_ONCE(texc_thread_name))
+            PySys_FormatStderr("iShoal Fatal Python exception in thread %R:\n",
+                               texc_thread_name);
+        else
+            PySys_WriteStderr("iShoal Fatal Python exception in (unknown thread):\n");
         PyErr_Print();
         exitcode = 1;
     }

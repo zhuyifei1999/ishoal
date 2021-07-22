@@ -350,7 +350,6 @@ static bool check_updates(void) {
 	tui_clear();
 
 	if (res < 0) {
-		pause();
 		dialog_msgbox("Update", "\nFailed checking update.", 7, 30, 1);
 		return false;
 	}
@@ -611,7 +610,7 @@ invalid_ip:
 	save_conf();
 }
 
-void tui_thread(void *arg)
+void tui_thread_fn(void *arg)
 {
 	int res;
 
