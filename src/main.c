@@ -1,5 +1,6 @@
 #include "features.h"
 
+#include <errno.h>
 #include <netdb.h>
 #include <net/if.h>
 #include <signal.h>
@@ -25,8 +26,12 @@ struct thread *python_thread;
 
 static void sig_handler(int sig_num)
 {
+	int save_errno = errno;
+
 	if (eventfd_write(stop_broadcast_primary, 1))
 		perror_exit("eventfd_write");
+
+	errno = save_errno;
 }
 
 int main(int argc, char *argv[])

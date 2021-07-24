@@ -1,6 +1,7 @@
 #include "features.h"
 
 #include <assert.h>
+#include <signal.h>
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <sys/eventfd.h>
@@ -123,6 +124,11 @@ int thread_stop_eventfd(const struct thread *thread)
 bool thread_is_main(const struct thread *thread)
 {
 	return thread == &main_thread;
+}
+
+int thread_signal(const struct thread *thread, int sig)
+{
+	return pthread_kill(thread->pthread, sig);
 }
 
 void thread_join(struct thread *thread)

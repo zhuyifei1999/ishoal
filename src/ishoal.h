@@ -140,6 +140,7 @@ void thread_stop(struct thread *thread);
 bool thread_should_stop(const struct thread *thread);
 int thread_stop_eventfd(const struct thread *thread);
 bool thread_is_main(const struct thread *thread);
+int thread_signal(const struct thread *thread, int sig);
 void thread_join(struct thread *thread);
 void thread_release(struct thread *thread);
 void thread_all_stop(void);
@@ -178,6 +179,9 @@ __async
 void eventloop_install_event_async(struct eventloop *el, const struct event *evt,
 				   int rpc_send_fd);
 void eventloop_remove_event_current(struct eventloop *el);
+void eventloop_set_intr_should_restart(struct eventloop *el,
+				       bool (*cb)(struct eventloop *el, void *ctx),
+				       void *ctx);
 int eventloop_enter(struct eventloop *el, int timeout_ms);
 void eventloop_thread_fn(void *arg);
 

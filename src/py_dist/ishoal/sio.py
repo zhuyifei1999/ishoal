@@ -100,8 +100,8 @@ def new_socketio(g_sio):
         if not isinstance(switchip, str) or not IPV4_REGEXP.match(switchip):
             return
 
-        ishoal.handshaker.do_handshake(remoteid, remoteip,
-                                       switchip, handshake_cb)
+        ishoal.threads.handshaker.do_handshake(remoteid, remoteip,
+                                               switchip, handshake_cb)
 
     @sio.on('handshake')
     def on_handshake(remoteid, exchangeid, port):
@@ -113,7 +113,7 @@ def new_socketio(g_sio):
         if exchangeid not in (0, 1, 2):
             return
 
-        ishoal.handshaker.on_handshake_msg(remoteid, exchangeid, port)
+        ishoal.threads.handshaker.on_handshake_msg(remoteid, exchangeid, port)
 
     @sio.on('del_remote')
     def on_del_remote(remoteid, remoteip, switchip):

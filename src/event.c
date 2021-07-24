@@ -26,6 +26,8 @@ struct eventloop {
 	struct cds_list_head events;
 	size_t num_events;
 	struct eventloop_elem *current_evt;
+	bool (*intr_should_restart)(struct eventloop *e, void *ctxl);
+	void *intr_should_restart_ctx;
 };
 
 struct eventloop *eventloop_new(void)
@@ -141,6 +143,14 @@ void eventloop_remove_event_current(struct eventloop *el)
 	el->current_evt = NULL;
 }
 
+void eventloop_set_intr_should_restart(struct eventloop *el,
+				       bool (*cb)(struct eventloop *el, void *ctx),
+				       void *ctx)
+{
+	el->intr_should_restart = cb;
+	el->intr_should_restart_ctx = ctx;
+}
+
 int eventloop_enter(struct eventloop *el, int timeout_ms)
 {
 	assert (!el->current_evt);
@@ -214,8 +224,12 @@ int eventloop_enter(struct eventloop *el, int timeout_ms)
 
 		int res = poll(fds, size, timeout_ms_poll);
 		if (res < 0) {
-			if (errno == EINTR)
-				continue;
+			if (errno == EINTR) {
+				if (!el->intr_should_restart ||
+				    el->intr_should_restart(el, el->intr_should_restart_ctx))
+					continue;
+				return 1;
+			}
 			perror_exit("poll");
 		}
 

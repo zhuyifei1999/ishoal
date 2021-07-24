@@ -63,6 +63,8 @@ def monkey_patch():
 
     threading._make_invoke_excepthook = new_make_invoke_excepthook
 
+    signal.signal = ishoalc.patch_signal(signal.signal)
+
 
 monkey_patch()
 
@@ -84,31 +86,31 @@ def log_remote(*args, **kwargs):
     print(file=remotes_log, *args, **kwargs)
 
 
+# Just a container I can put attributes on. Is there a better and easier way?
+threads = (lambda: None)
+
+
 def start_threads():
-    handshaker = c_rpc = sio = None
+    threads.handshaker = threads.c_rpc = threads.sio = None
 
     try:
-        handshaker = ishoal.handshake.start()
-        c_rpc = ishoal.c_rpc.start()  # noqa: F841
-        sio = ishoal.sio.start()
+        threads.handshaker = ishoal.handshake.start()
+        threads.c_rpc = ishoal.c_rpc.start()  # noqa: F841
+        threads.sio = ishoal.sio.start()
 
         threading.Thread(target=ishoalc.on_switch_chg_threadfn,
-                         args=(sio.on_switch_change,),
+                         args=(threads.sio.on_switch_change,),
                          name='py_switch_chg').start()
 
-        # Python is dumb that signal handlers must execute on main thread :(
-        # if we ishoalc.sleep(-1) then signal handler will never execute
-        # wake up every 100ms to check for signals
-        while not ishoalc.should_stop():
-            ishoalc.sleep(100)
+        ishoalc.sleep(-1)
     finally:
         with contextlib.suppress(Exception):
-            sio.stop()
+            threads.sio.stop()
         # Not needed, will be stopped by thread_all_stop()
         # with contextlib.suppress(Exception):
         #     c_rpc.stop()
         with contextlib.suppress(Exception):
-            handshaker.stop()
+            threads.handshaker.stop()
 
 
 start_threads()

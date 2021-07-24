@@ -3,6 +3,7 @@
 #include <arpa/inet.h>
 #include <poll.h>
 #include <pthread.h>
+#include <signal.h>
 #include <sys/eventfd.h>
 #include <sys/eventfd.h>
 #include <urcu.h>
@@ -43,6 +44,134 @@ ishoalc_should_stop(PyObject *self, PyObject *args)
     return res;
 }
 
+static PyObject *old_signal;
+static PyOS_sighandler_t chained_py_handler[NSIG];
+
+static void ishoalc_signal_handler(int sig_num)
+{
+    int save_errno = errno;
+
+    // Python must run signal handlers on main thread, but it may not
+    // immediately return from syscall if we handle the syscall ourselves.
+    // So instead of doing that we propagate the signal to the main thread.
+    if (current == python_thread) {
+        chained_py_handler[sig_num](sig_num);
+
+        // Python's signal handler always calls PyOS_setsig to itself
+        // to override us
+        PyOS_setsig(sig_num, ishoalc_signal_handler);
+    } else {
+        thread_signal(python_thread, sig_num);
+    }
+
+    errno = save_errno;
+}
+
+static PyObject *
+ishoalc_signal(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    static char *keywords[] = {"signalnum", "handler", NULL};
+    int signalnum;
+    PyObject *handler;
+    PyObject *result;
+    sigset_t mask, oldset;
+    PyOS_sighandler_t old_handler;
+    int r;
+
+    // Block this signal while we are playing with it
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "iO:signal",
+                                     keywords, &signalnum, &handler))
+        return NULL;
+
+    if (signalnum < 1 || signalnum >= NSIG) {
+        PyErr_SetString(PyExc_ValueError,
+                        "signal number out of range");
+        return NULL;
+    }
+
+    if (sigemptyset(&mask))
+        return PyErr_SetFromErrno(PyExc_OSError);
+    if (sigaddset(&mask, signalnum))
+        return PyErr_SetFromErrno(PyExc_OSError);
+
+    r = pthread_sigmask(SIG_BLOCK, &mask, &oldset);
+    if (r) {
+        errno = r;
+        return PyErr_SetFromErrno(PyExc_OSError);
+    }
+
+    result = PyObject_Call(old_signal, args, kwargs);
+    if (!result)
+        goto unblock;
+
+    old_handler = PyOS_getsig(signalnum);
+    if (old_handler == SIG_ERR) {
+        PyErr_SetFromErrno(PyExc_OSError);
+        goto unblock;
+    }
+
+    chained_py_handler[signalnum] = old_handler;
+
+    if (PyOS_setsig(signalnum, ishoalc_signal_handler) == SIG_ERR) {
+        PyErr_SetFromErrno(PyExc_OSError);
+        goto unblock;
+    }
+
+unblock:
+    r = sigismember(&oldset, signalnum);
+    if (r < 0) {
+        if (!PyErr_Occurred())
+            PyErr_SetFromErrno(PyExc_OSError);
+        goto err;
+    }
+    if (r > 0)
+        goto out;
+
+    r = pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
+    if (r) {
+        errno = r;
+        if (!PyErr_Occurred())
+            PyErr_SetFromErrno(PyExc_OSError);
+        goto err;
+    }
+
+out:
+    if (!PyErr_Occurred())
+        return result;
+
+err:
+    Py_XDECREF(result);
+    return NULL;
+}
+
+static PyMethodDef signal_methoddef = {
+    "signal", (PyCFunction)ishoalc_signal,
+    METH_VARARGS | METH_KEYWORDS, NULL
+};
+
+static PyObject *
+ishoalc_patch_signal(PyObject *self, PyObject *arg)
+{
+    if (!PyCallable_Check(arg)) {
+        PyErr_SetString(PyExc_ValueError,
+                        "patch_signal argument 1 is not callable");
+        return NULL;
+    }
+
+    if (old_signal) {
+        PyErr_SetString(PyExc_AssertionError,
+                        "patch_signal cannot be called twice");
+        return NULL;
+    }
+
+    old_signal = arg;
+
+    // This is needed because reference is kept even after we return
+    Py_INCREF(arg);
+
+    return PyCFunction_New(&signal_methoddef, self);
+}
+
 static PyObject *old_thread_bootstrap;
 static PyObject *texc_thread_name, *texc_type, *texc_value, *texc_traceback;
 
@@ -60,7 +189,7 @@ static void set_exc_context(PyObject **type, PyObject **value, PyObject **traceb
 static PyObject *
 ishoalc_thread_bootstrap(PyObject *self, PyObject *args, PyObject *kwargs)
 {
-    static PyObject *result;
+    PyObject *result;
 
     faulthandler_altstack_init();
     rcu_register_thread();
@@ -179,6 +308,17 @@ ishoalc_invoke_crash(PyObject *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
+static bool ishoalc_sleep_do_signal(struct eventloop *el, void *ctx)
+{
+    PyThreadState **tssave = ctx;
+
+    PyEval_RestoreThread(*tssave);
+    PyErr_CheckSignals();
+    *tssave = PyEval_SaveThread();
+
+    return !PyErr_Occurred();
+}
+
 static PyObject *
 ishoalc_sleep(PyObject *self, PyObject *args)
 {
@@ -189,14 +329,18 @@ ishoalc_sleep(PyObject *self, PyObject *args)
                           &millis))
         return NULL;
 
-    Py_BEGIN_ALLOW_THREADS
+    PyThreadState *tssave = PyEval_SaveThread();
 
     struct eventloop *el = eventloop_new();
     eventloop_install_break(el, thread_stop_eventfd(python_thread));
+    eventloop_set_intr_should_restart(el, ishoalc_sleep_do_signal, &tssave);
     eventloop_enter(el, millis);
     eventloop_destroy(el);
 
-    Py_END_ALLOW_THREADS
+    PyEval_RestoreThread(tssave);
+
+    if (PyErr_Occurred())
+        return NULL;
 
     Py_RETURN_NONE;
 }
@@ -494,6 +638,7 @@ ishoalc_delete_connection(PyObject *self, PyObject *args)
 static PyMethodDef IshoalcMethods[] = {
     {"thread_all_stop", ishoalc_thread_all_stop, METH_NOARGS, NULL},
     {"should_stop", ishoalc_should_stop, METH_NOARGS, NULL},
+    {"patch_signal", ishoalc_patch_signal, METH_O, NULL},
     {"patch_thread_bootstrap", ishoalc_patch_thread_bootstrap, METH_VARARGS, NULL},
     {"faulthandler_hijack_pre", ishoalc_faulthandler_hijack_pre, METH_NOARGS, NULL},
     {"faulthandler_hijack_post", ishoalc_faulthandler_hijack_post, METH_NOARGS, NULL},
