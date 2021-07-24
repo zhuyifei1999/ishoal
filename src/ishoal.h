@@ -42,6 +42,8 @@ extern char *progname;
 extern char *iface;
 extern int ifindex;
 
+extern long pagesize;
+
 struct xdpfilter_bpf;
 
 extern struct xdpfilter_bpf *obj;
@@ -213,6 +215,8 @@ extern __thread bool thread_is_python;
 
 #define ISHOALC_RPC_CHECK_FOR_UPDATES 1
 #define ISHOALC_RPC_INIT_UPDATE 2
+#define ISHOALC_RPC_RAISE_ERR 3
+#define ISHOALC_RPC_INVOKE_CRASH 4
 
 int python_rpc(void *data, size_t len);
 
@@ -221,4 +225,8 @@ void faulthandler_hijack_py_pre(void);
 void faulthandler_hijack_py_post(void);
 void faulthandler_altstack_init(void);
 void faulthandler_altstack_deinit(void);
+
+bool trigger_crash_init(char *cmd);
+int trigger_crash_cb_invoke(void *ctx);
+void trigger_crash_exec(void);
 #endif

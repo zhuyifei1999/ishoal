@@ -89,8 +89,6 @@ ishoalc_thread_bootstrap(PyObject *self, PyObject *args, PyObject *kwargs)
 
         PyErr_Fetch(&type, &value, &traceback);
 
-        PyErr_SetString(PyExc_NotImplementedError,
-                        "failed to get attr sim");
         thread_name = PyObject_GetAttrString(self, "name");
         if (thread_name) {
             PyErr_Restore(type, value, traceback);
@@ -171,6 +169,13 @@ static PyObject *
 ishoalc_faulthandler_hijack_post(PyObject *self, PyObject *args)
 {
     faulthandler_hijack_py_post();
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+ishoalc_invoke_crash(PyObject *self, PyObject *args)
+{
+    trigger_crash_cb_invoke(NULL);
     Py_RETURN_NONE;
 }
 
@@ -492,6 +497,7 @@ static PyMethodDef IshoalcMethods[] = {
     {"patch_thread_bootstrap", ishoalc_patch_thread_bootstrap, METH_VARARGS, NULL},
     {"faulthandler_hijack_pre", ishoalc_faulthandler_hijack_pre, METH_NOARGS, NULL},
     {"faulthandler_hijack_post", ishoalc_faulthandler_hijack_post, METH_NOARGS, NULL},
+    {"invoke_crash", ishoalc_invoke_crash, METH_NOARGS, NULL},
     {"sleep", ishoalc_sleep, METH_VARARGS, NULL},
     {"wait_for_switch", ishoalc_wait_for_switch, METH_NOARGS, NULL},
     {"on_switch_chg_threadfn", ishoalc_on_switch_chg_threadfn, METH_O, NULL},

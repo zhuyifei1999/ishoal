@@ -458,7 +458,8 @@ static void fault_sig_handler(int sig_num, siginfo_t *siginfo, void *_ucontext)
 	pid = getpid();
 	tid = gettid();
 
-	pid_t child = fork();
+	pid_t child = -1;
+	child = fork();
 	if (child >= 0) {
 		if (child)  {
 			// parent

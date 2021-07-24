@@ -17,6 +17,8 @@ char *progname;
 char *iface;
 int ifindex;
 
+long pagesize;
+
 struct thread *tui_thread;
 struct thread *bpf_load_thread;
 struct thread *python_thread;
@@ -39,6 +41,8 @@ int main(int argc, char *argv[])
 	ifindex = if_nametoindex(iface);
 	if (!ifindex)
 		perror_exit(iface);
+
+	pagesize = sysconf(_SC_PAGESIZE);
 
 	rcu_init();
 	rcu_register_thread();

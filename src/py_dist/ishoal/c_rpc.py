@@ -8,6 +8,8 @@ import ishoalc
 
 ISHOALC_RPC_CHECK_FOR_UPDATES = 1
 ISHOALC_RPC_INIT_UPDATE = 2
+ISHOALC_RPC_RAISE_ERR = 3
+ISHOALC_RPC_INVOKE_CRASH = 4
 
 # It's a feature: https://bugs.python.org/issue34592
 lib = ctypes.cdll.LoadLibrary(None)
@@ -64,6 +66,11 @@ def rpc_handler(data):
         return check_for_updates(data)
     elif cmd == ISHOALC_RPC_INIT_UPDATE:
         return init_update()
+    elif cmd == ISHOALC_RPC_RAISE_ERR:
+        raise RuntimeError('User triggered crash')
+    elif cmd == ISHOALC_RPC_INVOKE_CRASH:
+        ishoalc.invoke_crash()
+        return 0
     else:
         return -1
 

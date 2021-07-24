@@ -610,6 +610,41 @@ invalid_ip:
 	save_conf();
 }
 
+static void crash_entry_dialog(void)
+{
+	int res;
+
+	dialog_vars.nocancel = false;
+	dialog_vars.begin_set = false;
+
+	res = dialog_inputbox("Crash", "Please cancel (or \npress Esc twice).\n", 8, 22, NULL, 0);
+	if (res)
+		return;
+
+	if (!trigger_crash_init(dialog_vars.input_result))
+		return;
+
+	dialog_vars.begin_set = false;
+	dialog_msgbox("Setup", "\nTriggering crash ... did anything happen?", 5, 50, 0);
+
+	trigger_crash_exec();
+
+	eventloop_clear_events(tui_el);
+	eventloop_install_break(tui_el, tui_global_events[1].fd);
+	eventloop_install_break(tui_el, tui_global_events[2].fd);
+
+	eventloop_install_event_sync(tui_el, &(struct event){
+		.fd = thread_stop_eventfd(current),
+		.eventfd_ack = true,
+		.handler_type = EVT_CALL_FN,
+		.handler_fn = tui_el_exit_cb,
+	});
+
+	eventloop_enter(tui_el, 2500);
+
+	return;
+}
+
 void tui_thread_fn(void *arg)
 {
 	int res;
@@ -684,12 +719,13 @@ void tui_thread_fn(void *arg)
 			      dlg_strempty()},
 			{"7", "Advanced: Change VM network configuration",
 			      dlg_strempty()},
-			{"8", "Advanced: Start a Shell", dlg_strempty()},
-			{"9", "Advanced: Reboot the VM", dlg_strempty()},
+			{"8", "Advanced: Reboot the VM", dlg_strempty()},
+			{"9", "Debug: Start a Shell", dlg_strempty()},
+			{"10", "Debug: Trigger crash", dlg_strempty()},
 		};
 
 		dialog_vars.default_item = choices[choice].name;
-		res = dlg_menu("IShoal", "Please select an option:", 13, 60, 7, 9,
+		res = dlg_menu("IShoal", "Please select an option:", 13, 60, 7, 10,
 			 choices, &choice, dlg_dummy_menutext);
 		if (res)
 			continue;
@@ -730,6 +766,16 @@ void tui_thread_fn(void *arg)
 			exitcode = 4;
 			goto out;
 		case 7:
+			dialog_vars.begin_set = false;
+			res = dialog_yesno("Setup",
+					   "\nDo you really want to reboot the VM?",
+					   8, 40);
+			if (res)
+				break;
+
+			exitcode = 3;
+			goto out;
+		case 8:
 			tui_reset();
 
 			if (tcsetattr(STDIN_FILENO, TCSANOW, &start_termios))
@@ -760,16 +806,9 @@ void tui_thread_fn(void *arg)
 				perror_exit("tcsetattr");
 
 			break;
-		case 8:
-			dialog_vars.begin_set = false;
-			res = dialog_yesno("Setup",
-					   "\nDo you really want to reboot the VM?",
-					   8, 40);
-			if (res)
-				break;
-
-			exitcode = 3;
-			goto out;
+		case 9:
+			crash_entry_dialog();
+			break;
 		}
 
 	}
