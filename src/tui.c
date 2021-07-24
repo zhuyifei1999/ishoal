@@ -203,6 +203,23 @@ static void monkey_patch()
 	plthook_close(plthook);
 }
 
+// sleep, but exit-aware
+static void tui_sleep(int ms)
+{
+	eventloop_clear_events(tui_el);
+	eventloop_install_break(tui_el, tui_global_events[1].fd);
+	eventloop_install_break(tui_el, tui_global_events[2].fd);
+
+	eventloop_install_event_sync(tui_el, &(struct event){
+		.fd = thread_stop_eventfd(current),
+		.eventfd_ack = true,
+		.handler_type = EVT_CALL_FN,
+		.handler_fn = tui_el_exit_cb,
+	});
+
+	eventloop_enter(tui_el, ms);
+}
+
 static void tui_reset(void)
 {
 	int res;
@@ -262,18 +279,7 @@ static void detect_switch_online(void)
 	dialog_vars.begin_set = false;
 	dialog_msgbox("Setup", "\nDetecting status of local Switch ...", 5, 40, 0);
 
-	eventloop_clear_events(tui_el);
-	eventloop_install_break(tui_el, tui_global_events[1].fd);
-	eventloop_install_break(tui_el, tui_global_events[2].fd);
-
-	eventloop_install_event_sync(tui_el, &(struct event){
-		.fd = thread_stop_eventfd(current),
-		.eventfd_ack = true,
-		.handler_type = EVT_CALL_FN,
-		.handler_fn = tui_el_exit_cb,
-	});
-
-	eventloop_enter(tui_el, 2500);
+	tui_sleep(2500);
 }
 
 static void detect_local_switch(void)
@@ -298,7 +304,7 @@ static void detect_local_switch(void)
 					   9, 40, 0);
 
 		for (int i = 1; i <= 100; i++) {
-			usleep(1 * 50000);
+			tui_sleep(50);
 
 			if (switch_ip)
 				break;
@@ -629,18 +635,7 @@ static void crash_entry_dialog(void)
 
 	trigger_crash_exec();
 
-	eventloop_clear_events(tui_el);
-	eventloop_install_break(tui_el, tui_global_events[1].fd);
-	eventloop_install_break(tui_el, tui_global_events[2].fd);
-
-	eventloop_install_event_sync(tui_el, &(struct event){
-		.fd = thread_stop_eventfd(current),
-		.eventfd_ack = true,
-		.handler_type = EVT_CALL_FN,
-		.handler_fn = tui_el_exit_cb,
-	});
-
-	eventloop_enter(tui_el, 2500);
+	tui_sleep(2500);
 
 	return;
 }
