@@ -284,7 +284,7 @@ static void detect_local_switch(void)
 	dialog_vars.begin_set = false;
 	dialog_msgbox("Setup",
 		      "\nPlease enter the shoal now, then enter LAN mode "
-		      "(Hold L+R, then press down the left thumbstick) "
+		      "(Hold L+R, then press the left thumbstick) "
 		      "and try to find a room ...", 10, 40, 1);
 	tui_clear();
 
@@ -326,7 +326,7 @@ static void detect_local_switch(void)
 		ip_str(switch_ip, ip);
 		mac_str(switch_mac, mac);
 
-		snprintf(buf, 100, "\nFound local Switch:\n\n%s (%s)",
+		snprintf(buf, 100, "\nFound Local Switch:\n\n%s (%s)",
 			 ip, mac);
 		dialog_msgbox("Setup", buf, 9, 40, 1);
 	}
@@ -436,7 +436,7 @@ reenter:
 
 		res = dialog_inputbox("Setup",
 				      "Please enter the IP this VM should use "
-				      "for the GW functionality (normally 192.168.1.1):\n",
+				      "for the Gateway functionality (normally 192.168.1.1):\n",
 				      10, 40, tmpbuf, 0);
 		if (res)
 			return;
@@ -449,7 +449,7 @@ reenter:
 
 		break;
 invalid_ip:
-		dialog_msgbox("Setup", "Invalid IP address", 7, 40, 1);
+		dialog_msgbox("Setup", "Invalid IP Address", 7, 40, 1);
 		snprintf(tmpbuf, IP_STR_BULEN, "%s", dialog_vars.input_result);
 		continue;
 	}
@@ -501,6 +501,34 @@ out:
 			goto reenter;
 	} else {
 		__set_fake_gateway_ip(new_gateway_ip);
+	}
+}
+
+static void switch_reDetect_dialog(void) {
+	DIALOG_LISTITEM switches[] = {
+		{"1", "Switch 1", dlg_strempty()},
+		{"2", "Switch 2", dlg_strempty()},
+		{"3", "Switch 3", dlg_strempty()},
+		{"4", "Switch 4", dlg_strempty()},
+	};
+	int switchSelected;
+	dlg_menu("Re-detect a Switch", "Please Select A Switch:", 11, 60, 4, 4, switches, &switchSelected, dlg_dummy_menutext);
+	if (res)
+		return;
+
+	switch(switchSelected) {
+		case 0:
+			detect_local_switch();
+			break;
+		case 1:
+			detect_local_switch();
+			break;
+		case 2:
+			detect_local_switch();
+			break;
+		case 3:
+			detect_local_switch();
+			break;
 	}
 }
 
@@ -562,7 +590,7 @@ static void switch_information_dialog(void)
 		break;
 
 invalid_mac:
-		dialog_msgbox("Setup", "Invalid MAC address", 7, 40, 1);
+		dialog_msgbox("Setup", "Invalid MAC Address", 7, 40, 1);
 		snprintf(mac, MAC_STR_BULEN, "%s", dialog_vars.input_result);
 		continue;
 	}
@@ -673,8 +701,8 @@ void tui_thread(void *arg)
 		dialog_vars.nocancel = true;
 
 		DIALOG_LISTITEM choices[] = {
-			{"1", "Refresh state", dlg_strempty()},
-			{"2", "Re-detect Switch", dlg_strempty()},
+			{"1", "Refresh State", dlg_strempty()},
+			{"2", "Re-detect a Switch", dlg_strempty()},
 			{"3", "Shutdown the VM", dlg_strempty()},
 			{"4", "Check for updates", dlg_strempty()},
 			{"5", fake_gateway_ip ?
@@ -703,12 +731,12 @@ void tui_thread(void *arg)
 			detect_switch_online();
 			break;
 		case 1:
-			detect_local_switch();
+			switch_reDetect_dialog();
 			break;
 		case 2:
 			dialog_vars.begin_set = false;
 			res = dialog_yesno("Setup",
-					   "\nDo you really want to shutdown the VM?",
+					   "\nAre you sure you want to shutdown the VM?",
 					   8, 40);
 			if (res)
 				break;
@@ -764,7 +792,7 @@ void tui_thread(void *arg)
 		case 8:
 			dialog_vars.begin_set = false;
 			res = dialog_yesno("Setup",
-					   "\nDo you really want to reboot the VM?",
+					   "\nAre you sure you want to reboot the VM?",
 					   8, 40);
 			if (res)
 				break;
