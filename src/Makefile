@@ -7,7 +7,7 @@ LDFLAGS := $(CFLAGS) -lbpf -lurcu-cds -lurcu -lpthread -lunwind
 # Define this to build on a system without multilib
 # CLANGFLAGS := -D__x86_64__
 
-PYTHON ?= python3.8
+PYTHON ?= python3.9
 PYTHON_CONFIG ?= $(PYTHON)-config
 PYTHON_CFLAGS := $(shell $(PYTHON_CONFIG) --cflags)
 PYTHON_LDFLAGS := $(shell $(PYTHON_CONFIG) --ldflags --embed)
