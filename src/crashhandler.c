@@ -580,6 +580,9 @@ static void emit_regs(void)
 {
 	uintptr_t ip, sp;
 
+	if (crash_message_info.message)
+		return;
+
 	// for future reference,
 	// https://sourceforge.net/p/predef/wiki/Architectures/
 #ifdef __x86_64__
@@ -916,12 +919,10 @@ void crash_with_printf(const char *fmt, ...)
 
 void crash_with_perror(const char *msg)
 {
-	int saved_errno = errno;
-
 	if (msg)
-		crash_with_printf("%s: %s", msg, strerrordesc_np(saved_errno));
+		crash_with_printf("%s: %m", msg);
 	else
-		crash_with_errormsg(strerrordesc_np(saved_errno));
+		crash_with_printf("%m");
 
 	// will not return
 }
