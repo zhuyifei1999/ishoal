@@ -26,13 +26,13 @@ static void get_if_ipaddr(char *iface, ipaddr_t *addr)
 
 	int sock = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sock < 0)
-		perror_exit("socket(AF_INET, SOCK_DGRAM, 0)");
+		crash_with_perror("socket(AF_INET, SOCK_DGRAM, 0)");
 
 	ifr.ifr_addr.sa_family = AF_INET;
 	strncpy(ifr.ifr_name, iface, IFNAMSIZ-1);
 
 	if (ioctl(sock, SIOCGIFADDR, &ifr))
-		perror_exit("ioctl(SIOCGIFADDR)");
+		crash_with_perror("ioctl(SIOCGIFADDR)");
 	*addr = ((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr.s_addr;
 
 	close(sock);
@@ -44,13 +44,13 @@ static void get_if_netmask(char *iface, ipaddr_t *addr)
 
 	int sock = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sock < 0)
-		perror_exit("socket(AF_INET, SOCK_DGRAM, 0)");
+		crash_with_perror("socket(AF_INET, SOCK_DGRAM, 0)");
 
 	ifr.ifr_addr.sa_family = AF_INET;
 	strncpy(ifr.ifr_name, iface, IFNAMSIZ-1);
 
 	if (ioctl(sock, SIOCGIFNETMASK, &ifr))
-		perror_exit("ioctl(SIOCGIFNETMASK)");
+		crash_with_perror("ioctl(SIOCGIFNETMASK)");
 	*addr = ((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr.s_addr;
 
 	close(sock);
@@ -62,13 +62,13 @@ static void get_if_macaddr(char *iface, macaddr_t *addr)
 
 	int sock = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sock < 0)
-		perror_exit("socket(AF_INET, SOCK_DGRAM, 0)");
+		crash_with_perror("socket(AF_INET, SOCK_DGRAM, 0)");
 
 	ifr.ifr_addr.sa_family = AF_INET;
 	strncpy(ifr.ifr_name, iface, IFNAMSIZ-1);
 
 	if (ioctl(sock, SIOCGIFHWADDR, &ifr))
-		perror_exit("ioctl(SIOCGIFHWADDR)");
+		crash_with_perror("ioctl(SIOCGIFHWADDR)");
 	memcpy(addr, ifr.ifr_hwaddr.sa_data, sizeof(macaddr_t));
 
 	close(sock);
@@ -92,7 +92,7 @@ static void get_if_gateway(char *iface, ipaddr_t *addr)
 				     &line_flags);
 
 		if (scanres != 4)
-			fprintf_exit("Malformed /proc/net/route\n");
+			crash_with_errormsg("Malformed /proc/net/route");
 
 		if (!strcmp(line_iface, iface) &&
 		    line_dest == 0 &&
@@ -107,7 +107,7 @@ static void get_if_gateway(char *iface, ipaddr_t *addr)
 	free(buf);
 
 	if (!found)
-		fprintf_exit("Unable to determine default gateway IP address\n");
+		crash_with_errormsg("Unable to determine default gateway IP address");
 }
 
 static bool resolve_arp_kernel(char *iface, ipaddr_t ipaddr, macaddr_t *macaddr)
@@ -127,11 +127,11 @@ static bool resolve_arp_kernel(char *iface, ipaddr_t ipaddr, macaddr_t *macaddr)
 				     &line_iface);
 
 		if (scanres != 3)
-			fprintf_exit("Malformed /proc/net/arp\n");
+			crash_with_errormsg("Malformed /proc/net/arp");
 
 		ipaddr_t line_ipaddr_num;
 		if (inet_pton(AF_INET, line_ipaddr, &line_ipaddr_num) != 1)
-			fprintf_exit("Malformed /proc/net/arp\n");
+			crash_with_errormsg("Malformed /proc/net/arp");
 
 		if (!strcmp(line_iface, iface) &&
 		    line_ipaddr_num == ipaddr) {
@@ -144,7 +144,7 @@ static bool resolve_arp_kernel(char *iface, ipaddr_t ipaddr, macaddr_t *macaddr)
 					     &(*macaddr)[5]);
 
 			if (scanres != 6)
-				fprintf_exit("Malformed /proc/net/arp\n");
+				crash_with_errormsg("Malformed /proc/net/arp");
 
 			found = true;
 		}
@@ -172,7 +172,7 @@ static void rau_cb(bool solved, void *_ctx)
 	ctx->solved = solved;
 
 	if (eventfd_write(ctx->done_eventfd, 1))
-		perror_exit("eventfd_write");
+		crash_with_perror("eventfd_write");
 }
 
 static bool resolve_arp_user_wrapped(char *iface, ipaddr_t ipaddr, macaddr_t *macaddr)
@@ -180,11 +180,11 @@ static bool resolve_arp_user_wrapped(char *iface, ipaddr_t ipaddr, macaddr_t *ma
 	struct eventloop *el = eventloop_new();
 	struct ifinfo_rau_ctx *ctx = calloc(1, sizeof(*ctx));
 	if (!ctx)
-		perror_exit("calloc");
+		crash_with_perror("calloc");
 
 	ctx->done_eventfd = eventfd(0, EFD_CLOEXEC);
 	if (ctx->done_eventfd < 0)
-		perror_exit("eventfd");
+		crash_with_perror("eventfd");
 
 	eventloop_install_break(el, thread_stop_eventfd(current));
 	eventloop_install_break(el, ctx->done_eventfd);
@@ -219,6 +219,6 @@ void ifinfo_init(void)
 	    !resolve_arp_user_wrapped(iface, gateway_ip, &gateway_mac)) {
 		char str[IP_STR_BULEN];
 		ip_str(gateway_ip, str);
-		fprintf_exit("Unable to resolve ARP for %s\n", str);
+		crash_with_printf("Unable to resolve ARP for %s", str);
 	}
 }

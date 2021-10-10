@@ -88,9 +88,9 @@ static int same_file(int fd1, int fd2)
 	struct stat stat1, stat2;
 
 	if (fstat(fd1, &stat1) < 0)
-		perror_exit("fstat");
+		crash_with_perror("fstat");
 	if (fstat(fd2, &stat2) < 0)
-		perror_exit("fstat");
+		crash_with_perror("fstat");
 
 	return stat1.st_dev == stat2.st_dev && stat1.st_ino == stat2.st_ino;
 }
@@ -180,7 +180,7 @@ static void monkey_patch()
 	dl_iterate_phdr(dl_iterate_phdr_cb, &ctx);
 
 	if (!strlen(ctx.libdialog_path))
-		fprintf_exit("failed to locate libdialog library path\n");
+		crash_with_errormsg("failed to locate libdialog library path");
 
 	real_wget_wch = dlsym(RTLD_DEFAULT, "wget_wch");
 	real_wgetch = dlsym(RTLD_DEFAULT, "wgetch");
@@ -188,7 +188,7 @@ static void monkey_patch()
 	plthook_t *plthook;
 
 	if (plthook_open(&plthook, ctx.libdialog_path) != 0)
-		fprintf_exit("plthook_open error: %s\n", plthook_error());
+		crash_with_printf("plthook_open error: %s", plthook_error());
 
 	bool has_replace = false;
 	if (real_wget_wch && !plthook_replace(plthook, "wget_wch",
@@ -198,7 +198,7 @@ static void monkey_patch()
 					    wrapper_wgetch, NULL))
 		has_replace = true;
 	if (!has_replace)
-		fprintf_exit("failed to hook ncurses\n");
+		crash_with_errormsg("failed to hook ncurses");
 
 	plthook_close(plthook);
 }
@@ -367,7 +367,7 @@ static bool check_updates(void) {
 	char *msg;
 	if (asprintf(&msg, "\nNew version %s available. Do you want to update?",
 		     *newver) < 0)
-		perror_exit("asprintf");
+		crash_with_perror("asprintf");
 	res = dialog_yesno("Update", msg, 8, 40);
 
 	free(msg);
@@ -411,7 +411,7 @@ static void rau_cb(bool solved, void *_ctx)
 	ctx->solved = solved;
 
 	if (eventfd_write(ctx->done_eventfd, 1))
-		perror_exit("eventfd_write");
+		crash_with_perror("eventfd_write");
 }
 
 static void switch_gw_dialog(void)
@@ -474,11 +474,11 @@ out:
 
 		struct tui_rau_ctx *ctx = calloc(1, sizeof(*ctx));
 		if (!ctx)
-			perror_exit("calloc");
+			crash_with_perror("calloc");
 
 		ctx->done_eventfd = eventfd(0, EFD_CLOEXEC);
 		if (ctx->done_eventfd < 0)
-			perror_exit("eventfd");
+			crash_with_perror("eventfd");
 
 		eventloop_install_break(tui_el, ctx->done_eventfd);
 
@@ -645,7 +645,7 @@ void tui_thread_fn(void *arg)
 	int res;
 
 	if (tcgetattr(STDIN_FILENO, &start_termios))
-		perror_exit("tcgetattr");
+		crash_with_perror("tcgetattr");
 
 	atexit(reset_termios);
 
@@ -664,7 +664,7 @@ void tui_thread_fn(void *arg)
 	dialog_vars.default_button = -1;
 
 	if (tcgetattr(STDIN_FILENO, &run_termios))
-		perror_exit("tcgetattr");
+		crash_with_perror("tcgetattr");
 
 	run_termios.c_lflag &= ~(ISIG | IXON | IXOFF);
 	run_termios.c_cc[VINTR] = _POSIX_VDISABLE;
@@ -673,7 +673,7 @@ void tui_thread_fn(void *arg)
 	run_termios.c_cc[VSUSP] = _POSIX_VDISABLE;
 
 	if (tcsetattr(STDIN_FILENO, TCSANOW, &run_termios))
-		perror_exit("tcsetattr");
+		crash_with_perror("tcsetattr");
 
 	if (setjmp(exit_jmp))
 		goto out;
@@ -774,7 +774,7 @@ void tui_thread_fn(void *arg)
 			tui_reset();
 
 			if (tcsetattr(STDIN_FILENO, TCSANOW, &start_termios))
-				perror_exit("tcsetattr");
+				crash_with_perror("tcsetattr");
 
 			printf("Please type 'exit' to exit the shell.\n");
 			fflush(stdout);
@@ -798,7 +798,7 @@ void tui_thread_fn(void *arg)
 			refresh();
 
 			if (tcsetattr(STDIN_FILENO, TCSANOW, &run_termios))
-				perror_exit("tcsetattr");
+				crash_with_perror("tcsetattr");
 
 			break;
 		case 9:

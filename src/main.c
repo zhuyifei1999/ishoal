@@ -29,25 +29,28 @@ static void sig_handler(int sig_num)
 	int save_errno = errno;
 
 	if (eventfd_write(stop_broadcast_primary, 1))
-		perror_exit("eventfd_write");
+		crash_with_perror("eventfd_write");
 
 	errno = save_errno;
 }
 
 int main(int argc, char *argv[])
 {
-	faulthandler_init();
-
 	if (argc != 2)
-		fprintf_exit("Usage: %s [interface]\n", argv[0]);
+		crash_with_printf("Usage: %s [interface]", argv[0]);
 
 	progname = argv[0];
 	iface = argv[1];
 	ifindex = if_nametoindex(iface);
 	if (!ifindex)
-		perror_exit(iface);
+		crash_with_perror(iface);
+
+	if (geteuid())
+		crash_with_errormsg("You must be root");
 
 	pagesize = sysconf(_SC_PAGESIZE);
+
+	crashhandler_init();
 
 	rcu_init();
 	rcu_register_thread();
@@ -66,7 +69,7 @@ int main(int argc, char *argv[])
 	};
 
 	if (getaddrinfo("ishoal.ink", NULL, &hints, &results))
-		perror_exit("getaddrinfo");
+		crash_with_perror("getaddrinfo");
 
 	relay_ip = ((struct sockaddr_in *)results->ai_addr)->sin_addr.s_addr;
 	freeaddrinfo(results);

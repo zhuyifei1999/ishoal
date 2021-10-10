@@ -18,7 +18,7 @@ void make_fd_pair(int *send_fd, int *recv_fd)
 {
 	int pipefd[2];
 	if (pipe2(pipefd, O_CLOEXEC) == -1)
-		perror_exit("pipe");
+		crash_with_perror("pipe");
 
 	*recv_fd = pipefd[0];
 	*send_fd = pipefd[1];
@@ -30,7 +30,7 @@ void handle_rpc(int call_recv_fd)
 
 	int read_len = read(call_recv_fd, &dat, sizeof(dat));
 	if (read_len < 0)
-		perror_exit("read");
+		crash_with_perror("read");
 	assert(read_len == sizeof(dat));
 
 	int res = dat.fn(dat.ctx);
@@ -40,7 +40,7 @@ void handle_rpc(int call_recv_fd)
 
 	int write_len = write(dat.ret_send_fd, &res, sizeof(res));
 	if (write_len < 0)
-		perror_exit("write");
+		crash_with_perror("write");
 	assert(write_len == sizeof(res));
 	close(dat.ret_send_fd);
 }
@@ -59,14 +59,14 @@ int invoke_rpc_sync(int call_send_fd, int (*fn)(void *ctx), void *ctx)
 
 	int write_len = write(call_send_fd, &dat, sizeof(dat));
 	if (write_len < 0)
-		perror_exit("write");
+		crash_with_perror("write");
 	assert(write_len == sizeof(dat));
 
 	int res;
 
 	int read_len = read(ret_recv_fd, &res, sizeof(res));
 	if (read_len < 0)
-		perror_exit("read");
+		crash_with_perror("read");
 	assert(read_len == sizeof(res));
 	close(ret_recv_fd);
 
@@ -83,6 +83,6 @@ void invoke_rpc_async(int call_send_fd, int (*fn)(void *ctx), void *ctx)
 
 	int write_len = write(call_send_fd, &dat, sizeof(dat));
 	if (write_len < 0)
-		perror_exit("write");
+		crash_with_perror("write");
 	assert(write_len == sizeof(dat));
 }

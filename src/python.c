@@ -191,7 +191,7 @@ ishoalc_thread_bootstrap(PyObject *self, PyObject *args, PyObject *kwargs)
 {
     PyObject *result;
 
-    faulthandler_altstack_init();
+    crashhandler_altstack_init();
     rcu_register_thread();
     thread_is_python = true;
 
@@ -247,7 +247,7 @@ ishoalc_thread_bootstrap(PyObject *self, PyObject *args, PyObject *kwargs)
     }
 
     rcu_unregister_thread();
-    faulthandler_altstack_deinit();
+    crashhandler_altstack_deinit();
 
     return result;
 }
@@ -290,14 +290,14 @@ ishoalc_patch_thread_bootstrap(PyObject *self, PyObject *args)
 static PyObject *
 ishoalc_faulthandler_hijack_pre(PyObject *self, PyObject *args)
 {
-    faulthandler_hijack_py_pre();
+    py_faulthandler_hijack_pre();
     Py_RETURN_NONE;
 }
 
 static PyObject *
 ishoalc_faulthandler_hijack_post(PyObject *self, PyObject *args)
 {
-    faulthandler_hijack_py_post();
+    py_faulthandler_hijack_post();
     Py_RETURN_NONE;
 }
 
@@ -389,7 +389,7 @@ static void ishoalc_on_switch_chg_threadfn_cb(int fd, void *_ctx, bool expired)
     PyObject *res = PyObject_CallFunctionObjArgs(ctx->handler, NULL);
     if (!res)
         if (eventfd_write(ctx->breakfd, 1))
-            perror_exit("eventfd_write");
+            crash_with_perror("eventfd_write");
 
     Py_DECREF(res);
 
@@ -411,7 +411,7 @@ ishoalc_on_switch_chg_threadfn(PyObject *self, PyObject *arg)
     ctx.tssave = PyEval_SaveThread();
     ctx.breakfd = eventfd(0, EFD_CLOEXEC);
     if (ctx.breakfd < 0)
-        perror_exit("eventfd");
+        crash_with_perror("eventfd");
 
     int replica_fd = broadcast_replica(switch_change_broadcast);
     struct eventloop *el = eventloop_new();
@@ -462,7 +462,7 @@ ishoalc_rpc_threadfn(PyObject *self, PyObject *arg)
     ishoalc_rpc_tssave = PyEval_SaveThread();
     ishoalc_rpc_breakfd = eventfd(0, EFD_CLOEXEC);
     if (ishoalc_rpc_breakfd < 0)
-        perror_exit("eventfd");
+        crash_with_perror("eventfd");
 
     make_fd_pair(&ishoalc_rpc, &ishoalc_rpc_recv);
 
@@ -519,7 +519,7 @@ err:
 
     if (PyErr_Occurred()) {
         if (eventfd_write(ishoalc_rpc_breakfd, 1))
-            perror_exit("eventfd_write");
+            crash_with_perror("eventfd_write");
     }
 
     ishoalc_rpc_tssave = PyEval_SaveThread();

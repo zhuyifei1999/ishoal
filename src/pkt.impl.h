@@ -115,7 +115,7 @@ static uint64_t bpf_ktime_get_ns(void)
 {
 	struct timespec now;
 	if (clock_gettime(CLOCK_MONOTONIC, &now))
-		perror_exit("clock_gettime");
+		crash_with_perror("clock_gettime");
 
 	return (uint64_t) now.tv_sec * SECOND_NS + now.tv_nsec;
 }

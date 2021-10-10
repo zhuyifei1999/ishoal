@@ -1,12 +1,17 @@
 #include "features.h"
 
+#include <alloca.h>
 #include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <sched.h>
 #include <setjmp.h>
 #include <signal.h>
+#include <stdarg.h>
 #include <stdatomic.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/ptrace.h>
@@ -28,12 +33,28 @@ struct linux_dirent64 {
 	char		d_name[];
 };
 
+static struct crash_message_info {
+	const char *message;
+	unw_context_t *ucontext;
+} crash_message_info;
+
+static struct crash_signal_info {
+	int sig_num;
+	siginfo_t *siginfo;
+	ucontext_t *ucontext;
+
+	pid_t pid;
+	pid_t tid;
+} crash_signal_info;
+
 // ULLONG_MAX is only 20 chars in DEC
 #define MAXNUMLEN 30
 #define MAX_THREAD_NAME 16
 #define ALTSTACKLEN 65536
 
 #define CASE_EMIT(name) case name: emit(#name); break;
+
+static bool crashhandler_initialized;
 
 static struct termios start_termios;
 static __thread void *altstack;
@@ -43,8 +64,9 @@ static int maps_fd;
 static __thread volatile sig_atomic_t reentrant;
 static atomic_flag crashed = ATOMIC_FLAG_INIT;
 
-static sigjmp_buf can_deref_ret;
-static sigjmp_buf py_faulthandler_ret;
+static sigjmp_buf can_deref_ret_jmpbuf;
+static sigjmp_buf py_faulthandler_ret_jmpbuf;
+
 static bool py_faulthandler_set;
 static struct sigaction py_faulthandler;
 
@@ -317,15 +339,15 @@ not_found:
 	return;
 }
 
-static void fault_can_deref_ret(int sig_num)
+static void can_deref_ret(int sig_num)
 {
-	siglongjmp(can_deref_ret, 1);
+	siglongjmp(can_deref_ret_jmpbuf, 1);
 }
 
 static bool can_deref(uintptr_t addr)
 {
 	struct sigaction act = {
-		.sa_handler = fault_can_deref_ret,
+		.sa_handler = can_deref_ret,
 		.sa_flags = SA_NODEFER | SA_RESETHAND,
 	};
 	sigemptyset(&act.sa_mask);
@@ -333,7 +355,7 @@ static bool can_deref(uintptr_t addr)
 	if (sigaction(SIGSEGV, &act, NULL))
 		raise(SIGABRT);
 
-	if (!sigsetjmp(can_deref_ret, 1)) {
+	if (!sigsetjmp(can_deref_ret_jmpbuf, 1)) {
 		volatile char c = *(volatile char *)addr;
 		(void)!c;
 
@@ -438,10 +460,288 @@ out:
 	return success && all_ptraced;
 }
 
-static void fault_sig_handler(int sig_num, siginfo_t *siginfo, void *_ucontext)
+static void emit_errormsg_brief(void)
 {
-	// This function must be async signal safe (see signal-safety(7) man)
-	ucontext_t *ucontext = _ucontext;
+	if (crash_message_info.message) {
+		emit(crash_message_info.message);
+	} else {
+		emit("iShoal Fatal Signal: ");
+		switch (crash_signal_info.sig_num) {
+			CASE_EMIT(SIGSEGV);
+			CASE_EMIT(SIGFPE);
+			CASE_EMIT(SIGABRT);
+			CASE_EMIT(SIGBUS);
+			CASE_EMIT(SIGILL);
+		default:
+			emit("(UNKNOWN)");
+		}
+		emit(", ");
+
+		emit("si_code: ");
+		switch (crash_signal_info.siginfo->si_code) {
+			CASE_EMIT(SI_USER);
+			CASE_EMIT(SI_KERNEL);
+			CASE_EMIT(SI_TKILL);
+		default:
+			switch (crash_signal_info.sig_num) {
+			case SIGILL:
+				switch (crash_signal_info.siginfo->si_code) {
+					CASE_EMIT(ILL_ILLOPC);
+					CASE_EMIT(ILL_ILLOPN);
+					CASE_EMIT(ILL_ILLADR);
+					CASE_EMIT(ILL_ILLTRP);
+					CASE_EMIT(ILL_PRVOPC);
+					CASE_EMIT(ILL_PRVREG);
+					CASE_EMIT(ILL_COPROC);
+					CASE_EMIT(ILL_BADSTK);
+				default:
+					emit("(UNKNOWN)");
+				}
+				break;
+			case SIGFPE:
+				switch (crash_signal_info.siginfo->si_code) {
+					CASE_EMIT(FPE_INTDIV);
+					CASE_EMIT(FPE_INTOVF);
+					CASE_EMIT(FPE_FLTDIV);
+					CASE_EMIT(FPE_FLTOVF);
+					CASE_EMIT(FPE_FLTUND);
+					CASE_EMIT(FPE_FLTRES);
+					CASE_EMIT(FPE_FLTINV);
+					CASE_EMIT(FPE_FLTSUB);
+				default:
+					emit("(UNKNOWN)");
+				}
+				break;
+			case SIGSEGV:
+				switch (crash_signal_info.siginfo->si_code) {
+					CASE_EMIT(SEGV_MAPERR);
+					CASE_EMIT(SEGV_ACCERR);
+					CASE_EMIT(SEGV_BNDERR);
+					CASE_EMIT(SEGV_PKUERR);
+				default:
+					emit("(UNKNOWN)");
+				}
+				break;
+			case SIGBUS:
+				switch (crash_signal_info.siginfo->si_code) {
+					CASE_EMIT(BUS_ADRALN);
+					CASE_EMIT(BUS_ADRERR);
+					CASE_EMIT(BUS_OBJERR);
+					CASE_EMIT(BUS_MCEERR_AR);
+					CASE_EMIT(BUS_MCEERR_AO);
+				default:
+					emit("(UNKNOWN)");
+				}
+				break;
+			default:
+				emit("(UNKNOWN)");
+			}
+		}
+	}
+	emit("\n");
+}
+
+
+static void emit_errormsg(void)
+{
+	emit_errormsg_brief();
+
+	emit("Thread: ");
+	emit_pid(crash_signal_info.tid);
+	if (crash_signal_info.pid == crash_signal_info.tid)
+		emit(" [Main Thread]");
+	emit("\n");
+
+	if (crash_message_info.message) {
+		// Don't show anything here
+	} else if (crash_signal_info.siginfo->si_code == SI_USER ||
+		   crash_signal_info.siginfo->si_code == SI_TKILL) {
+		emit("si_uid: ");
+		emit_dec(crash_signal_info.siginfo->si_uid);
+		emit(" si_pid: ");
+		emit_pid(crash_signal_info.siginfo->si_pid);
+
+		if (crash_signal_info.siginfo->si_pid == crash_signal_info.pid ||
+		    crash_signal_info.siginfo->si_pid == crash_signal_info.tid)
+			emit(" [self]");
+		emit("\n");
+	} else if (crash_signal_info.sig_num != SIGABRT &&
+		   crash_signal_info.siginfo->si_code > 0) {
+		emit("si_addr: ");
+		if (crash_signal_info.siginfo->si_addr)
+			emit_reghex((uintptr_t)crash_signal_info.siginfo->si_addr);
+		else
+			emit("(null)");
+		emit("\n");
+	}
+}
+
+static void emit_regs(void)
+{
+	uintptr_t ip, sp;
+
+	// for future reference,
+	// https://sourceforge.net/p/predef/wiki/Architectures/
+#ifdef __x86_64__
+	ip = crash_signal_info.ucontext->uc_mcontext.gregs[REG_RIP];
+	emit("RIP: ");
+	emit_reghex(ip);
+	emit(" in ");
+	emit_mapinfo(ip);
+	emit("\n");
+
+	emit("Code: ");
+	emit_code(ip);
+	emit("\n");
+
+	sp = crash_signal_info.ucontext->uc_mcontext.gregs[REG_RSP];
+	emit("RSP: ");
+	emit_reghex(sp);
+	emit(" in ");
+	emit_mapinfo(sp);
+	emit("\n");
+	// emit(" ");
+	// emit("EFLAGS: ");
+	// emit_reghex(crash_signal_info.ucontext->uc_mcontext.gregs[REG_EFL]);
+	// emit("\n");
+
+#define SHOW_REG_ONE(REGNAME) do {                                 \
+	emit(#REGNAME ": ");                                       \
+	emit_reghex(crash_signal_info.ucontext->uc_mcontext.gregs[REG_ ## REGNAME]); \
+} while (0)
+
+#define SHOW_REG_THREE(A, B, C) do { \
+	SHOW_REG_ONE(A);             \
+	emit(" ");                   \
+	SHOW_REG_ONE(B);             \
+	emit(" ");                   \
+	SHOW_REG_ONE(C);             \
+	emit("\n");                  \
+} while (0)
+
+#ifndef REG_R08
+#define REG_R08 REG_R8
+#endif
+#ifndef REG_R09
+#define REG_R09 REG_R9
+#endif
+
+	SHOW_REG_THREE(RAX, RBX, RCX);
+	SHOW_REG_THREE(RDX, RSI, RDI);
+	SHOW_REG_THREE(RBP, R08, R09);
+	SHOW_REG_THREE(R10, R11, R12);
+	SHOW_REG_THREE(R13, R14, R15);
+#else
+#error "Unknown architecture"
+#endif
+}
+
+static void emit_c_stack(void)
+{
+	unw_cursor_t cursor;
+
+	if (crash_message_info.ucontext) {
+		if (unw_init_local(&cursor, crash_message_info.ucontext))
+			return;
+	} else {
+		if (unw_init_local2(&cursor, crash_signal_info.ucontext,
+				    UNW_INIT_SIGNAL_FRAME))
+			return;
+	}
+
+	emit("Call Trace:\n");
+
+	unw_word_t last_ip = 0;
+	bool omitting = false;
+	ssize_t omissions = 0;
+	ssize_t lines = 0;
+
+	while (true) {
+		char name[128];
+		unw_word_t ip, sp, off;
+		int ret;
+
+		unw_get_reg(&cursor, UNW_REG_IP, &ip);
+		unw_get_reg(&cursor, UNW_REG_SP, &sp);
+
+		if (ip != last_ip && omitting) {
+			if (omissions) {
+				emit("  (");
+				emit_dec(omissions);
+				emit(" duplicate frames omitted...)\n");
+
+				lines++;
+			}
+			omitting = false;
+		}
+
+		if (!omitting) {
+			unw_proc_info_t pi;
+
+			emit("  ");
+			ret = unw_get_proc_name(&cursor, name, sizeof(name), &off);
+			if (!ret)
+				ret = unw_get_proc_info(&cursor, &pi);
+
+			if (!ret && ip - pi.start_ip == off) {
+				emit(name);
+				emit("+");
+				emit_hex(off);
+				emit("/");
+				emit_hex(pi.end_ip - pi.start_ip);
+			} else {
+				emit("0x");
+				emit_hex(ip);
+			}
+
+			emit("\tin ");
+			emit_mapinfo(ip);
+			emit("\n");
+			lines++;
+		} else {
+			omissions += 1;
+		}
+
+		if (ip == last_ip)
+			omitting = true;
+		last_ip = ip;
+
+		if (!can_deref(sp)) {
+			emit("  (SP is bad)\n");
+			return;
+		}
+
+		ret = unw_step(&cursor);
+		if (ret <= 0)
+			break;
+
+		if (lines > 64) {
+			emit("  (... more)\n");
+			return;
+		}
+	}
+}
+
+static void emit_py_stack(void)
+{
+	if (!py_faulthandler_set || !thread_is_python)
+		return;
+
+	if (!sigsetjmp(py_faulthandler_ret_jmpbuf, 1)) {
+		if (py_faulthandler.sa_flags & SA_SIGINFO)
+			py_faulthandler.sa_sigaction(
+				crash_signal_info.sig_num,
+				crash_signal_info.siginfo,
+				crash_signal_info.ucontext);
+		else
+			py_faulthandler.sa_handler(
+				crash_signal_info.sig_num);
+	}
+}
+
+static void fault_sig_handler(int sig_num, siginfo_t *siginfo, void *ucontext)
+{
+	// This function must be async signal safe (see man signal-safety(7))
 
 	// The same thread already crashed with a different signal.
 	// SA_RESETHAND protects us from same signal.
@@ -496,250 +796,23 @@ all_frozen:
 
 	fork_tee();
 
-	emit("iShoal Fatal Signal: ");
-	switch (sig_num) {
-		CASE_EMIT(SIGSEGV);
-		CASE_EMIT(SIGFPE);
-		CASE_EMIT(SIGABRT);
-		CASE_EMIT(SIGBUS);
-		CASE_EMIT(SIGILL);
-	default:
-		emit("(UNKNOWN)");
-	}
-	emit(", ");
+	crash_signal_info.sig_num = sig_num;
+	crash_signal_info.siginfo = siginfo;
+	crash_signal_info.ucontext = ucontext;
 
-	emit("si_code: ");
-	switch (siginfo->si_code) {
-		CASE_EMIT(SI_USER);
-		CASE_EMIT(SI_KERNEL);
-		CASE_EMIT(SI_TKILL);
-	default:
-		switch (sig_num) {
-		case SIGILL:
-			switch (siginfo->si_code) {
-				CASE_EMIT(ILL_ILLOPC);
-				CASE_EMIT(ILL_ILLOPN);
-				CASE_EMIT(ILL_ILLADR);
-				CASE_EMIT(ILL_ILLTRP);
-				CASE_EMIT(ILL_PRVOPC);
-				CASE_EMIT(ILL_PRVREG);
-				CASE_EMIT(ILL_COPROC);
-				CASE_EMIT(ILL_BADSTK);
-			default:
-				emit("(UNKNOWN)");
-			}
-			break;
-		case SIGFPE:
-			switch (siginfo->si_code) {
-				CASE_EMIT(FPE_INTDIV);
-				CASE_EMIT(FPE_INTOVF);
-				CASE_EMIT(FPE_FLTDIV);
-				CASE_EMIT(FPE_FLTOVF);
-				CASE_EMIT(FPE_FLTUND);
-				CASE_EMIT(FPE_FLTRES);
-				CASE_EMIT(FPE_FLTINV);
-				CASE_EMIT(FPE_FLTSUB);
-			default:
-				emit("(UNKNOWN)");
-			}
-			break;
-		case SIGSEGV:
-			switch (siginfo->si_code) {
-				CASE_EMIT(SEGV_MAPERR);
-				CASE_EMIT(SEGV_ACCERR);
-				CASE_EMIT(SEGV_BNDERR);
-				CASE_EMIT(SEGV_PKUERR);
-			default:
-				emit("(UNKNOWN)");
-			}
-			break;
-		case SIGBUS:
-			switch (siginfo->si_code) {
-				CASE_EMIT(BUS_ADRALN);
-				CASE_EMIT(BUS_ADRERR);
-				CASE_EMIT(BUS_OBJERR);
-				CASE_EMIT(BUS_MCEERR_AR);
-				CASE_EMIT(BUS_MCEERR_AO);
-			default:
-				emit("(UNKNOWN)");
-			}
-			break;
-		default:
-			emit("(UNKNOWN)");
-		}
-	}
-	emit("\n");
+	crash_signal_info.pid = pid;
+	crash_signal_info.tid = tid;
 
-	emit("Thread: ");
-	emit_pid(tid);
-	if (pid == tid)
-		emit(" [Main Thread]");
-	emit("\n");
+	emit_errormsg();
+	emit_regs();
 
-	if (siginfo->si_code == SI_USER || siginfo->si_code == SI_TKILL) {
-		emit("si_uid: ");
-		emit_dec(siginfo->si_uid);
-		emit(" si_pid: ");
-		emit_pid(siginfo->si_pid);
+	emit_c_stack();
+	emit_py_stack();
 
-		if (siginfo->si_pid == pid || siginfo->si_pid == tid)
-			emit(" [self]");
-		emit("\n");
-	} else if (sig_num != SIGABRT && siginfo->si_code > 0) {
-		emit("si_addr: ");
-		if (siginfo->si_addr)
-			emit_reghex((uintptr_t)siginfo->si_addr);
-		else
-			emit("(null)");
-		emit("\n");
-	}
-
-	uintptr_t ip, sp;
-
-	// for future reference,
-	// https://sourceforge.net/p/predef/wiki/Architectures/
-#ifdef __x86_64__
-	ip = ucontext->uc_mcontext.gregs[REG_RIP];
-	emit("RIP: ");
-	emit_reghex(ip);
-	emit(" in ");
-	emit_mapinfo(ip);
-	emit("\n");
-
-	emit("Code: ");
-	emit_code(ip);
-	emit("\n");
-
-	sp = ucontext->uc_mcontext.gregs[REG_RSP];
-	emit("RSP: ");
-	emit_reghex(sp);
-	emit(" in ");
-	emit_mapinfo(sp);
-	emit("\n");
-	// emit(" ");
-	// emit("EFLAGS: ");
-	// emit_reghex(ucontext->uc_mcontext.gregs[REG_EFL]);
-	// emit("\n");
-
-#define SHOW_REG_ONE(REGNAME) do {                                 \
-	emit(#REGNAME ": ");                                       \
-	emit_reghex(ucontext->uc_mcontext.gregs[REG_ ## REGNAME]); \
-} while (0)
-
-#define SHOW_REG_THREE(A, B, C) do { \
-	SHOW_REG_ONE(A);             \
-	emit(" ");                   \
-	SHOW_REG_ONE(B);             \
-	emit(" ");                   \
-	SHOW_REG_ONE(C);             \
-	emit("\n");                  \
-} while (0)
-
-#ifndef REG_R08
-#define REG_R08 REG_R8
-#endif
-#ifndef REG_R09
-#define REG_R09 REG_R9
-#endif
-
-	SHOW_REG_THREE(RAX, RBX, RCX);
-	SHOW_REG_THREE(RDX, RSI, RDI);
-	SHOW_REG_THREE(RBP, R08, R09);
-	SHOW_REG_THREE(R10, R11, R12);
-	SHOW_REG_THREE(R13, R14, R15);
-#else
-#error "Unknown architecture"
-#endif
-
-	unw_cursor_t cursor;
-	if (unw_init_local2(&cursor, ucontext, UNW_INIT_SIGNAL_FRAME))
-		goto no_c_bt;
-
-	emit("Call Trace:\n");
-
-	unw_word_t last_ip = 0;
-	bool omitting = false;
-	ssize_t omissions = 0;
-	ssize_t lines = 0;
-
-	while (true) {
-		char name[128];
-		unw_word_t ip, off;
-		int ret;
-
-		unw_get_reg(&cursor, UNW_REG_IP, &ip);
-
-		if (ip != last_ip && omitting) {
-			if (omissions) {
-				emit("  (");
-				emit_dec(omissions);
-				emit(" duplicate frames omitted...)\n");
-
-				lines++;
-			}
-			omitting = false;
-		}
-
-		if (!omitting) {
-			unw_proc_info_t pi;
-
-			emit("  ");
-			ret = unw_get_proc_name(&cursor, name, sizeof(name), &off);
-			if (!ret)
-				ret = unw_get_proc_info(&cursor, &pi);
-
-			if (!ret && ip - pi.start_ip == off) {
-				emit(name);
-				emit("+");
-				emit_hex(off);
-				emit("/");
-				emit_hex(pi.end_ip - pi.start_ip);
-			} else {
-				emit("0x");
-				emit_hex(ip);
-			}
-
-			emit("\tin ");
-			emit_mapinfo(ip);
-			emit("\n");
-			lines++;
-		} else {
-			omissions += 1;
-		}
-
-		if (ip == last_ip)
-			omitting = true;
-		last_ip = ip;
-
-		if (!can_deref(sp)) {
-			emit("  (SP is bad)\n");
-			// unw_step will fault here otherwise
-			goto no_c_bt;
-		}
-
-		ret = unw_step(&cursor);
-		if (ret <= 0)
-			break;
-
-		if (lines > 64) {
-			emit("  (... more)\n");
-			goto no_c_bt;
-		}
-	}
-
-no_c_bt:
-	if (!py_faulthandler_set || !thread_is_python)
-		goto no_py_bt;
-
-	if (!sigsetjmp(py_faulthandler_ret, 1)) {
-		if (py_faulthandler.sa_flags & SA_SIGINFO)
-			py_faulthandler.sa_sigaction(sig_num, siginfo, ucontext);
-		else
-			py_faulthandler.sa_handler(sig_num);
-	}
-
-no_py_bt:
 	emit("End of trace\n");
+
+	emit("--- [ end ");
+	emit_errormsg_brief();
 
 	if (child) {
 		// This is the faulting thread and failed to start a child
@@ -756,7 +829,7 @@ no_py_bt:
 	}
 }
 
-static void fault_py_faulthandler_ret(int sig_num, siginfo_t *siginfo, void *ucontext)
+static void py_faulthandler_ret(int sig_num, siginfo_t *siginfo, void *ucontext)
 {
 	if (!py_faulthandler_set) {
 		fault_sig_handler(sig_num, siginfo, ucontext);
@@ -766,22 +839,94 @@ static void fault_py_faulthandler_ret(int sig_num, siginfo_t *siginfo, void *uco
 	/* There are these possible states during init:
 	 * py_faulthandler_set = false, sighandler = SIG_DFL
 	 * py_faulthandler_set = false, sighandler = fault_sig_handler
-	 * py_faulthandler_set = false, sighandler = fault_py_faulthandler_ret
+	 * py_faulthandler_set = false, sighandler = py_faulthandler_ret
 	 * py_faulthandler_set = false, sighandler = faulthandler_dump_traceback [python]
 	 * py_faulthandler_set = false, sighandler = fault_sig_handler
 	 * py_faulthandler_set = true,  sighandler = fault_sig_handler
 	 *
 	 * coming here without sigjmp_buf set requires sighandler be
-	 * fault_py_faulthandler_ret or faulthandler_dump_traceback [python].
+	 * py_faulthandler_ret or faulthandler_dump_traceback [python].
 	 * In both cases py_faulthandler_set is false.
 	 * Therefore sigjmp_buf must be set is we reach here with
 	 * py_faulthandler_set = true
 	 */
 
-	siglongjmp(py_faulthandler_ret, 1);
+	siglongjmp(py_faulthandler_ret_jmpbuf, 1);
 }
 
-static void faulthandler_reinit(void)
+void crash_with_errormsg(const char *msg)
+{
+	// This is still "safe" with defined C state. We can call async signal
+	// unsafe functions here.
+
+	if (!crashhandler_initialized) {
+		fprintf(stderr, "%s\n", msg);
+		exit(1);
+	}
+
+	unw_context_t uc;
+
+	// And if there's a race for whose error message gets displayed here,
+	// so be it.
+	if (crash_message_info.message)
+		while (true)
+			pause();
+
+	crash_message_info.message = msg;
+
+	if (!unw_getcontext(&uc))
+		crash_message_info.ucontext = &uc;
+
+	// We need one at the top to be close to race check to minimize races,
+	// and we need one here to reduce inconsistencies if a race does happen.
+	crash_message_info.message = msg;
+
+	abort();
+}
+
+void crash_with_printf(const char *fmt, ...)
+{
+	char nowhere;
+	va_list ap;
+	char *buf;
+	int size;
+
+	va_start(ap, fmt);
+	size = vsnprintf(&nowhere, 0, fmt, ap);
+	va_end(ap);
+
+	if (size < 0) {
+		crash_with_errormsg("Failed to vsnprintf");
+	} else {
+		buf = malloc(size + 1);
+		if (!buf) {
+			buf = alloca(size + 1);
+		}
+
+		va_start(ap, fmt);
+		if (vsnprintf(buf, size + 1, fmt, ap) < 0) {
+			crash_with_errormsg("Failed to vsnprintf");
+		} else {
+			crash_with_errormsg(buf);
+		}
+	}
+
+	// will not return
+}
+
+void crash_with_perror(const char *msg)
+{
+	int saved_errno = errno;
+
+	if (msg)
+		crash_with_printf("%s: %s", msg, strerrordesc_np(saved_errno));
+	else
+		crash_with_errormsg(strerrordesc_np(saved_errno));
+
+	// will not return
+}
+
+static void crashhandler_reinit(void)
 {
 	struct sigaction act = {
 		.sa_sigaction = fault_sig_handler,
@@ -790,87 +935,89 @@ static void faulthandler_reinit(void)
 	sigemptyset(&act.sa_mask);
 
 	if (sigaction(SIGSEGV, &act, NULL))
-		perror_exit("sigaction");
+		crash_with_perror("sigaction");
 	if (sigaction(SIGFPE, &act, NULL))
-		perror_exit("sigaction");
+		crash_with_perror("sigaction");
 	if (sigaction(SIGABRT, &act, NULL))
-		perror_exit("sigaction");
+		crash_with_perror("sigaction");
 	if (sigaction(SIGBUS, &act, NULL))
-		perror_exit("sigaction");
+		crash_with_perror("sigaction");
 	if (sigaction(SIGILL, &act, NULL))
-		perror_exit("sigaction");
+		crash_with_perror("sigaction");
 }
 
-void faulthandler_altstack_init(void)
+void crashhandler_altstack_init(void)
 {
 	altstack = mmap(NULL, ALTSTACKLEN, PROT_READ | PROT_WRITE,
 			MAP_PRIVATE | MAP_ANONYMOUS | MAP_GROWSDOWN | MAP_STACK, 0, 0);
 	if (altstack == MAP_FAILED)
-		perror_exit("mmap");
+		crash_with_perror("mmap");
 
 	stack_t altstack_ss = {
 		.ss_sp = altstack,
 		.ss_size = ALTSTACKLEN,
 	};
 	if (sigaltstack(&altstack_ss, NULL))
-		perror_exit("sigaltstack");
+		crash_with_perror("sigaltstack");
 }
 
-void faulthandler_altstack_deinit(void)
+void crashhandler_altstack_deinit(void)
 {
 	if (altstack != MAP_FAILED) {
 		stack_t altstack_ss = {
 			.ss_flags = SS_DISABLE,
 		};
 		if (sigaltstack(&altstack_ss, NULL))
-			perror_exit("sigaltstack");
+			crash_with_perror("sigaltstack");
 
 		munmap(altstack, ALTSTACKLEN);
 	}
 }
 
-void faulthandler_init(void)
+void crashhandler_init(void)
 {
 	if (tcgetattr(STDIN_FILENO, &start_termios))
-		perror_exit("tcgetattr");
+		crash_with_perror("tcgetattr");
 
 	proc_fd = open("/proc", O_PATH | O_DIRECTORY | O_CLOEXEC);
 	if (proc_fd < 0)
-		perror_exit("open(/proc)");
+		crash_with_perror("open(/proc)");
 
 	maps_fd = open("/proc/self/maps", O_RDONLY | O_CLOEXEC);
 	if (maps_fd < 0)
-		perror_exit("open(/proc/self/maps)");
+		crash_with_perror("open(/proc/self/maps)");
 
-	faulthandler_altstack_init();
-	faulthandler_reinit();
+	crashhandler_altstack_init();
+	crashhandler_reinit();
+
+	crashhandler_initialized = true;
 }
 
-void faulthandler_hijack_py_pre(void)
+void py_faulthandler_hijack_pre(void)
 {
 	struct sigaction act = {
-		.sa_sigaction = fault_py_faulthandler_ret,
+		.sa_sigaction = py_faulthandler_ret,
 		.sa_flags = SA_NODEFER | SA_ONSTACK | SA_RESETHAND | SA_SIGINFO,
 	};
 	sigemptyset(&act.sa_mask);
 
 	if (sigaction(SIGSEGV, &act, NULL))
-		perror_exit("sigaction");
+		crash_with_perror("sigaction");
 	if (sigaction(SIGFPE, &act, NULL))
-		perror_exit("sigaction");
+		crash_with_perror("sigaction");
 	if (sigaction(SIGABRT, &act, NULL))
-		perror_exit("sigaction");
+		crash_with_perror("sigaction");
 	if (sigaction(SIGBUS, &act, NULL))
-		perror_exit("sigaction");
+		crash_with_perror("sigaction");
 	if (sigaction(SIGILL, &act, NULL))
-		perror_exit("sigaction");
+		crash_with_perror("sigaction");
 }
 
-void faulthandler_hijack_py_post(void)
+void py_faulthandler_hijack_post(void)
 {
 	bool deferrd_set = !sigaction(SIGSEGV, NULL, &py_faulthandler);
 
-	faulthandler_reinit();
+	crashhandler_reinit();
 
 	if (deferrd_set)
 		py_faulthandler_set = true;

@@ -79,7 +79,7 @@ fill:
 		void *page = mmap(NULL, trampoline_len, PROT_READ | PROT_WRITE,
 				  MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
 		if (page == MAP_FAILED)
-			perror_exit("mmap");
+			crash_with_perror("mmap");
 
 		memcpy(page + trampoline_code_off, trampoline + trampoline_code_off,
 		       trampoline_code_len);
@@ -88,7 +88,7 @@ fill:
 		*(uint32_t *)(page + trampoline_magic_offset) = offset;
 
 		if (mprotect(page, trampoline_len, PROT_NONE))
-			perror_exit("mprotect");
+			crash_with_perror("mprotect");
 
 		void *aligned_data =
 			(void *)((uintptr_t)(page + trampoline_data_off) &
@@ -97,7 +97,7 @@ fill:
 			trampoline_data_len + trampoline_data_off - (aligned_data - page);
 		if (mprotect(aligned_data, aligned_data_len,
 			     PROT_READ))
-			perror_exit("mprotect");
+			crash_with_perror("mprotect");
 
 		void *aligned_code =
 			(void *)((uintptr_t)(page + trampoline_code_off) &
@@ -106,7 +106,7 @@ fill:
 			trampoline_code_len + trampoline_code_off - (aligned_code - page);
 		if (mprotect(aligned_code, aligned_code_len,
 			     PROT_READ | PROT_EXEC))
-			perror_exit("mprotect");
+			crash_with_perror("mprotect");
 
 		res = page + trampoline_func_offset;
 
@@ -128,7 +128,7 @@ void free_rcu_init(void)
 {
 	page_size = sysconf(_SC_PAGESIZE);
 	if (page_size <= 0)
-		perror_exit("sysconf(_SC_PAGESIZE)");
+		crash_with_perror("sysconf(_SC_PAGESIZE)");
 
 	extern void *__start_free_rcu_trampoline;
 	extern void *__stop_free_rcu_trampoline;
@@ -164,21 +164,21 @@ void free_rcu_init(void)
 	{
 		struct { struct rcu_head rcu; } *test = malloc(sizeof(*test));
 		if (!test)
-			perror_exit("malloc");
+			crash_with_perror("malloc");
 
 		free_rcu(test, rcu);
 	}
 	{
 		struct { char a[10]; struct rcu_head rcu; } *test = malloc(sizeof(*test));
 		if (!test)
-			perror_exit("malloc");
+			crash_with_perror("malloc");
 
 		free_rcu(test, rcu);
 	}
 	{
 		struct { struct rcu_head rcu; char a[10]; } *test = malloc(sizeof(*test));
 		if (!test)
-			perror_exit("malloc");
+			crash_with_perror("malloc");
 
 		free_rcu(test, rcu);
 	}

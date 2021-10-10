@@ -45,15 +45,15 @@ static void monkey_patch()
 	dl_iterate_phdr(dl_iterate_phdr_cb, &ctx);
 
 	if (!strlen(ctx.libbpf_path))
-		fprintf_exit("failed to locate libbpf library path\n");
+		crash_with_errormsg("failed to locate libbpf library path");
 
 	plthook_t *plthook;
 
 	if (plthook_open(&plthook, ctx.libbpf_path) != 0)
-		fprintf_exit("plthook_open error: %s\n", plthook_error());
+		crash_with_printf("plthook_open error: %s", plthook_error());
 
 	if (plthook_replace(plthook, "socket", wrapper_socket, NULL))
-		fprintf_exit("failed to hook libbpf\n");
+		crash_with_errormsg("failed to hook libbpf");
 
 	plthook_close(plthook);
 }
@@ -153,7 +153,7 @@ struct xsk_socket *xsk_configure_socket(const char *iface, int queue,
 				PROT_READ | PROT_WRITE,
 				MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	if (xsk->umem.buffer == MAP_FAILED)
-		perror_exit("mmap");
+		crash_with_perror("mmap");
 
 	struct xsk_umem_config umem_cfg = {
 		.fill_size = NUM_FRAMES * 2,
@@ -162,13 +162,13 @@ struct xsk_socket *xsk_configure_socket(const char *iface, int queue,
 	};
 	if (xsk_umem__create(&xsk->umem.umem, xsk->umem.buffer, bufs_size,
 	    &xsk->umem.fq, &xsk->umem.cq, &umem_cfg))
-		perror_exit("xsk_umem__create");
+		crash_with_perror("xsk_umem__create");
 
 	uint32_t idx;
 
 	if (xsk_ring_prod__reserve(&xsk->umem.fq,
 				   NUM_FRAMES, &idx) != NUM_FRAMES)
-		perror_exit("xsk_ring_prod__reserve");
+		crash_with_perror("xsk_ring_prod__reserve");
 	for (int i = 0; i < NUM_FRAMES; i++)
 		*xsk_ring_prod__fill_addr(&xsk->umem.fq, idx++) =
 			i * XSK_UMEM__DEFAULT_FRAME_SIZE;

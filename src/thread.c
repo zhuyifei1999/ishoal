@@ -39,7 +39,7 @@ static void thread_init(void)
 {
 	stop_broadcast_primary = eventfd(0, EFD_CLOEXEC);
 	if (stop_broadcast_primary < 0)
-		perror_exit("eventfd");
+		crash_with_perror("eventfd");
 
 	stop_broadcast = broadcast_new(stop_broadcast_primary);
 
@@ -53,7 +53,7 @@ static void *thread_wrapper_fn(void *thread)
 {
 	current = thread;
 
-	faulthandler_altstack_init();
+	crashhandler_altstack_init();
 	rcu_register_thread();
 
 	pthread_mutex_lock(&threads_lock);
@@ -71,7 +71,7 @@ static void *thread_wrapper_fn(void *thread)
 	pthread_mutex_unlock(&threads_lock);
 
 	rcu_unregister_thread();
-	faulthandler_altstack_deinit();
+	crashhandler_altstack_deinit();
 
 	current->exited = true;
 
@@ -82,7 +82,7 @@ struct thread *thread_start(void (*fn)(void *arg), void *arg, const char *name)
 {
 	struct thread *thread = calloc(1, sizeof(*thread));
 	if (!thread)
-		perror_exit("calloc");
+		crash_with_perror("calloc");
 
 	thread->fn = fn;
 	thread->arg = arg;
@@ -91,7 +91,7 @@ struct thread *thread_start(void (*fn)(void *arg), void *arg, const char *name)
 	pthread_mutex_init(&thread->join_mutex, NULL);
 
 	if (pthread_create(&thread->pthread, NULL, thread_wrapper_fn, thread))
-		perror_exit("pthread_create");
+		crash_with_perror("pthread_create");
 
 	pthread_setname_np(thread->pthread, name);
 
@@ -108,7 +108,7 @@ void thread_stop(struct thread *thread)
 	thread->should_stop = true;
 
 	if (eventfd_write(thread->stop_eventfd, 1))
-		perror_exit("eventfd_write");
+		crash_with_perror("eventfd_write");
 }
 
 bool thread_should_stop(const struct thread *thread)
@@ -160,7 +160,7 @@ void thread_all_stop(void)
 	rcu_read_unlock();
 
 	if (eventfd_write(stop_broadcast_primary, 1))
-		perror_exit("eventfd_write");
+		crash_with_perror("eventfd_write");
 }
 
 void thread_join_rest(void)

@@ -34,13 +34,13 @@ static void switch_change_broadcast_init(void)
 {
 	switch_change_broadcast_primary = eventfd(0, EFD_CLOEXEC);
 	if (switch_change_broadcast_primary < 0)
-		perror_exit("eventfd");
+		crash_with_perror("eventfd");
 
 	switch_change_broadcast = broadcast_new(switch_change_broadcast_primary);
 
 	xsk_broadcast_evt_broadcast_primary = eventfd(0, EFD_CLOEXEC);
 	if (xsk_broadcast_evt_broadcast_primary < 0)
-		perror_exit("eventfd");
+		crash_with_perror("eventfd");
 
 	xsk_broadcast_evt_broadcast = broadcast_new(xsk_broadcast_evt_broadcast_primary);
 }
@@ -67,10 +67,10 @@ void bpf_add_connection(const struct connection *conn)
 {
 	if (bpf_map_update_elem(bpf_map__fd(obj->maps.conn_by_ip), &conn->local_ip,
 				conn, BPF_ANY))
-		perror_exit("bpf_map_update_elem");
+		crash_with_perror("bpf_map_update_elem");
 	if (bpf_map_update_elem(bpf_map__fd(obj->maps.conn_by_port), &conn->local_port,
 				conn, BPF_ANY))
-		perror_exit("bpf_map_update_elem");
+		crash_with_perror("bpf_map_update_elem");
 }
 
 void bpf_delete_connection(ipaddr_t local_ip, uint16_t local_port)
@@ -82,7 +82,7 @@ void bpf_delete_connection(ipaddr_t local_ip, uint16_t local_port)
 static void __on_switch_change(void)
 {
 	if (eventfd_write(switch_change_broadcast_primary, 1))
-		perror_exit("eventfd_write");
+		crash_with_perror("eventfd_write");
 }
 
 void bpf_set_switch_ip(const ipaddr_t addr)
@@ -135,7 +135,7 @@ static void on_xsk_pkt(void *ptr, size_t length)
 	}
 
 	if (eventfd_write(xsk_broadcast_evt_broadcast_primary, 1))
-		perror_exit("eventfd_write");
+		crash_with_perror("eventfd_write");
 
 	xdpemu(ptr, length);
 }
@@ -144,12 +144,12 @@ void bpf_load_thread_fn(void *arg)
 {
 	struct rlimit unlimited = { RLIM_INFINITY, RLIM_INFINITY };
 	if (setrlimit(RLIMIT_MEMLOCK, &unlimited))
-		perror_exit("setrlimit(RLIMIT_MEMLOCK)");
+		crash_with_perror("setrlimit(RLIMIT_MEMLOCK)");
 
 	/* Enable promiscuous mode in order to workaround VirtualBox WiFi issues */
 	int promisc_sock = socket(AF_PACKET, SOCK_RAW | SOCK_CLOEXEC, htons(ETH_P_ALL));
 	if (promisc_sock < 0)
-		perror_exit("socket(AF_PACKET, SOCK_RAW)");
+		crash_with_perror("socket(AF_PACKET, SOCK_RAW)");
 
 	struct packet_mreq mreq = {
 		.mr_ifindex = ifindex,
@@ -157,7 +157,7 @@ void bpf_load_thread_fn(void *arg)
 	};
 	if (setsockopt(promisc_sock, SOL_PACKET, PACKET_ADD_MEMBERSHIP,
 		       &mreq, sizeof(mreq)))
-		perror_exit("setsockopt");
+		crash_with_perror("setsockopt");
 
 	obj = xdpfilter_bpf__open_and_load();
 	if (!obj)
@@ -178,7 +178,7 @@ void bpf_load_thread_fn(void *arg)
 	obj->bss->relay_ip = relay_ip;
 
 	if (bpf_set_link_xdp_fd(ifindex, bpf_program__fd(obj->progs.xdp_prog), 0) < 0)
-		perror_exit("bpf_set_link_xdp_fd");
+		crash_with_perror("bpf_set_link_xdp_fd");
 	atexit(detach_obj);
 
 	for (int i = 0; i < MAX_XSKS; i++) {
@@ -187,13 +187,13 @@ void bpf_load_thread_fn(void *arg)
 			if (i)
 				break;
 			else
-				perror_exit("xsk_configure_socket");
+				crash_with_perror("xsk_configure_socket");
 		}
 
 		int fd = xsk_socket__fd(xsk);
 		int key = i;
 		if (bpf_map_update_elem(bpf_map__fd(obj->maps.xsks_map), &key, &fd, 0))
-			perror_exit("bpf_map_update_elem");
+			crash_with_perror("bpf_map_update_elem");
 	}
 
 	atexit(clear_map);

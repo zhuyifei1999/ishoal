@@ -23,7 +23,7 @@ void tx(const void *pkt, size_t length)
 	if (!atomic_flag_test_and_set(&init_done)) {
 		tx_sock = socket(AF_PACKET, SOCK_RAW | SOCK_CLOEXEC, 0);
 		if (tx_sock < 0)
-			perror_exit("socket(AF_PACKET, SOCK_RAW)");
+			crash_with_perror("socket(AF_PACKET, SOCK_RAW)");
 
 		struct sockaddr_ll addr_bind = {
 			.sll_family = AF_PACKET,
@@ -36,9 +36,9 @@ void tx(const void *pkt, size_t length)
 		memcpy(addr_bind.sll_addr, host_mac, sizeof(macaddr_t));
 
 		if (bind(tx_sock, (struct sockaddr *)&addr_bind, sizeof(addr_bind)))
-			perror_exit("bind");
+			crash_with_perror("bind");
 	}
 
 	if (send(tx_sock, pkt, length, 0) < 0)
-		perror_exit("send");
+		crash_with_perror("send");
 }

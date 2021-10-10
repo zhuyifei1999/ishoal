@@ -33,7 +33,7 @@ static void resolve_arp_user_cb(int fd, const void *_ctx, bool expired)
 
 	ssize_t recvsize = recv(fd, &arp_response, sizeof(arp_response), 0);
 	if (recvsize < 0)
-		perror_exit("recv");
+		crash_with_perror("recv");
 	if (recvsize != sizeof(arp_response))
 		return;
 
@@ -72,7 +72,7 @@ void resolve_arp_user(const struct resolve_arp_user *ctx)
 
 	int sock = socket(AF_PACKET, SOCK_RAW | SOCK_CLOEXEC, htons(ETH_P_ARP));
 	if (sock < 0)
-		perror_exit("socket(AF_PACKET, SOCK_RAW)");
+		crash_with_perror("socket(AF_PACKET, SOCK_RAW)");
 
 	struct sockaddr_ll addr_bind = {
 		.sll_family = AF_PACKET,
@@ -85,7 +85,7 @@ void resolve_arp_user(const struct resolve_arp_user *ctx)
 	memcpy(addr_bind.sll_addr, host_mac, sizeof(macaddr_t));
 
 	if (bind(sock, (struct sockaddr *)&addr_bind, sizeof(addr_bind)))
-		perror_exit("bind");
+		crash_with_perror("bind");
 
 	/* Min L2 frame size: 64 bytes w/ 4 bytes CRC added by driver */
 	char arp_request_buf[caa_max(sizeof(struct arppkt), 60)] = {0};
@@ -107,7 +107,7 @@ void resolve_arp_user(const struct resolve_arp_user *ctx)
 	arp_request->arppl.ar_tip = ctx->ipaddr;
 
 	if (send(sock, arp_request, sizeof(arp_request_buf), 0) < 0)
-		perror_exit("send");
+		crash_with_perror("send");
 
 	eventloop_install_event_sync(ctx->el, &(struct event) {
 		.fd = sock,

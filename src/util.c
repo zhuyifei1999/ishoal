@@ -10,27 +10,11 @@
 
 #include "ishoal.h"
 
-__attribute__ ((format(printf, 1, 2)))
-void fprintf_exit(const char *fmt, ...)
-{
-	va_list ap;
-	va_start(ap, fmt);
-	vfprintf(stderr, fmt, ap);
-	va_end(ap);
-	exit(1);
-}
-
-void perror_exit(const char *msg)
-{
-	perror(msg);
-	exit(1);
-}
-
 char *read_whole_file(const char *path, size_t *nbytes)
 {
 	FILE *f = fopen(path, "r");
 	if (!f)
-		perror_exit(path);
+		crash_with_perror(path);
 
 	char *buf = NULL;
 	size_t buf_size = 0;
@@ -40,7 +24,7 @@ char *read_whole_file(const char *path, size_t *nbytes)
 			buf_size += 1024;
 			buf = realloc(buf, buf_size);
 			if (!buf)
-				perror_exit("realloc");
+				crash_with_perror("realloc");
 		}
 		size_t read_bytes = fread(buf + read_size, 1, 1024, f);
 		if (read_bytes) {
@@ -57,7 +41,7 @@ char *read_whole_file(const char *path, size_t *nbytes)
 
 	buf = realloc(buf, read_size + 1);
 	if (!buf)
-		perror_exit("realloc");
+		crash_with_perror("realloc");
 
 	buf[read_size] = 0;
 	fclose(f);

@@ -100,11 +100,6 @@ int timespec_cmp(const struct timespec *x, const struct timespec *y);
 void timespec_add(struct timespec *x, const struct timespec *y);
 void timespec_sub(struct timespec *x, const struct timespec *y);
 
-__attribute__ ((format(printf, 1, 2), noreturn))
-void fprintf_exit(const char *fmt, ...);
-__attribute__ ((noreturn))
-void perror_exit(const char *msg);
-
 char *read_whole_file(const char *path, size_t *nbytes);
 
 void hex_dump(const void *ptr, size_t length);
@@ -224,11 +219,18 @@ extern __thread bool thread_is_python;
 
 int python_rpc(void *data, size_t len);
 
-void faulthandler_init(void);
-void faulthandler_hijack_py_pre(void);
-void faulthandler_hijack_py_post(void);
-void faulthandler_altstack_init(void);
-void faulthandler_altstack_deinit(void);
+void py_faulthandler_hijack_pre(void);
+void py_faulthandler_hijack_post(void);
+void crashhandler_init(void);
+void crashhandler_altstack_init(void);
+void crashhandler_altstack_deinit(void);
+
+__attribute__ ((noreturn))
+void crash_with_errormsg(const char *msg);
+__attribute__ ((format(printf, 1, 2), noreturn))
+void crash_with_printf(const char *fmt, ...);
+__attribute__ ((noreturn))
+void crash_with_perror(const char *msg);
 
 bool trigger_crash_init(char *cmd);
 int trigger_crash_cb_invoke(void *ctx);

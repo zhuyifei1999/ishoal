@@ -26,11 +26,11 @@ static void init_conf_path(void)
 {
 	wordexp_t p;
 	if (wordexp("~/.config/ishoal.conf", &p, 0))
-		perror_exit("wordexp");
+		crash_with_perror("wordexp");
 
 	CONF_PATH = strdup(p.we_wordv[0]);
 	if (!CONF_PATH)
-		perror_exit("strdup");
+		crash_with_perror("strdup");
 
 	wordfree(&p);
 }

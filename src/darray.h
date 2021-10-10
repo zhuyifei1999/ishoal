@@ -18,7 +18,7 @@
 	(darray).arr = reallocarray(darray_head(darray), new_nmemb, \
 				    sizeof((darray).arr[0]));       \
 	if ((new_nmemb) && !(darray).arr)                           \
-		perror_exit("darray_resize");                       \
+		crash_with_perror("darray_resize");                 \
 	darray_nmemb(darray) = (new_nmemb);                         \
 } while (0)
 
@@ -40,7 +40,7 @@
 #define darray_resize_rcu(darray, new_nmemb) do {                                   \
 	size_t newsize = (new_nmemb) * sizeof((darray).aref->arr[0]);               \
 	if (newsize / sizeof((darray).aref->arr[0]) != (new_nmemb))                 \
-		fprintf_exit("darray_resize_rcu: Overflow\n");                      \
+		crash_with_errormsg("darray_resize_rcu: Overflow");                 \
 	newsize += sizeof(struct rcu_head);                                         \
 	typeof ((darray).aref) newaref = calloc(1, newsize);                        \
 	if (newaref)                                                                \

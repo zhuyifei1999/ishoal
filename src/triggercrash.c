@@ -47,7 +47,7 @@ static void trigger_crash_kern_sysrq(void)
 static void trigger_crash_fatal_exc(void)
 {
 	errno = 0;
-	perror_exit("User triggered crash");
+	crash_with_perror("User triggered crash");
 }
 
 static inline void make_sigill(void)

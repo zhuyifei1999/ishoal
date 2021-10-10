@@ -75,11 +75,11 @@ void start_endpoint(void)
 {
 	remotes_log_fd = open(".", O_TMPFILE | O_RDWR | O_CLOEXEC, S_IRUSR | S_IWUSR);
 	if (remotes_log_fd < 0)
-		perror_exit("open(O_TMPFILE)");
+		crash_with_perror("open(O_TMPFILE)");
 
 	remotes_log = fdopen(remotes_log_fd, "a");
 	if (!remotes_log)
-		perror_exit("fdopen");
+		crash_with_perror("fdopen");
 
 	setbuf(remotes_log, NULL);
 
@@ -88,7 +88,7 @@ void start_endpoint(void)
 	ht_by_ip = cds_lfht_new(1, 1, 0,
 		CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
 	if (!ht_by_ip)
-		perror_exit("cds_lfht_new");
+		crash_with_perror("cds_lfht_new");
 
 	keepalive_thread = thread_start(keepalive_thread_fn, NULL, "keepalive");
 }
@@ -171,7 +171,7 @@ static void __add_connection(ipaddr_t local_ip, uint16_t local_port,
 	if (checked) {
 		conn = calloc(1, sizeof(*conn));
 		if (!conn)
-			perror_exit("calloc");
+			crash_with_perror("calloc");
 
 		cds_lfht_node_init(&conn->node);
 
@@ -197,7 +197,7 @@ static void __add_connection(ipaddr_t local_ip, uint16_t local_port,
 
 		struct remotes_arp_ctx *rpc_ctx = malloc(sizeof(*rpc_ctx));
 		if (!rpc_ctx)
-			perror_exit("malloc");
+			crash_with_perror("malloc");
 
 		*rpc_ctx = (struct remotes_arp_ctx) {
 			.local_ip = local_ip,
@@ -223,7 +223,7 @@ void add_connection(ipaddr_t local_ip, uint16_t local_port,
 {
 	int _endpoint_fd = fcntl(endpoint_fd, F_DUPFD_CLOEXEC, 0);
 	if (_endpoint_fd < 0)
-		perror_exit("dup");
+		crash_with_perror("dup");
 
 	__add_connection(local_ip, local_port, remote_ip, remote_port,
 			 _endpoint_fd, false);

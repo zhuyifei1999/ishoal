@@ -34,7 +34,7 @@ struct eventloop *eventloop_new(void)
 {
 	struct eventloop *el = calloc(1, sizeof(*el));
 	if (!el)
-		perror_exit("calloc");
+		crash_with_perror("calloc");
 
 	CDS_INIT_LIST_HEAD(&el->events);
 	return el;
@@ -62,14 +62,14 @@ void eventloop_install_event_sync(struct eventloop *el, const struct event *evt)
 {
 	struct eventloop_elem *ele = malloc(sizeof(*ele));
 	if (!ele)
-		perror_exit("malloc");
+		crash_with_perror("malloc");
 
 	ele->evt = *evt;
 
 	if (evt->expiry.tv_sec || evt->expiry.tv_nsec) {
 		struct timespec now;
 		if (clock_gettime(CLOCK_MONOTONIC, &now))
-			perror_exit("clock_gettime");
+			crash_with_perror("clock_gettime");
 
 		timespec_add(&ele->evt.expiry, &now);
 	}
@@ -122,7 +122,7 @@ void eventloop_install_event_async(struct eventloop *el, const struct event *evt
 {
 	struct eventloop_install_async *rpc_ctx = malloc(sizeof(*rpc_ctx));
 	if (!rpc_ctx)
-		perror_exit("malloc");
+		crash_with_perror("malloc");
 
 	*rpc_ctx = (struct eventloop_install_async) {
 		.el = el,
@@ -163,7 +163,7 @@ int eventloop_enter(struct eventloop *el, int timeout_ms)
 
 		struct timespec now;
 		if (clock_gettime(CLOCK_MONOTONIC, &now))
-			perror_exit("clock_gettime");
+			crash_with_perror("clock_gettime");
 
 		timeout_abs = (struct timespec) {
 			.tv_sec = timeout_ms / 1000,
@@ -209,7 +209,7 @@ int eventloop_enter(struct eventloop *el, int timeout_ms)
 
 		if (has_expiry) {
 			if (clock_gettime(CLOCK_MONOTONIC, &now))
-				perror_exit("clock_gettime");
+				crash_with_perror("clock_gettime");
 
 			if (timespec_cmp(&min_expiry, &now) <= 0)
 				timeout_ms_poll = 0;
@@ -230,12 +230,12 @@ int eventloop_enter(struct eventloop *el, int timeout_ms)
 					continue;
 				return 1;
 			}
-			perror_exit("poll");
+			crash_with_perror("poll");
 		}
 
 		if (has_expiry) {
 			if (clock_gettime(CLOCK_MONOTONIC, &now))
-				perror_exit("clock_gettime");
+				crash_with_perror("clock_gettime");
 		}
 
 		i = 0;
@@ -247,7 +247,7 @@ int eventloop_enter(struct eventloop *el, int timeout_ms)
 				if (ele->evt.eventfd_ack) {
 					eventfd_t event_value;
 					if (eventfd_read(ele->evt.fd, &event_value))
-						perror_exit("eventfd_read");
+						crash_with_perror("eventfd_read");
 				}
 
 				switch (ele->evt.handler_type) {
@@ -302,7 +302,7 @@ static void broadcast_event_cb(int fd, void *_ctx, bool expired)
 	rcu_read_lock();
 	cds_list_for_each_entry_rcu(bcr, &ctx->replica_fds, list)
 		if (eventfd_write(bcr->fd, 1))
-			perror_exit("eventfd_write");
+			crash_with_perror("eventfd_write");
 	rcu_read_unlock();
 }
 
@@ -310,7 +310,7 @@ struct broadcast_event *broadcast_new(int primary_event_fd)
 {
 	struct broadcast_event *bce = calloc(1, sizeof(*bce));
 	if (!bce)
-		perror_exit("calloc");
+		crash_with_perror("calloc");
 
 	pthread_mutex_init(&bce->replica_fds_mutex, 0);
 
@@ -331,11 +331,11 @@ int broadcast_replica(struct broadcast_event *bce)
 {
 	int fd = eventfd(0, EFD_CLOEXEC);
 	if (fd < 0)
-		perror_exit("eventfd");
+		crash_with_perror("eventfd");
 
 	struct broadcast_replica *bcr = calloc(1, sizeof(*bcr));
 	if (!bcr)
-		perror_exit("calloc");
+		crash_with_perror("calloc");
 
 	bcr->fd = fd;
 
@@ -391,7 +391,7 @@ static void inotify_cb(int fd, void *ctx, bool expired)
 	assert(len);
 
 	if (len < 0)
-		perror_exit("read(inotify)");
+		crash_with_perror("read(inotify)");
 
 	for (char *p = buf; p < buf + len;) {
 		struct inotify_event *event = (void *)p;
@@ -401,7 +401,7 @@ static void inotify_cb(int fd, void *ctx, bool expired)
 		cds_list_for_each_entry(iew, &inotifyeventfd_wd, list)
 			if (iew->wd == event->wd)
 				if (eventfd_write(iew->eventfd, 1))
-					perror_exit("eventfd_write");
+					crash_with_perror("eventfd_write");
 
 		p += sizeof(struct inotify_event) + event->len;
 	}
@@ -413,11 +413,11 @@ static int inotifyeventfd_add_cb(void *_ctx)
 
 	int wd = inotify_add_watch(inotify_fd, ctx->pathname, ctx->mask);
 	if (wd < 0)
-		perror_exit("inotify_add_watch");
+		crash_with_perror("inotify_add_watch");
 
 	struct inotifyeventfd_wd_entry *iew = malloc(sizeof(*iew));
 	if (!iew)
-		perror_exit("malloc");
+		crash_with_perror("malloc");
 
 	iew->wd = wd;
 	iew->eventfd = ctx->eventfd;
@@ -450,7 +450,7 @@ int inotifyeventfd_add(const char *pathname, uint32_t mask)
 	if (!atomic_flag_test_and_set(&init_done)) {
 		inotify_fd = inotify_init1(IN_CLOEXEC);
 		if (inotify_fd < 0)
-			perror_exit("inotify_init1");
+			crash_with_perror("inotify_init1");
 
 		worker_install_event(&(struct event){
 			.fd = inotify_fd,
@@ -462,7 +462,7 @@ int inotifyeventfd_add(const char *pathname, uint32_t mask)
 
 	int fd = eventfd(0, EFD_CLOEXEC);
 	if (fd < 0)
-		perror_exit("eventfd");
+		crash_with_perror("eventfd");
 
 	struct inotifyeventfd_add_ctx ctx = {
 		.pathname = pathname,
