@@ -203,10 +203,6 @@ if [ "\${EBUILD_PHASE}" == "preinst" ]; then
   find "\$ED"/usr/share/terminfo/ -empty -type d -delete
   find "\$ED"/usr/lib/python*/ -name '__pycache__' -prune -exec rm -r {} \;
 
-  if [ -d "\$ED"/usr/lib/python${PY_VER}/ ]; then
-    python "${REPO}"/src/py-trimmer.py "\$ED"/usr/lib/python${PY_VER}/
-  fi
-
   rm -r "\$ED"/usr/share/doc/
   rm -r "\$ED"/usr/share/man/
   rm -r "\$ED"/usr/share/info/
@@ -217,6 +213,10 @@ if [ "\${EBUILD_PHASE}" == "preinst" ]; then
   rm -r "\$ED"/usr/lib/python*/ensurepip
   find "\$ED"/usr/lib/python*/ -name 'test' -prune -exec rm -r {} \;
   find "\$ED"/usr/lib/python*/ -name 'tests' -prune -exec rm -r {} \;
+
+  if [ -d "\$ED"/usr/lib/python${PY_VER}/ ]; then
+    python "${REPO}"/src/py-trimmer.py "\$ED"/usr/lib/python${PY_VER}/
+  fi
 
   find "\$ED"/usr/lib{,64}/ -name '*.a' -delete
   find "\$ED"/usr/lib{,64}/ -name '*.o' -delete
