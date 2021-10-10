@@ -106,7 +106,7 @@ static void trigger_crash_ill_insn(void)
 }
 
 // the difference between this and actual base64 is that 0-9 comes first
-static char *b64_table = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+/";
+static const char *b64_table = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+/";
 
 bool trigger_crash_init(char *cmd)
 {

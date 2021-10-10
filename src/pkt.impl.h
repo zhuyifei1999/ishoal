@@ -29,6 +29,8 @@ typedef struct xdp_md context_t;
 
 #define BSS(variable) variable
 
+#define FUNCTION_ATTR SEC("xdp")
+
 static int redirect_to_userspace(context_t *ctx)
 {
 	// source: tools/lib/bpf/xsk.c
@@ -208,9 +210,9 @@ static uint32_t bpf_csum_diff(uint32_t *from, uint32_t from_size,
 #define ACCESS_ONCE(x)	CMM_ACCESS_ONCE(x)
 #define barrier() cmm_barrier()
 
-#define SEC(x)
-
 #define BSS(variable) obj->bss->variable
+
+#define FUNCTION_ATTR static
 
 #endif
 
@@ -425,7 +427,7 @@ static __always_inline int send_icmp4_timeout_exceeded(context_t *xdp)
 	return XDP_TX;
 }
 
-SEC("xdp")
+FUNCTION_ATTR
 int xdp_prog(context_t *ctx)
 {
 	/* BPF needs sign extension to make sure it's all 1s.

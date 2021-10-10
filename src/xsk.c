@@ -39,7 +39,7 @@ dl_iterate_phdr_cb(struct dl_phdr_info *info, size_t size, void *_ctx)
 	return 0;
 }
 
-static void monkey_patch()
+static void monkey_patch(void)
 {
 	struct dl_iterate_phdr_ctx ctx = {0};
 	dl_iterate_phdr(dl_iterate_phdr_cb, &ctx);

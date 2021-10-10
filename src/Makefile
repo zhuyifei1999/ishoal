@@ -1,7 +1,10 @@
 O := .
 
 INCLUDES := -iquote $(abspath $(O))
-CFLAGS := -O2 -pipe -g -Wall
+CFLAGS := -O2 -pipe -g -Wall \
+	-Wfloat-equal -Wcast-align -Waggregate-return -Wstrict-prototypes \
+	-Wmissing-prototypes -Wmissing-declarations -Wmissing-noreturn \
+	-Wmissing-format-attribute -Wunreachable-code -Wimplicit-fallthrough
 LDFLAGS := $(CFLAGS) -lbpf -lurcu-cds -lurcu -lpthread -lunwind
 
 # Define this to build on a system without multilib

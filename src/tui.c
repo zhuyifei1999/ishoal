@@ -95,7 +95,7 @@ static int same_file(int fd1, int fd2)
 	return stat1.st_dev == stat2.st_dev && stat1.st_ino == stat2.st_ino;
 }
 
-static void wgetch_el()
+static void wgetch_el(void)
 {
 	eventloop_clear_events(tui_el);
 	eventloop_install_break(tui_el, STDIN_FILENO);
@@ -174,7 +174,7 @@ dl_iterate_phdr_cb(struct dl_phdr_info *info, size_t size, void *_ctx)
 	return 0;
 }
 
-static void monkey_patch()
+static void monkey_patch(void)
 {
 	struct dl_iterate_phdr_ctx ctx = {0};
 	dl_iterate_phdr(dl_iterate_phdr_cb, &ctx);

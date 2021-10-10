@@ -75,4 +75,6 @@ char _license[] SEC("license") = "GPL";
 #define __BPF__ 1
 #endif
 
+int xdp_prog(struct xdp_md *ctx);
+
 #include "pkt.impl.h"
