@@ -889,12 +889,16 @@ void crash_with_errormsg(const char *msg)
 
 void crash_with_printf(const char *fmt, ...)
 {
+	int saved_errno;
 	char nowhere;
 	va_list ap;
 	char *buf;
 	int size;
 
+	saved_errno = errno;
+
 	va_start(ap, fmt);
+	errno = saved_errno;
 	size = vsnprintf(&nowhere, 0, fmt, ap);
 	va_end(ap);
 
@@ -902,16 +906,15 @@ void crash_with_printf(const char *fmt, ...)
 		crash_with_errormsg("Failed to vsnprintf");
 	} else {
 		buf = malloc(size + 1);
-		if (!buf) {
+		if (!buf)
 			buf = alloca(size + 1);
-		}
 
 		va_start(ap, fmt);
-		if (vsnprintf(buf, size + 1, fmt, ap) < 0) {
+		errno = saved_errno;
+		if (vsnprintf(buf, size + 1, fmt, ap) < 0)
 			crash_with_errormsg("Failed to vsnprintf");
-		} else {
+		else
 			crash_with_errormsg(buf);
-		}
 	}
 
 	// will not return
