@@ -991,6 +991,11 @@ void crashhandler_init(void)
 	crashhandler_altstack_init();
 	crashhandler_reinit();
 
+	// This is here so we don't load the dynamic library lazily,
+	// potentially calling malloc after the crash.
+	unw_context_t uc;
+	unw_getcontext(&uc);
+
 	crashhandler_initialized = true;
 }
 
