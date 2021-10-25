@@ -105,7 +105,7 @@ mount -t 9p /dev/binpkgs -o version=9p2000.L,trans=virtio,access=any "${REPO}/vm
 
 sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
 apt update
-apt install -y docker.io qemu-utils
+apt install -y docker.io qemu-utils zip
 BUILD_LOGO='$BUILD_LOGO' "${REPO}/vm/build.sh"
 cp "${REPO}/vm/ishoal.ova" /mnt/output/ishoal.ova
 cp "${REPO}/vm/ishoal-update.tgz" /mnt/output/ishoal-update.tgz
@@ -121,3 +121,4 @@ RUNNING=false
 
 cp output/ishoal.ova "${REPO}/vm/ishoal.ova"
 cp output/ishoal-update.tgz "${REPO}/vm/ishoal-update.tgz"
+cp output/ishoal-utm.zip "${REPO}/vm/ishoal-utm.zip"

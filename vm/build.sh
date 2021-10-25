@@ -96,5 +96,12 @@ echo "SHA1 (ishoal.ovf) = $(sha1sum ishoal.ovf | cut -d\  -f 1 )" >> ishoal.mf
 
 tar cvf ishoal.ova ishoal.ovf ishoal-disk001.vmdk ishoal.mf
 
+mkdir -p ishoal.utm/Images
+qemu-img convert disk.img -S 4k -O qcow2 ishoal.utm/Images/ishoal.qcow2
+cp "${REPO}/vm/ishoal-utm-config.plist" ishoal.utm/config.plist
+
+zip ishoal-utm.zip ishoal.utm
+
 cp -a ishoal.ova "${REPO}/vm/ishoal.ova"
 cp -a ishoal-update.tgz "${REPO}/vm/ishoal-update.tgz"
+cp -a ishoal-utm.zip "${REPO}/vm/ishoal-utm.zip"
