@@ -126,17 +126,28 @@ def new_socketio(g_sio):
         all_connections.discard(switchip)
         ishoalc.delete_connection(switchip)
 
-    try:
-        sio.connect('https://ishoal.ink/')
-    except Exception as e:
-        ishoal.log_remote(f'Failed to join iShoal network, check connection? '
-                          f'Error:\n{type(e).__qualname__}: {e}')
-
+    delay = 5
+    while not g_sio.finalizing:
         try:
-            with open('/var/log/ishoal-error.log', 'a') as f:
-                traceback.print_exc(file=f)
-        except Exception:
-            pass
+            sio.connect('https://ishoal.ink/')
+            break
+        except Exception as e:
+            ishoal.log_remote(f'Failed to join iShoal network, '
+                              f'check connection? Error:\n'
+                              f'{type(e).__qualname__}: {e}')
+            try:
+                with open('/var/log/ishoal-error.log', 'a') as f:
+                    traceback.print_exc(file=f)
+            except Exception:
+                pass
+
+        if delay > 3600:
+            ishoal.log_remote('Giving up')
+            break
+
+        ishoal.log_remote(f'Retrying after {delay} seconds')
+        ishoalc.sleep(delay * 1000)
+        delay *= 2
 
 
 class Sio:
