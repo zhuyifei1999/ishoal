@@ -2,7 +2,7 @@
 
 set -ex
 
-LINUX_VER=5.14.14
+LINUX_VER=5.15.10
 PY_VER=3.9
 EDKII_VER=202108
 
@@ -13,16 +13,8 @@ alias emerge='emerge --color=y --quiet-build'
 
 export FEATURES='buildpkg'
 
-# https://bugs.gentoo.org/753935
-# https://github.com/gentoo/gentoo/blob/master/profiles/default/linux/musl/package.use.mask
-# https://github.com/gentoo/gentoo/blob/master/profiles/features/musl/package.use.mask
-mkdir -p /etc/portage/profile
-cat > /etc/portage/profile/package.use.mask << 'EOF'
-sys-devel/clang-runtime sanitize
-EOF
-
 # Using this instead of ACCEPT_KEYWORDS env var so as not to affect dependencies
-cat > /etc/portage/package.accept_keywords << 'EOF'
+cat > /etc/portage/package.accept_keywords/ishoal << 'EOF'
 dev-libs/libbpf ~amd64
 sys-apps/bpftool ~amd64
 
@@ -33,14 +25,13 @@ ln -s "${REPO}/vm/patches" /etc/portage/patches
 
 emerge -vuk --ignore-world sys-apps/portage
 
-emerge -vuk app-portage/layman
+mkdir /etc/portage/repos.conf
+
+emerge -vuk --ignore-world app-portage/layman
 layman -f
 layman -a musl
 
 emerge -vk sys-libs/musl
-if $BUILD_LOGO; then
-  emerge -vk dev-python/pillow
-fi
 
 emerge -1vuk --ignore-world dev-lang/perl app-admin/perl-cleaner
 perl-cleaner -v --all -- --color=y --quiet-build -vk

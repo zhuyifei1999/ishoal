@@ -109,6 +109,7 @@ apt install -y docker.io qemu-utils zip
 BUILD_LOGO='$BUILD_LOGO' "${REPO}/vm/build.sh"
 cp "${REPO}/vm/ishoal.ova" /mnt/output/ishoal.ova
 cp "${REPO}/vm/ishoal-update.tgz" /mnt/output/ishoal-update.tgz
+cp "${REPO}/vm/ishoal-utm.zip" /mnt/output/ishoal-utm.zip
 sync
 INNEREOF
 

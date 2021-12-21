@@ -78,7 +78,7 @@ sudo docker run \
   --security-opt seccomp=unconfined \
   --cap-add=SYS_PTRACE \
   --rm -i \
-  gentoo/stage3:amd64-musl-vanilla \
+  gentoo/stage3:amd64-musl \
   bash "${REPO}/vm/build-inner.sh"
 
 (cd rootfs; sudo tar czf ../ishoal-update.tgz .)
