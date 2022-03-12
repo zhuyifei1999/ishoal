@@ -1,5 +1,6 @@
 #include <arpa/inet.h>
 #include <errno.h>
+#include <linux/if_link.h>
 #include <net/if.h>
 #include <netinet/ip.h>
 #include <signal.h>
@@ -110,7 +111,8 @@ int main(int argc, char *argv[])
 
 	obj->bss->public_host_ip = public_host_ip;
 
-	if (bpf_set_link_xdp_fd(ifindex, bpf_program__fd(obj->progs.xdp_prog), 0) < 0)
+	if (bpf_set_link_xdp_fd(ifindex, bpf_program__fd(obj->progs.xdp_prog),
+				XDP_FLAGS_SKB_MODE) < 0)
 		perror_exit("bpf_set_link_xdp_fd");
 	atexit(detach_obj);
 
